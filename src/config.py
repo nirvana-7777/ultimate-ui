@@ -1,38 +1,24 @@
 """
 Configuration management for ultimate-ui.
 """
+
 import os
 import yaml
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 
 
 class Config:
     """Configuration manager with YAML and environment variable support."""
 
     DEFAULT_CONFIG = {
-        'webepg': {
-            'url': 'http://localhost:8080',
-            'timeout': 10
-        },
-        'ultimate_backend': {
-            'url': 'http://localhost:3000',
-            'timeout': 10
-        },
-        'ui': {
-            'theme': 'dark',
-            'refresh_interval': 300,
-            'timezone': 'Europe/Berlin'
-        },
-        'player': {
-            'default_size': 'medium',
-            'default_bitrate': 'auto'
-        },
-        'database': {
-            'retention_days': 7
-        }
+        "webepg": {"url": "http://localhost:8080", "timeout": 10},
+        "ultimate_backend": {"url": "http://localhost:3000", "timeout": 10},
+        "ui": {"theme": "dark", "refresh_interval": 300, "timezone": "Europe/Berlin"},
+        "player": {"default_size": "medium", "default_bitrate": "auto"},
+        "database": {"retention_days": 7},
     }
 
-    def __init__(self, config_path: str = None):
+    def __init__(self, config_path: Optional[str] = None):
         """Initialize configuration."""
         self.config = self.DEFAULT_CONFIG.copy()
 
@@ -45,7 +31,7 @@ class Config:
 
     def _load_yaml(self, path: str):
         """Load configuration from YAML file."""
-        with open(path, 'r') as f:
+        with open(path, "r") as f:
             yaml_config = yaml.safe_load(f)
             if yaml_config:
                 self._merge_config(self.config, yaml_config)
@@ -61,32 +47,36 @@ class Config:
     def _load_env_vars(self):
         """Load configuration from environment variables."""
         # WebEPG
-        if 'WEBEPG_URL' in os.environ:
-            self.config['webepg']['url'] = os.environ['WEBEPG_URL']
+        if "WEBEPG_URL" in os.environ:
+            self.config["webepg"]["url"] = os.environ["WEBEPG_URL"]
 
-        if 'WEBEPG_TIMEOUT' in os.environ:
-            self.config['webepg']['timeout'] = int(os.environ['WEBEPG_TIMEOUT'])
+        if "WEBEPG_TIMEOUT" in os.environ:
+            self.config["webepg"]["timeout"] = int(os.environ["WEBEPG_TIMEOUT"])
 
         # Ultimate Backend
-        if 'ULTIMATE_BACKEND_URL' in os.environ:
-            self.config['ultimate_backend']['url'] = os.environ['ULTIMATE_BACKEND_URL']
+        if "ULTIMATE_BACKEND_URL" in os.environ:
+            self.config["ultimate_backend"]["url"] = os.environ["ULTIMATE_BACKEND_URL"]
 
-        if 'ULTIMATE_BACKEND_TIMEOUT' in os.environ:
-            self.config['ultimate_backend']['timeout'] = int(os.environ['ULTIMATE_BACKEND_TIMEOUT'])
+        if "ULTIMATE_BACKEND_TIMEOUT" in os.environ:
+            self.config["ultimate_backend"]["timeout"] = int(
+                os.environ["ULTIMATE_BACKEND_TIMEOUT"]
+            )
 
         # UI
-        if 'UI_THEME' in os.environ:
-            self.config['ui']['theme'] = os.environ['UI_THEME']
+        if "UI_THEME" in os.environ:
+            self.config["ui"]["theme"] = os.environ["UI_THEME"]
 
-        if 'UI_REFRESH_INTERVAL' in os.environ:
-            self.config['ui']['refresh_interval'] = int(os.environ['UI_REFRESH_INTERVAL'])
+        if "UI_REFRESH_INTERVAL" in os.environ:
+            self.config["ui"]["refresh_interval"] = int(
+                os.environ["UI_REFRESH_INTERVAL"]
+            )
 
-        if 'UI_TIMEZONE' in os.environ:
-            self.config['ui']['timezone'] = os.environ['UI_TIMEZONE']
+        if "UI_TIMEZONE" in os.environ:
+            self.config["ui"]["timezone"] = os.environ["UI_TIMEZONE"]
 
     def get(self, key_path: str, default: Any = None) -> Any:
         """Get configuration value by dot-notation path."""
-        keys = key_path.split('.')
+        keys = key_path.split(".")
         value = self.config
 
         for key in keys:
@@ -103,10 +93,10 @@ class Config:
 
     def save(self, config_data: Dict):
         """Save configuration to file."""
-        config_path = os.getenv('ULTIMATE_UI_CONFIG', 'config/config.yaml')
+        config_path = os.getenv("ULTIMATE_UI_CONFIG", "config/config.yaml")
         os.makedirs(os.path.dirname(config_path), exist_ok=True)
 
-        with open(config_path, 'w') as f:
+        with open(config_path, "w") as f:
             yaml.dump(config_data, f, default_flow_style=False)
 
         # Reload configuration
