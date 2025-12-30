@@ -1,0 +1,67 @@
+name: Create Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Extract version
+        id: get_version
+        run: |
+          echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+          echo "VERSION_NUMBER=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+      - name: Generate changelog
+        id: changelog
+        run: |
+          # Generate changelog from git history
+          CHANGELOG=$(git log --pretty=format:"- %s (%h)" $(git describe --tags --abbrev=0)..HEAD)
+          echo "CHANGELOG<<EOF" >> $GITHUB_ENV
+          echo "$CHANGELOG" >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          name: Ultimate UI ${{ steps.get_version.outputs.VERSION }}
+          body: |
+            ## Ultimate UI ${{ steps.get_version.outputs.VERSION_NUMBER }}
+            
+            ### Changes
+            ${{ env.CHANGELOG }}
+            
+            ### Docker Image
+            ```bash
+            docker pull nirvana777/ultimate-ui:${{ steps.get_version.outputs.VERSION_NUMBER }}
+            docker pull nirvana777/ultimate-ui:latest
+            ```
+            
+            ### Quick Start
+            ```bash
+            docker run -p 5000:5000 nirvana777/ultimate-ui:${{ steps.get_version.outputs.VERSION_NUMBER }}
+            ```
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+          files: |
+            README.md
+            LICENSE
+            config/config.example.yaml
+
+      - name: Update Docker Hub description
+        run: |
+          # Update Docker Hub description using Docker Hub API
+          curl -X PATCH \
+            -H "Content-Type: application/json" \
+            -H "Authorization: JWT ${{ secrets.DOCKERHUB_TOKEN }}" \
+            -d '{
+              "full_description": "# Ultimate UI ${{ steps.get_version.outputs.VERSION_NUMBER }}\n\n${{ env.CHANGELOG }}\n\n## Quick Start\n\n```bash\ndocker run -p 5000:5000 nirvana777/ultimate-ui:${{ steps.get_version.outputs.VERSION_NUMBER }}\n```"
+            }' \
+            "https://hub.docker.com/v2/repositories/nirvana777/ultimate-ui/"

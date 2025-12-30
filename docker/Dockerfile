@@ -1,0 +1,64 @@
+# Ultimate UI Dockerfile
+# Build and run the ultimate-ui web application
+
+# Stage 1: Build dependencies
+FROM python:3.11-slim AS builder
+
+WORKDIR /app
+
+# Install build dependencies
+RUN apt-get update && apt-get install -y \
+    gcc \
+    g++ \
+    libpq-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy requirements first for better caching
+COPY requirements.txt .
+RUN pip install --user --no-cache-dir -r requirements.txt
+
+# Stage 2: Runtime image
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Install runtime dependencies
+RUN apt-get update && apt-get install -y \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create non-root user
+RUN groupadd -r ultimate && useradd -r -g ultimate ultimate
+
+# Copy Python dependencies from builder
+COPY --from=builder /root/.local /root/.local
+
+# Copy application code
+COPY . .
+
+# Create necessary directories
+RUN mkdir -p /app/config /app/data /app/logs \
+    && chown -R ultimate:ultimate /app
+
+# Set environment variables
+ENV PATH=/root/.local/bin:$PATH
+ENV PYTHONPATH=/app/src
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+ENV FLASK_APP=src.app
+ENV FLASK_ENV=production
+ENV ULTIMATE_UI_CONFIG=/app/config/config.yaml
+ENV PORT=5000
+
+# Expose port
+EXPOSE 5000
+
+# Switch to non-root user
+USER ultimate
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:5000/ || exit 1
+
+# Run the application
+CMD ["gunicorn", "--bind", "0.0.0.0:5000", "--workers", "4", "--threads", "2", "--timeout", "120", "src.app:app"]

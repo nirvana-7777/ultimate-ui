@@ -1,0 +1,379 @@
+{% extends "base.html" %}
+
+{% block content %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/config.css') }}">
+
+<div class="config-container">
+    <div class="config-header">
+        <h2>Konfiguration</h2>
+        <p class="config-subtitle">Einstellungen für Ultimate UI und Backend-Verbindungen</p>
+    </div>
+
+    <div class="config-content">
+        <!-- Configuration Tabs -->
+        <div class="config-tabs" role="tablist">
+            <button class="config-tab active" data-tab="backend" id="tab-backend" role="tab" aria-selected="true" aria-controls="section-backend">
+                Backend-Einstellungen
+            </button>
+            <button class="config-tab" data-tab="ui" id="tab-ui" role="tab" aria-selected="false" aria-controls="section-ui">
+                UI-Einstellungen
+            </button>
+            <button class="config-tab" data-tab="player" id="tab-player" role="tab" aria-selected="false" aria-controls="section-player">
+                Player-Einstellungen
+            </button>
+            <button class="config-tab" data-tab="advanced" id="tab-advanced" role="tab" aria-selected="false" aria-controls="section-advanced">
+                Erweitert
+            </button>
+        </div>
+
+        <!-- Backend Configuration -->
+        <div class="config-section active" id="section-backend" role="tabpanel" aria-labelledby="tab-backend">
+            <h3>Backend-Verbindungen</h3>
+
+            <form id="backend-form" class="config-form">
+                <div class="form-group">
+                    <h4>WebEPG Backend</h4>
+                    <div class="form-row">
+                        <div class="form-col">
+                            <label for="webepg_url">URL</label>
+                            <input type="url" id="webepg_url" name="webepg_url"
+                                   value="{{ config.webepg.url }}"
+                                   placeholder="http://localhost:8080"
+                                   class="form-input" required>
+                            <small class="form-help">
+                                Basis-URL des WebEPG Backends (ohne /api/v1)
+                            </small>
+                        </div>
+                        <div class="form-col">
+                            <label for="webepg_timeout">Timeout (Sekunden)</label>
+                            <input type="number" id="webepg_timeout" name="webepg_timeout"
+                                   value="{{ config.webepg.timeout }}"
+                                   min="1" max="60" class="form-input">
+                            <small class="form-help">
+                                Timeout für API-Anfragen
+                            </small>
+                        </div>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="button" id="test-webepg-btn" class="btn-test">
+                            Verbindung testen
+                        </button>
+                        <div class="connection-status" id="webepg-status">
+                            <span class="status-dot" aria-hidden="true"></span>
+                            <span class="status-text">Nicht getestet</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <h4>Ultimate Backend</h4>
+                    <div class="form-row">
+                        <div class="form-col">
+                            <label for="ultimate_backend_url">URL</label>
+                            <input type="url" id="ultimate_backend_url" name="ultimate_backend_url"
+                                   value="{{ config.ultimate_backend.url }}"
+                                   placeholder="http://localhost:3000"
+                                   class="form-input">
+                            <small class="form-help">
+                                URL des Ultimate Backends für EPG-Mapping
+                            </small>
+                        </div>
+                        <div class="form-col">
+                            <label for="ultimate_backend_timeout">Timeout (Sekunden)</label>
+                            <input type="number" id="ultimate_backend_timeout" name="ultimate_backend_timeout"
+                                   value="{{ config.ultimate_backend.timeout }}"
+                                   min="1" max="60" class="form-input">
+                        </div>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="button" id="test-ultimate-btn" class="btn-test">
+                            Verbindung testen
+                        </button>
+                        <div class="connection-status" id="ultimate-backend-status">
+                            <span class="status-dot" aria-hidden="true"></span>
+                            <span class="status-text">Nicht getestet</span>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+
+        <!-- UI Configuration -->
+        <div class="config-section" id="section-ui" role="tabpanel" aria-labelledby="tab-ui">
+            <h3>UI-Einstellungen</h3>
+
+            <form id="ui-form" class="config-form">
+                <div class="form-group">
+                    <div class="form-row">
+                        <div class="form-col">
+                            <label for="ui_theme">Theme</label>
+                            <select id="ui_theme" name="ui_theme" class="form-select">
+                                <option value="light" {% if config.ui.theme == 'light' %}selected{% endif %}>
+                                    Hell
+                                </option>
+                                <option value="dark" {% if config.ui.theme == 'dark' %}selected{% endif %}>
+                                    Dunkel
+                                </option>
+                                <option value="auto">System</option>
+                            </select>
+                        </div>
+                        <div class="form-col">
+                            <label for="timezone">Zeitzone</label>
+                            <select id="timezone" name="timezone" class="form-select">
+                                <option value="Europe/Berlin" {% if config.ui.timezone == 'Europe/Berlin' %}selected{% endif %}>
+                                    Europa/Berlin (MEZ)
+                                </option>
+                                <option value="UTC" {% if config.ui.timezone == 'UTC' %}selected{% endif %}>
+                                    UTC
+                                </option>
+                                <option value="America/New_York">
+                                    America/New_York (EST)
+                                </option>
+                                <option value="Asia/Tokyo">
+                                    Asia/Tokyo (JST)
+                                </option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <div class="form-row">
+                        <div class="form-col">
+                            <label for="refresh_interval">Auto-Refresh (Sekunden)</label>
+                            <input type="number" id="refresh_interval" name="refresh_interval"
+                                   value="{{ config.ui.refresh_interval }}"
+                                   min="30" max="3600" class="form-input">
+                            <small class="form-help">
+                                Intervall für automatische Aktualisierung (0 = deaktiviert)
+                            </small>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <h4>EPG-Anzeige</h4>
+                    <div class="form-row">
+                        <div class="form-col">
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="show_icons" name="show_icons"
+                                       {% if config.ui.show_icons|default(true) %}checked{% endif %}>
+                                <span class="checkmark"></span>
+                                Kanal-Icons anzeigen
+                            </label>
+                        </div>
+                        <div class="form-col">
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="show_descriptions" name="show_descriptions"
+                                       {% if config.ui.show_descriptions|default(true) %}checked{% endif %}>
+                                <span class="checkmark"></span>
+                                Beschreibungen anzeigen
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+
+        <!-- Player Configuration -->
+        <div class="config-section" id="section-player" role="tabpanel" aria-labelledby="tab-player">
+            <h3>Player-Einstellungen</h3>
+
+            <form id="player-form" class="config-form">
+                <div class="form-group">
+                    <div class="form-row">
+                        <div class="form-col">
+                            <label for="player_size">Standard-Größe</label>
+                            <select id="player_size" name="player_size" class="form-select">
+                                <option value="small" {% if config.player.default_size == 'small' %}selected{% endif %}>
+                                    Klein (480×270)
+                                </option>
+                                <option value="medium" {% if config.player.default_size == 'medium' %}selected{% endif %}>
+                                    Mittel (720×405)
+                                </option>
+                                <option value="large" {% if config.player.default_size == 'large' %}selected{% endif %}>
+                                    Groß (1080×608)
+                                </option>
+                            </select>
+                        </div>
+                        <div class="form-col">
+                            <label for="player_bitrate">Standard-Bitrate</label>
+                            <select id="player_bitrate" name="player_bitrate" class="form-select">
+                                <option value="auto" {% if config.player.default_bitrate == 'auto' %}selected{% endif %}>
+                                    Automatisch
+                                </option>
+                                <option value="1000000" {% if config.player.default_bitrate == '1000000' %}selected{% endif %}>
+                                    Bis 1 Mbit
+                                </option>
+                                <option value="3000000" {% if config.player.default_bitrate == '3000000' %}selected{% endif %}>
+                                    Bis 3 Mbit
+                                </option>
+                                <option value="6000000" {% if config.player.default_bitrate == '6000000' %}selected{% endif %}>
+                                    Bis 6 Mbit
+                                </option>
+                                <option value="10000000" {% if config.player.default_bitrate == '10000000' %}selected{% endif %}>
+                                    Bis 10 Mbit
+                                </option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <h4>Player-Verhalten</h4>
+                    <div class="form-row">
+                        <div class="form-col">
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="autoplay" name="autoplay"
+                                       {% if config.player.autoplay|default(true) %}checked{% endif %}>
+                                <span class="checkmark"></span>
+                                Autoplay aktivieren
+                            </label>
+                            <small class="form-help">
+                                Stream automatisch starten
+                            </small>
+                        </div>
+                        <div class="form-col">
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="muted" name="muted"
+                                       {% if config.player.muted|default(false) %}checked{% endif %}>
+                                <span class="checkmark"></span>
+                                Standardmäßig stumm
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <div class="form-row">
+                        <div class="form-col">
+                            <label for="default_volume">Standard-Lautstärke (%)</label>
+                            <input type="range" id="default_volume" name="default_volume"
+                                   value="{{ config.player.default_volume|default(50) }}"
+                                   min="0" max="100" class="form-range" aria-valuemin="0" aria-valuemax="100">
+                            <div class="range-value">
+                                <span id="volume-value">{{ config.player.default_volume|default(50) }}</span>%
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+
+        <!-- Advanced Configuration -->
+        <div class="config-section" id="section-advanced" role="tabpanel" aria-labelledby="tab-advanced">
+            <h3>Erweiterte Einstellungen</h3>
+
+            <form id="advanced-form" class="config-form">
+                <div class="form-group">
+                    <h4>Datenbank</h4>
+                    <div class="form-row">
+                        <div class="form-col">
+                            <label for="retention_days">Aufbewahrungsdauer (Tage)</label>
+                            <input type="number" id="retention_days" name="retention_days"
+                                   value="{{ config.database.retention_days }}"
+                                   min="1" max="365" class="form-input">
+                            <small class="form-help">
+                                Wie viele Tage EPG-Daten aufbewahrt werden
+                            </small>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <h4>Cache-Einstellungen</h4>
+                    <div class="form-row">
+                        <div class="form-col">
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="cache_enabled" name="cache_enabled"
+                                       {% if config.cache.enabled|default(false) %}checked{% endif %}>
+                                <span class="checkmark"></span>
+                                Cache aktivieren
+                            </label>
+                        </div>
+                        <div class="form-col">
+                            <label for="cache_ttl">Cache-TTL (Sekunden)</label>
+                            <input type="number" id="cache_ttl" name="cache_ttl"
+                                   value="{{ config.cache.ttl|default(300) }}"
+                                   min="60" max="86400" class="form-input">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <h4>Protokollierung</h4>
+                    <div class="form-row">
+                        <div class="form-col">
+                            <label for="log_level">Log-Level</label>
+                            <select id="log_level" name="log_level" class="form-select">
+                                <option value="DEBUG" {% if config.logging.level|default('INFO') == 'DEBUG' %}selected{% endif %}>
+                                    DEBUG
+                                </option>
+                                <option value="INFO" {% if config.logging.level|default('INFO') == 'INFO' %}selected{% endif %}>
+                                    INFO
+                                </option>
+                                <option value="WARNING" {% if config.logging.level|default('INFO') == 'WARNING' %}selected{% endif %}>
+                                    WARNING
+                                </option>
+                                <option value="ERROR" {% if config.logging.level|default('INFO') == 'ERROR' %}selected{% endif %}>
+                                    ERROR
+                                </option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="config-actions">
+            <button class="btn-save" id="save-all-config-btn">
+                Alle Einstellungen speichern
+            </button>
+            <button class="btn-reset" id="reset-config-btn">
+                Auf Standard zurücksetzen
+            </button>
+            <button class="btn-export" id="export-config-btn">
+                Konfiguration exportieren
+            </button>
+            <button class="btn-import" id="import-config-btn">
+                Konfiguration importieren
+            </button>
+            <input type="file" id="import-file" accept=".yaml,.yml,.json" style="display: none;">
+        </div>
+
+        <!-- Config File Location -->
+        <div class="config-info">
+            <h4>Konfigurationsdatei</h4>
+            <p>
+                <strong>Speicherort:</strong> <code>{{ config_path }}</code>
+            </p>
+            <p>
+                <small>
+                    Die Konfiguration kann auch über Umgebungsvariablen angepasst werden.
+                    Siehe Dokumentation für Details.
+                </small>
+            </p>
+        </div>
+    </div>
+</div>
+
+<script src="{{ url_for('static', filename='js/config.js') }}" defer></script>
+
+<!-- Pass configuration data to JavaScript -->
+<script>
+    // Make configuration data available to JavaScript
+    window.CONFIG_DATA = {
+        webepg: {{ config.webepg|tojson }},
+        ultimate_backend: {{ config.ultimate_backend|tojson }},
+        ui: {{ config.ui|tojson }},
+        player: {{ config.player|tojson }},
+        database: {{ config.database|tojson }},
+        cache: {{ config.cache|tojson }},
+        logging: {{ config.logging|tojson }},
+        config_path: "{{ config_path }}"
+    };
+</script>
+{% endblock %}

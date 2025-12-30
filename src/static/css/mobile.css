@@ -1,0 +1,184 @@
+/* Ultimate UI - Mobile Styles */
+
+@media (max-width: 768px) {
+    /* Hide desktop sidebar, show mobile menu */
+    .mobile-menu-toggle {
+        display: block;
+    }
+
+    .sidebar {
+        left: -250px;
+        transition: left 0.3s ease;
+        z-index: 99;
+    }
+
+    .sidebar.active {
+        left: 0;
+    }
+
+    .content {
+        margin-left: 0;
+        padding: 20px 15px;
+    }
+
+    /* Header adjustments */
+    .header-content {
+        padding: 0 15px;
+    }
+
+    .logo-text {
+        display: none;
+    }
+
+    /* EPG adjustments */
+    .epg-header h2 {
+        font-size: 22px;
+    }
+
+    .epg-controls {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 10px;
+    }
+
+    .time-navigation,
+    .view-controls,
+    .btn-filter {
+        width: 100%;
+    }
+
+    .filter-panel {
+        width: 100%;
+        right: -100%;
+    }
+
+    /* Channel cards on mobile */
+    .channel-header {
+        padding: 12px 15px;
+    }
+
+    .channel-name {
+        font-size: 16px;
+    }
+
+    .program-item {
+        flex-direction: column;
+        padding: 12px;
+    }
+
+    .program-time {
+        flex-direction: row;
+        min-width: auto;
+        width: 100%;
+        padding-right: 0;
+        margin-bottom: 10px;
+        justify-content: flex-start;
+        gap: 10px;
+    }
+
+    .start-time,
+    .end-time {
+        font-size: 13px;
+    }
+
+    .time-separator {
+        margin: 0 5px;
+    }
+
+    .program-title {
+        font-size: 15px;
+    }
+
+    .program-description {
+        font-size: 13px;
+    }
+
+    /* Player on mobile */
+    .player-header h3 {
+        font-size: 16px;
+        max-width: calc(100% - 50px);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    /* Grid view disabled on mobile */
+    .btn-view-toggle:last-child {
+        display: none;
+    }
+
+    /* Tab navigation becomes bottom bar on mobile */
+    .main-container {
+        flex-direction: column;
+    }
+
+    .nav-items {
+        display: flex;
+        padding: 0;
+    }
+
+    .nav-item {
+        flex: 1;
+        flex-direction: column;
+        padding: 10px 5px;
+        border-left: none;
+        border-top: 4px solid transparent;
+        text-align: center;
+        font-size: 12px;
+    }
+
+    .nav-item.active {
+        border-left: none;
+        border-top-color: var(--accent-color);
+    }
+
+    .nav-icon {
+        font-size: 18px;
+        margin-bottom: 4px;
+    }
+
+    .sidebar-footer {
+        display: none;
+    }
+
+    /* Toast on mobile */
+    .toast {
+        left: 20px;
+        right: 20px;
+        max-width: none;
+    }
+}
+
+@media (max-width: 480px) {
+    /* Further mobile optimizations */
+    .epg-header h2 {
+        font-size: 20px;
+    }
+
+    .program-item {
+        padding: 10px;
+    }
+
+    .program-title {
+        font-size: 14px;
+    }
+
+    .program-subtitle,
+    .program-description {
+        font-size: 12px;
+    }
+
+    /* Smaller buttons */
+    .btn-view-toggle,
+    .btn-filter,
+    .btn-time-prev,
+    .btn-time-next {
+        padding: 6px 12px;
+        font-size: 13px;
+    }
+
+    /* Adjust content padding */
+    .content {
+        padding: 15px 10px;
+    }
+}

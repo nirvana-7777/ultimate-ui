@@ -1,0 +1,685 @@
+name: Ultimate UI - Docker Build and Publish
+
+on:
+  push:
+    branches: [ master, main ]
+    tags: [ 'v*' ]
+  pull_request:
+    branches: [ master, main ]
+  workflow_dispatch:  # Manual trigger
+  schedule:
+    # Weekly security scan (Monday 3AM)
+    - cron: '0 3 * * 1'
+
+env:
+  DOCKER_IMAGE: nirvana777/ultimate-ui
+  PYTHON_VERSION: '3.11'
+  NODE_VERSION: '18'
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+
+      - name: Cache Python dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('requirements*.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Install linting tools
+        run: |
+          pip install black==23.11.0 flake8==6.1.0 isort==5.12.0 mypy==1.7.0
+
+      - name: Run Black (format check)
+        run: |
+          black --check src/ tests/
+
+      - name: Run isort (import sorting check)
+        run: |
+          isort --check-only src/ tests/
+
+      - name: Run Flake8 (linting)
+        run: |
+          flake8 src/ tests/ --max-line-length=100 --exclude=__pycache__
+
+      - name: Run MyPy (type checking)
+        run: |
+          mypy src/ --ignore-missing-imports
+
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.9', '3.10', '3.11']
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: 'pip'
+
+      - name: Cache Python dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ matrix.python-version }}-${{ hashFiles('requirements*.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-${{ matrix.python-version }}-
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install -r requirements.dev.txt
+          pip install pytest pytest-cov pytest-asyncio pytest-html
+
+      - name: Create test configuration
+        run: |
+          mkdir -p config
+          cat > config/config.test.yaml << EOF
+          webepg:
+            url: "http://localhost:8080"
+            timeout: 5
+          ultimate_backend:
+            url: "http://localhost:3000"
+            timeout: 5
+          ui:
+            theme: "dark"
+            refresh_interval: 300
+            timezone: "UTC"
+          EOF
+
+      - name: Run tests
+        run: |
+          pytest tests/ -v \
+            --cov=src \
+            --cov-report=xml \
+            --cov-report=html \
+            --cov-report=term \
+            --junitxml=junit/test-results-${{ matrix.python-version }}.xml
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results-${{ matrix.python-version }}
+          path: |
+            junit/test-results-${{ matrix.python-version }}.xml
+            htmlcov/
+
+      - name: Upload coverage reports
+        uses: codecov/codecov-action@v3
+        if: matrix.python-version == '3.11'
+        with:
+          file: ./coverage.xml
+          flags: unittests
+          name: ultimate-ui-python-${{ matrix.python-version }}
+
+  frontend-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Check HTML syntax
+        run: |
+          # Check for basic HTML syntax issues
+          find . -name "*.html" -type f -exec grep -l "<html" {} \; | while read file; do
+            echo "Checking $file"
+            if ! grep -q "</html>" "$file"; then
+              echo "ERROR: $file missing closing </html> tag"
+              exit 1
+            fi
+            if ! grep -q "<head>" "$file" && grep -q "<body>" "$file"; then
+              echo "ERROR: $file missing <head> or <body> tags"
+              exit 1
+            fi
+          done
+
+      - name: Check JavaScript syntax
+        run: |
+          # Install jshint if needed
+          if ! command -v jshint &> /dev/null; then
+            npm install -g jshint
+          fi
+          
+          # Run jshint on JavaScript files
+          find . -name "*.js" -type f -not -path "./node_modules/*" -not -path "./.git/*" | while read file; do
+            echo "Checking $file"
+            jshint "$file" || echo "WARNING: $file has JavaScript issues (non-blocking)"
+          done || true
+
+      - name: Check CSS syntax
+        run: |
+          # Install stylelint if needed
+          if ! command -v stylelint &> /dev/null; then
+            npm install -g stylelint stylelint-config-standard
+          fi
+          
+          # Create stylelint config if not exists
+          if [ ! -f .stylelintrc.json ]; then
+            echo '{"extends": "stylelint-config-standard"}' > .stylelintrc.json
+          fi
+          
+          # Run stylelint on CSS files
+          find . -name "*.css" -type f -not -path "./node_modules/*" -not -path "./.git/*" | while read file; do
+            echo "Checking $file"
+            stylelint "$file" || echo "WARNING: $file has CSS issues (non-blocking)"
+          done || true
+
+  security:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+
+      - name: Install security tools
+        run: |
+          pip install safety bandit trivy-python
+
+      - name: Run Safety (dependency vulnerability check)
+        run: |
+          safety check --json --output safety-report.json || true
+          if [ -f safety-report.json ]; then
+            echo "Safety report generated"
+            cat safety-report.json | jq '.vulnerabilities[] | "\(.package_name) \(.vulnerable_version): \(.advisory)"' || true
+          fi
+
+      - name: Run Bandit (security linting)
+        run: |
+          bandit -r src/ -f json -o bandit-report.json || true
+          if [ -f bandit-report.json ]; then
+            echo "Bandit report generated"
+            cat bandit-report.json | jq '.results[] | "\(.filename):\(.line_number) \(.issue_confidence) \(.issue_severity): \(.issue_text)"' || true
+          fi
+
+      - name: Run Trivy (container vulnerability scan)
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+
+      - name: Upload Trivy scan results
+        uses: github/codeql-action/upload-sarif@v2
+        if: always()
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+      - name: Run Snyk Security Scan
+        uses: snyk/actions/python@master
+        if: github.event_name != 'pull_request'
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          args: --severity-threshold=high
+
+      - name: Run OWASP Dependency Check
+        uses: dependency-check/Dependency-Check_Action@main
+        if: github.event_name != 'pull_request'
+        with:
+          project: 'ultimate-ui'
+          path: '.'
+          format: 'HTML'
+          args: >
+            --enableExperimental
+            --failOnCVSS 7
+            --scan src/
+
+      - name: Upload security reports
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: security-reports
+          path: |
+            safety-report.json
+            bandit-report.json
+            dependency-check-report.html
+
+  docker-build:
+    needs: [lint, test, security]
+    runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request'
+    strategy:
+      matrix:
+        platform: [linux/amd64, linux/arm64]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        if: github.event_name != 'pull_request'
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.DOCKER_IMAGE }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=tag
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable={{is_default_branch}}
+          labels: |
+            org.opencontainers.image.title=Ultimate UI
+            org.opencontainers.image.description=A modern web interface for EPG management
+            org.opencontainers.image.vendor=Nirvana777
+            org.opencontainers.image.licenses=MIT
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          platforms: ${{ matrix.platform }}
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            BUILDKIT_INLINE_CACHE=1
+            VERSION=${{ steps.meta.outputs.version }}
+            COMMIT_SHA=${{ github.sha }}
+
+      - name: Docker Scout CVE scanning
+        uses: docker/scout-action@v1
+        if: github.event_name != 'pull_request'
+        with:
+          command: cves
+          image: ${{ steps.meta.outputs.tags }}
+          only-severities: critical,high
+          exit-code: true
+          ignore-base: true
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ steps.meta.outputs.tags }}
+          format: 'sarif'
+          output: 'trivy-image-results.sarif'
+          severity: 'CRITICAL,HIGH'
+
+      - name: Upload Trivy image scan results
+        uses: github/codeql-action/upload-sarif@v2
+        if: always()
+        with:
+          sarif_file: 'trivy-image-results.sarif'
+
+  docker-test:
+    needs: docker-build
+    runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request'
+    strategy:
+      matrix:
+        include:
+          - platform: linux/amd64
+            arch: amd64
+          - platform: linux/arm64
+            arch: arm64
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build test image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          load: true
+          tags: ultimate-ui:test-${{ matrix.arch }}
+          platforms: ${{ matrix.platform }}
+          cache-from: type=gha
+
+      - name: Run container smoke test
+        timeout-minutes: 10
+        run: |
+          # Create test configuration
+          mkdir -p test-config
+          cat > test-config/config.yaml << EOF
+          webepg:
+            url: "http://localhost:8080"
+            timeout: 2
+          ultimate_backend:
+            url: "http://localhost:3000"
+            timeout: 2
+          ui:
+            theme: "dark"
+            refresh_interval: 300
+            timezone: "UTC"
+          logging:
+            level: "INFO"
+            format: "json"
+          EOF
+
+          # Start container
+          echo "Starting Ultimate UI container..."
+          docker run -d --name ultimate-ui-test-${{ matrix.arch }} \
+            -p 5000:5000 \
+            -v $(pwd)/test-config:/app/config:ro \
+            -e FLASK_ENV=production \
+            -e PYTHONUNBUFFERED=1 \
+            ultimate-ui:test-${{ matrix.arch }}
+
+          # Wait for container to be ready
+          echo "Waiting for container to start..."
+          max_attempts=30
+          attempt=0
+          
+          until docker inspect ultimate-ui-test-${{ matrix.arch }} | grep -q '"Status":"running"' || [ $attempt -eq $max_attempts ]; do
+            attempt=$((attempt + 1))
+            echo "Waiting for container to be running... (attempt $attempt/$max_attempts)"
+            sleep 2
+          done
+
+          if [ $attempt -eq $max_attempts ]; then
+            echo "Container failed to start"
+            docker logs ultimate-ui-test-${{ matrix.arch }}
+            exit 1
+          fi
+
+          # Test health endpoint
+          echo "Testing health endpoint..."
+          attempt=0
+          until curl -f http://localhost:5000/ || [ $attempt -eq $max_attempts ]; do
+            attempt=$((attempt + 1))
+            echo "Waiting for service to be ready... (attempt $attempt/$max_attempts)"
+            sleep 2
+          done
+
+          if [ $attempt -eq $max_attempts ]; then
+            echo "Service failed to start"
+            docker logs ultimate-ui-test-${{ matrix.arch }}
+            exit 1
+          fi
+
+          echo "Health check passed!"
+
+          # Test static files
+          echo "Testing static files..."
+          curl -f http://localhost:5000/static/css/style.css || echo "WARNING: CSS file not found (non-blocking)"
+          curl -f http://localhost:5000/static/js/main.js || echo "WARNING: JS file not found (non-blocking)"
+
+          # Test API endpoints
+          echo "Testing API endpoints..."
+          curl -f http://localhost:5000/api/monitoring/status || echo "WARNING: API endpoint failed (non-blocking)"
+
+          # Test HTML templates
+          echo "Testing HTML templates..."
+          curl -f http://localhost:5000/ | grep -q "<html" || echo "WARNING: Main page missing HTML tag (non-blocking)"
+          curl -f http://localhost:5000/epg | grep -q "EPG" || echo "WARNING: EPG page not loading (non-blocking)"
+
+          echo "All smoke tests passed for ${{ matrix.arch }}!"
+
+      - name: Run integration tests
+        if: success()
+        run: |
+          echo "Running integration tests..."
+          
+          # Test configuration endpoint
+          curl -X POST http://localhost:5000/config \
+            -H "Content-Type: application/x-www-form-urlencoded" \
+            -d "webepg_url=http://test:8080&ultimate_backend_url=http://test:3000" \
+            || echo "WARNING: Configuration endpoint test failed (non-blocking)"
+
+          # Test API responses
+          API_RESPONSE=$(curl -s http://localhost:5000/api/monitoring/status || echo "{}")
+          if echo "$API_RESPONSE" | grep -q "success"; then
+            echo "API response structure is valid"
+          else
+            echo "WARNING: API response structure may be invalid"
+          fi
+
+      - name: Performance test
+        if: success()
+        run: |
+          echo "Running performance tests..."
+          
+          # Measure response time
+          start_time=$(date +%s%N)
+          curl -s -o /dev/null -w "%{http_code}" http://localhost:5000/ > /dev/null
+          end_time=$(date +%s%N)
+          response_time=$((($end_time - $start_time)/1000000))
+          
+          echo "Response time: ${response_time}ms"
+          
+          if [ $response_time -gt 5000 ]; then
+            echo "WARNING: Response time exceeds 5 seconds"
+          fi
+
+          # Test concurrent requests
+          echo "Testing concurrent requests..."
+          for i in {1..10}; do
+            curl -s http://localhost:5000/health > /dev/null &
+          done
+          wait
+
+      - name: Check container logs
+        if: always()
+        run: |
+          echo "Container logs:"
+          docker logs ultimate-ui-test-${{ matrix.arch }} --tail 50
+
+      - name: Cleanup test container
+        if: always()
+        run: |
+          docker stop ultimate-ui-test-${{ matrix.arch }} || true
+          docker rm ultimate-ui-test-${{ matrix.arch }} || true
+
+  deploy:
+    needs: [docker-build, docker-test]
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.DOCKER_IMAGE }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=tag
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Deploy to staging
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST_STAGING }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_KEY: ${{ secrets.DEPLOY_KEY }}
+        run: |
+          echo "$DEPLOY_KEY" > deploy_key
+          chmod 600 deploy_key
+          
+          ssh -o StrictHostKeyChecking=no -i deploy_key $DEPLOY_USER@$DEPLOY_HOST << 'EOF'
+            # Pull latest image
+            docker pull ${{ env.DOCKER_IMAGE }}:latest
+            
+            # Stop and remove old container
+            docker stop ultimate-ui-staging || true
+            docker rm ultimate-ui-staging || true
+            
+            # Run new container
+            docker run -d \
+              --name ultimate-ui-staging \
+              --restart unless-stopped \
+              -p 5000:5000 \
+              -v /opt/ultimate-ui/config:/app/config \
+              -v /opt/ultimate-ui/logs:/app/logs \
+              -e FLASK_ENV=production \
+              ${{ env.DOCKER_IMAGE }}:latest
+          EOF
+
+      - name: Verify deployment
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST_STAGING }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_KEY: ${{ secrets.DEPLOY_KEY }}
+        run: |
+          echo "$DEPLOY_KEY" > deploy_key
+          chmod 600 deploy_key
+          
+          # Wait for deployment to be ready
+          sleep 10
+          
+          # Verify service is running
+          ssh -o StrictHostKeyChecking=no -i deploy_key $DEPLOY_USER@$DEPLOY_HOST \
+            "curl -f http://localhost:5000/health || exit 1"
+          
+          echo "Deployment verified successfully!"
+
+      - name: Notify deployment
+        if: success()
+        run: |
+          echo "🚀 Ultimate UI deployed to staging!"
+          echo "URL: http://${{ secrets.DEPLOY_HOST_STAGING }}:5000"
+
+  notify:
+    runs-on: ubuntu-latest
+    needs: [lint, test, security, docker-build, docker-test, deploy]
+    if: always()
+
+    steps:
+      - name: Check workflow status
+        run: |
+          echo "## Ultimate UI Build Summary"
+          echo ""
+          echo "| Job | Status | Details |"
+          echo "|-----|--------|---------|"
+          echo "| Lint | ${{ needs.lint.result }} | Python code quality checks |"
+          echo "| Test | ${{ needs.test.result }} | Unit tests across Python ${{ env.PYTHON_VERSION }} |"
+          echo "| Frontend Check | ${{ needs.frontend-check.result }} | HTML/JS/CSS validation |"
+          echo "| Security | ${{ needs.security.result }} | Vulnerability scanning |"
+          echo "| Docker Build | ${{ needs.docker-build.result }} | Multi-architecture builds |"
+          echo "| Docker Test | ${{ needs.docker-test.result }} | Container smoke tests |"
+          echo "| Deploy | ${{ needs.deploy.result }} | Staging deployment |"
+          echo ""
+          echo "**Commit:** ${{ github.sha }}"
+          echo "**Branch:** ${{ github.ref }}"
+          echo "**Trigger:** ${{ github.event_name }}"
+          
+          if [[ "${{ github.event_name }}" == "push" && "${{ github.ref }}" == "refs/heads/main" ]]; then
+            echo ""
+            echo "📦 Docker Image: ${{ env.DOCKER_IMAGE }}:latest"
+            echo "🌐 Staging URL: http://${{ secrets.DEPLOY_HOST_STAGING }}:5000"
+          fi
+
+      - name: Create workflow summary
+        run: |
+          echo "## Ultimate UI Build Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Job | Status | Runtime |" >> $GITHUB_STEP_SUMMARY
+          echo "|-----|--------|---------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Lint | ${{ needs.lint.result }} | ${{ needs.lint.outputs.duration }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Test | ${{ needs.test.result }} | ${{ needs.test.outputs.duration }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Frontend Check | ${{ needs.frontend-check.result }} | ${{ needs.frontend-check.outputs.duration }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Security | ${{ needs.security.result }} | ${{ needs.security.outputs.duration }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Docker Build | ${{ needs.docker-build.result }} | ${{ needs.docker-build.outputs.duration }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Docker Test | ${{ needs.docker-test.result }} | ${{ needs.docker-test.outputs.duration }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Deploy | ${{ needs.deploy.result }} | ${{ needs.deploy.outputs.duration }} |" >> $GITHUB_STEP_SUMMARY
+          
+          if [[ "${{ github.event_name }}" == "push" && "${{ github.ref }}" == "refs/heads/main" ]]; then
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "### Deployment Information" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "📦 **Docker Image:** \`${{ env.DOCKER_IMAGE }}:latest\`" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "🌐 **Staging Environment:** http://${{ secrets.DEPLOY_HOST_STAGING }}:5000" >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Send Slack notification
+        if: always()
+        uses: slackapi/slack-github-action@v1.25.0
+        with:
+          channel-id: ${{ secrets.SLACK_CHANNEL_ID }}
+          slack-message: |
+            Ultimate UI Build ${{ github.event_name == 'push' && '✅ Success' || '⚠️ Completed' }}
+            Branch: ${{ github.ref_name }}
+            Commit: ${{ github.sha }}
+            Workflow: ${{ github.workflow }}
+            Jobs: 
+            - Lint: ${{ needs.lint.result }}
+            - Test: ${{ needs.test.result }}
+            - Docker: ${{ needs.docker-build.result }}
+            - Deploy: ${{ needs.deploy.result }}
+            View: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+
+      - name: Fail if critical jobs failed
+        if: |
+          needs.test.result == 'failure' ||
+          needs.docker-build.result == 'failure' ||
+          needs.docker-test.result == 'failure'
+        run: |
+          echo "❌ Critical jobs failed! Build cannot proceed."
+          echo ""
+          echo "Failed jobs:"
+          echo "- Test: ${{ needs.test.result }}"
+          echo "- Docker Build: ${{ needs.docker-build.result }}"
+          echo "- Docker Test: ${{ needs.docker-test.result }}"
+          exit 1

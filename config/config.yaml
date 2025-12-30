@@ -1,0 +1,20 @@
+# ultimate-ui Configuration
+webepg:
+  url: "http://localhost:8080"  # EPG backend
+  timeout: 10
+
+ultimate_backend:
+  url: "http://localhost:3000"  # Ultimate backend for channel data
+  timeout: 10
+
+ui:
+  theme: "dark"                 # dark/light
+  refresh_interval: 300         # seconds for auto-refresh
+  timezone: "Europe/Berlin"
+
+player:
+  default_size: "medium"        # small/medium/large
+  default_bitrate: "auto"       # auto/1M/3M/6M/10M
+
+database:
+  retention_days: 7

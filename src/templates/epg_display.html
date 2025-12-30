@@ -1,0 +1,206 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="epg-container">
+    <!-- EPG Header -->
+    <div class="epg-header">
+        <h2>EPG Programmübersicht</h2>
+        <div class="epg-controls">
+            <div class="time-navigation">
+                <button class="btn-time-prev" id="time-prev-btn" aria-label="Vorheriger Tag">←</button>
+                <span class="current-time-range" id="time-range">Heute</span>
+                <button class="btn-time-next" id="time-next-btn" aria-label="Nächster Tag">→</button>
+            </div>
+            <div class="view-controls">
+                <button class="btn-view-toggle active" id="list-view-btn">Liste</button>
+                <button class="btn-view-toggle" id="grid-view-btn">Raster</button>
+            </div>
+            <button class="btn-filter" id="filter-btn">🔍 Filter</button>
+        </div>
+    </div>
+
+    <!-- Filter Panel -->
+    <div class="filter-panel" id="filter-panel">
+        <div class="filter-header">
+            <h3>Filter</h3>
+            <button class="btn-close" id="close-filter-btn" aria-label="Filter schließen">×</button>
+        </div>
+        <div class="filter-content">
+            <input type="text" id="search-input" placeholder="Suche nach Sendung oder Sender..."
+                   class="filter-input" aria-label="Suche">
+
+            <div class="filter-group">
+                <label>Kategorien:</label>
+                <div class="filter-tags" role="group" aria-label="Kategorien">
+                    <span class="filter-tag active" data-category="all" role="button" tabindex="0">Alle</span>
+                    <span class="filter-tag" data-category="sport" role="button" tabindex="0">Sport</span>
+                    <span class="filter-tag" data-category="news" role="button" tabindex="0">Nachrichten</span>
+                    <span class="filter-tag" data-category="movie" role="button" tabindex="0">Filme</span>
+                    <span class="filter-tag" data-category="series" role="button" tabindex="0">Serien</span>
+                </div>
+            </div>
+
+            <div class="filter-group">
+                <label for="time-filter">Zeitraum:</label>
+                <select id="time-filter" class="filter-select">
+                    <option value="now">Jetzt laufend</option>
+                    <option value="today" selected>Heute</option>
+                    <option value="tomorrow">Morgen</option>
+                    <option value="week">Diese Woche</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <!-- EPG Content -->
+    <div class="epg-content" id="epg-content">
+        {% if error %}
+        <div class="error-message" role="alert">
+            <p>⚠️ Fehler beim Laden der EPG-Daten: {{ error }}</p>
+            <button onclick="location.reload()">Erneut versuchen</button>
+        </div>
+        {% elif channels %}
+            {% if channels|length > 0 %}
+                <!-- List View -->
+                <div class="epg-list-view" id="list-view">
+                    {% for channel in channels %}
+                    <div class="channel-card" data-channel-id="{{ channel.id }}">
+                        <div class="channel-header" role="button" tabindex="0">
+                            <div class="channel-info">
+                                {% if channel.icon_url %}
+                                <img src="{{ channel.icon_url }}" alt="{{ channel.display_name }}"
+                                     class="channel-icon" onerror="this.style.display='none'">
+                                {% endif %}
+                                <div class="channel-text">
+                                    <h3 class="channel-name">{{ channel.display_name }}</h3>
+                                    <span class="channel-id">{{ channel.name }}</span>
+                                </div>
+                            </div>
+                            <div class="channel-toggle">
+                                <span class="toggle-icon" aria-hidden="true">▼</span>
+                            </div>
+                        </div>
+
+                        <div class="channel-programs" id="programs-{{ channel.id }}" role="region" aria-label="Programme für {{ channel.display_name }}">
+                            {% if channel.programs %}
+                                {% for program in channel.programs %}
+                                <div class="program-item {% if program.is_live %}live{% endif %}"
+                                     data-start="{{ program.start_time }}"
+                                     data-end="{{ program.end_time }}"
+                                     {% if program.id %}data-program-id="{{ program.id }}"{% endif %}>
+                                    <div class="program-time">
+                                        <span class="start-time">{{ program.start_time|format_time }}</span>
+                                        <span class="time-separator" aria-hidden="true">–</span>
+                                        <span class="end-time">{{ program.end_time|format_time }}</span>
+                                    </div>
+                                    <div class="program-details">
+                                        <h4 class="program-title">{{ program.title }}</h4>
+                                        {% if program.subtitle %}
+                                        <p class="program-subtitle">{{ program.subtitle }}</p>
+                                        {% endif %}
+                                        {% if program.description %}
+                                        <p class="program-description">{{ program.description|truncate(100) }}</p>
+                                        {% endif %}
+                                        {% if program.category %}
+                                        <span class="program-category">{{ program.category }}</span>
+                                        {% endif %}
+                                        {% if program.stream %}
+                                        <button class="btn-play"
+                                                data-stream-url="{{ program.stream }}"
+                                                data-title="{{ program.title }}">
+                                            ▶ Abspielen
+                                        </button>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            {% else %}
+                                <div class="no-programs">
+                                    Keine Programme in diesem Zeitraum
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+
+                <!-- Grid View (hidden by default) -->
+                <div class="epg-grid-view" id="grid-view" style="display: none;">
+                    <div class="time-slots">
+                        <!-- Time slots will be populated by JavaScript -->
+                    </div>
+                    <div class="channels-grid" id="channels-grid">
+                        <!-- Channels and programs grid will be populated by JavaScript -->
+                    </div>
+                </div>
+            {% else %}
+                <div class="empty-state">
+                    <p>Keine Kanäle gefunden</p>
+                    <p>Stellen Sie sicher, dass der WebEPG-Backend korrekt konfiguriert ist.</p>
+                </div>
+            {% endif %}
+        {% else %}
+            <div class="loading-state">
+                <div class="spinner" role="status" aria-label="Lädt"></div>
+                <p>Lade EPG-Daten...</p>
+            </div>
+        {% endif %}
+    </div>
+
+    <!-- Player Overlay -->
+    <div class="player-overlay" id="player-overlay" role="dialog" aria-modal="true" aria-labelledby="player-title">
+        <div class="player-header">
+            <h3 id="player-title"></h3>
+            <button class="btn-close-player" id="close-player-btn" aria-label="Player schließen">×</button>
+        </div>
+        <div class="player-content">
+            <video id="player-video" controls aria-label="Video Player"></video>
+            <select id="bitrate-selector" class="bitrate-selector" aria-label="Bitrate auswählen">
+                <option value="auto">Automatisch</option>
+                <option value="1000000">Bis 1 Mbit</option>
+                <option value="3000000">Bis 3 Mbit</option>
+                <option value="6000000">Bis 6 Mbit</option>
+                <option value="10000000">Bis 10 Mbit</option>
+            </select>
+        </div>
+    </div>
+</div>
+
+<script src="{{ url_for('static', filename='js/epg_display.js') }}" defer></script>
+
+<!-- Pass EPG data to JavaScript -->
+<script>
+    // Make EPG data available to JavaScript
+    window.EPG_DATA = {
+        channels: {{ channels|tojson if channels else '[]' }},
+        error: {{ error|tojson if error else 'null' }},
+        currentDate: "{{ current_date|default('') }}"
+    };
+
+    // Add custom filters to window for template use
+    window.templateFilters = {
+        formatTime: function(value) {
+            if (!value) return '';
+            try {
+                const date = new Date(value);
+                return date.toLocaleTimeString('de-DE', {
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+            } catch (e) {
+                return value;
+            }
+        },
+        truncate: function(text, length) {
+            if (!text || text.length <= length) return text;
+            return text.substring(0, length) + '...';
+        }
+    };
+
+    // Apply template filters if using server-side rendering
+    {% if channels %}
+        // The template filters are applied server-side by Jinja2
+        // This JavaScript is just for consistency
+    {% endif %}
+</script>
+{% endblock %}
