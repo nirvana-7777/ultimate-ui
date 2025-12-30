@@ -4,7 +4,7 @@ API clients for webepg and ultimate-backend.
 
 import requests
 import logging
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Any
 
 logger = logging.getLogger(__name__)
 
@@ -206,10 +206,10 @@ class UltimateBackendClient:
         except:
             return []
 
-    def get_all_channels(self) -> Dict[str, List[Dict]]:
+    def get_all_channels(self) -> Dict[str, Any]:
         """Get all channels grouped by provider."""
         providers = self.get_providers()
-        all_channels = {}
+        all_channels: Dict[str, Any] = {}
 
         for provider in providers:
             provider_id = provider.get("id")

@@ -77,7 +77,7 @@ class Config:
     def get(self, key_path: str, default: Any = None) -> Any:
         """Get configuration value by dot-notation path."""
         keys = key_path.split(".")
-        value = self.config
+        value: Any = self.config
 
         for key in keys:
             if isinstance(value, dict) and key in value:
@@ -87,9 +87,13 @@ class Config:
 
         return value
 
-    def get_section(self, section: str) -> Dict:
+    def get_section(self, section: str) -> Dict[str, Any]:
         """Get entire configuration section."""
         return self.config.get(section, {})
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Get complete configuration as dictionary."""
+        return self.config.copy()
 
     def save(self, config_data: Dict):
         """Save configuration to file."""
@@ -101,7 +105,3 @@ class Config:
 
         # Reload configuration
         self._load_yaml(config_path)
-
-    def to_dict(self) -> Dict:
-        """Get complete configuration as dictionary."""
-        return self.config.copy()
