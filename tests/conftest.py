@@ -6,7 +6,7 @@ from flask import Flask, template_rendered
 from contextlib import contextmanager
 
 # Add src to path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../src'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../src"))
 
 from app import app as flask_app
 from config import Config
@@ -16,9 +16,9 @@ from api_client import WebEPGClient, UltimateBackendClient
 @pytest.fixture
 def app():
     """Create and configure a Flask app for testing."""
-    flask_app.config['TESTING'] = True
-    flask_app.config['SECRET_KEY'] = 'test-secret-key'
-    flask_app.config['WTF_CSRF_ENABLED'] = False
+    flask_app.config["TESTING"] = True
+    flask_app.config["SECRET_KEY"] = "test-secret-key"
+    flask_app.config["WTF_CSRF_ENABLED"] = False
 
     yield flask_app
 
@@ -38,7 +38,7 @@ def runner(app):
 @pytest.fixture
 def mock_webepg_client():
     """Mock WebEPGClient for testing."""
-    with patch('api_client.WebEPGClient') as mock:
+    with patch("api_client.WebEPGClient") as mock:
         client = Mock(spec=WebEPGClient)
         mock.return_value = client
         yield client
@@ -47,7 +47,7 @@ def mock_webepg_client():
 @pytest.fixture
 def mock_ultimate_backend_client():
     """Mock UltimateBackendClient for testing."""
-    with patch('api_client.UltimateBackendClient') as mock:
+    with patch("api_client.UltimateBackendClient") as mock:
         client = Mock(spec=UltimateBackendClient)
         mock.return_value = client
         yield client
@@ -90,14 +90,14 @@ def sample_channels():
             "id": "channel1",
             "name": "ARD",
             "display_name": "Das Erste",
-            "icon_url": "http://example.com/ard.png"
+            "icon_url": "http://example.com/ard.png",
         },
         {
             "id": "channel2",
             "name": "ZDF",
             "display_name": "ZDF",
-            "icon_url": "http://example.com/zdf.png"
-        }
+            "icon_url": "http://example.com/zdf.png",
+        },
     ]
 
 
@@ -113,7 +113,7 @@ def sample_programs():
             "start_time": "2024-01-01T20:00:00Z",
             "end_time": "2024-01-01T20:15:00Z",
             "category": "news",
-            "stream": "http://example.com/stream1.m3u8"
+            "stream": "http://example.com/stream1.m3u8",
         },
         {
             "id": "program2",
@@ -123,8 +123,8 @@ def sample_programs():
             "start_time": "2024-01-01T20:15:00Z",
             "end_time": "2024-01-01T21:00:00Z",
             "category": "sport",
-            "stream": "http://example.com/stream2.m3u8"
-        }
+            "stream": "http://example.com/stream2.m3u8",
+        },
     ]
 
 
@@ -133,5 +133,5 @@ def sample_providers():
     """Sample provider data for testing."""
     return [
         {"id": "provider1", "name": "IPTV Provider 1"},
-        {"id": "provider2", "name": "IPTV Provider 2"}
+        {"id": "provider2", "name": "IPTV Provider 2"},
     ]

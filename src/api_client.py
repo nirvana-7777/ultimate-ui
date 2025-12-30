@@ -91,7 +91,7 @@ class WebEPGClient:
             return None
 
     def create_channel_alias(
-            self, channel_identifier: str, alias: str, alias_type: Optional[str] = None
+        self, channel_identifier: str, alias: str, alias_type: Optional[str] = None
     ) -> Optional[Dict]:
         """Create a channel alias."""
         try:

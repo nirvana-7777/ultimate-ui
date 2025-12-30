@@ -9,7 +9,7 @@ sample_channels = [
         "display_name": "Das Erste",
         "icon_url": "http://example.com/ard.png",
         "language": "de",
-        "country": "DE"
+        "country": "DE",
     },
     {
         "id": "channel2",
@@ -17,7 +17,7 @@ sample_channels = [
         "display_name": "ZDF",
         "icon_url": "http://example.com/zdf.png",
         "language": "de",
-        "country": "DE"
+        "country": "DE",
     },
     {
         "id": "channel3",
@@ -25,8 +25,8 @@ sample_channels = [
         "display_name": "RTL Television",
         "icon_url": "http://example.com/rtl.png",
         "language": "de",
-        "country": "DE"
-    }
+        "country": "DE",
+    },
 ]
 
 sample_programs = [
@@ -39,7 +39,7 @@ sample_programs = [
         "end_time": "2024-01-01T20:15:00Z",
         "category": "news",
         "channel_id": "channel1",
-        "stream": "http://example.com/stream1.m3u8"
+        "stream": "http://example.com/stream1.m3u8",
     },
     {
         "id": "program2",
@@ -50,7 +50,7 @@ sample_programs = [
         "end_time": "2024-01-01T21:00:00Z",
         "category": "sport",
         "channel_id": "channel1",
-        "stream": "http://example.com/stream2.m3u8"
+        "stream": "http://example.com/stream2.m3u8",
     },
     {
         "id": "program3",
@@ -61,8 +61,8 @@ sample_programs = [
         "end_time": "2024-01-01T21:45:00Z",
         "category": "news",
         "channel_id": "channel2",
-        "stream": "http://example.com/stream3.m3u8"
-    }
+        "stream": "http://example.com/stream3.m3u8",
+    },
 ]
 
 sample_providers = [
@@ -72,7 +72,7 @@ sample_providers = [
         "description": "German IPTV channels",
         "country": "DE",
         "language": "de",
-        "url": "http://provider1.com/epg.xml"
+        "url": "http://provider1.com/epg.xml",
     },
     {
         "id": "provider2",
@@ -80,8 +80,8 @@ sample_providers = [
         "description": "International channels",
         "country": "US",
         "language": "en",
-        "url": "http://provider2.com/epg.xml"
-    }
+        "url": "http://provider2.com/epg.xml",
+    },
 ]
 
 sample_import_status = {
@@ -94,7 +94,7 @@ sample_import_status = {
             "status": "success",
             "programs_imported": 1500,
             "programs_skipped": 50,
-            "error_message": None
+            "error_message": None,
         },
         {
             "id": "import2",
@@ -104,11 +104,11 @@ sample_import_status = {
             "status": "failed",
             "programs_imported": 0,
             "programs_skipped": 0,
-            "error_message": "Connection timeout"
-        }
+            "error_message": "Connection timeout",
+        },
     ],
     "next_scheduled_import": "2024-01-02T02:00:00Z",
-    "import_interval_hours": 24
+    "import_interval_hours": 24,
 }
 
 sample_statistics = {
@@ -119,16 +119,12 @@ sample_statistics = {
     "earliest_program": "2023-12-25T00:00:00Z",
     "latest_program": "2024-01-07T23:59:59Z",
     "days_covered": 14,
-    "channels_by_country": {
-        "DE": 80,
-        "US": 40,
-        "GB": 30
-    },
+    "channels_by_country": {"DE": 80, "US": 40, "GB": 30},
     "programs_by_category": {
         "news": 5000,
         "sport": 3000,
         "movie": 4000,
         "series": 6000,
-        "other": 7000
-    }
+        "other": 7000,
+    },
 }
