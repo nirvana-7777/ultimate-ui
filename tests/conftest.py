@@ -10,8 +10,8 @@ from flask import Flask, template_rendered
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../src"))
 
 from api_client import UltimateBackendClient, WebEPGClient
-from src.app import app as flask_app
 from config import Config
+from src.app import app as flask_app
 
 
 @pytest.fixture
