@@ -1,8 +1,10 @@
+from datetime import datetime, timedelta
+
 import pytest
 import requests
 import requests_mock
-from datetime import datetime, timedelta
-from api_client import WebEPGClient, UltimateBackendClient
+
+from api_client import UltimateBackendClient, WebEPGClient
 
 
 class TestWebEPGClient:

@@ -1,8 +1,10 @@
-import pytest
 import os
 import tempfile
-import yaml
 from unittest.mock import patch
+
+import pytest
+import yaml
+
 from config import Config
 
 

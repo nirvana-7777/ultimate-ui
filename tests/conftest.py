@@ -1,16 +1,17 @@
-import pytest
-import sys
 import os
-from unittest.mock import Mock, patch
-from flask import Flask, template_rendered
+import sys
 from contextlib import contextmanager
+from unittest.mock import Mock, patch
+
+import pytest
+from flask import Flask, template_rendered
 
 # Add src to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../src"))
 
-from app import app as flask_app
+from api_client import UltimateBackendClient, WebEPGClient
+from src.app import app as flask_app
 from config import Config
-from api_client import WebEPGClient, UltimateBackendClient
 
 
 @pytest.fixture

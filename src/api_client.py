@@ -2,9 +2,10 @@
 API clients for webepg and ultimate-backend.
 """
 
-import requests
 import logging
-from typing import List, Dict, Optional, Any
+from typing import Any, Dict, List, Optional
+
+import requests
 
 logger = logging.getLogger(__name__)
 

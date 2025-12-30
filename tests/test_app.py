@@ -1,16 +1,17 @@
-import pytest
 import json
+import os
+import sys
 from datetime import datetime, timedelta
 from unittest.mock import Mock, patch
-import sys
-import os
+
+import pytest
 
 # Add src to path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../src")))
 
 # Import after adding to path
 from app import app as flask_app
-from app import format_time, truncate_filter, time_diff_filter, inject_config
+from app import format_time, inject_config, time_diff_filter, truncate_filter
 
 
 class TestAppRoutes:

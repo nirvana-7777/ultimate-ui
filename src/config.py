@@ -3,8 +3,9 @@ Configuration management for ultimate-ui.
 """
 
 import os
+from typing import Any, Dict, Optional
+
 import yaml
-from typing import Dict, Any, Optional
 
 
 class Config:

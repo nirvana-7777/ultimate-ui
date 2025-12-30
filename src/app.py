@@ -2,13 +2,14 @@
 Main Flask application for ultimate-ui - FIXED VERSION
 """
 
-import os
 import logging
+import os
 from datetime import datetime, timedelta
-from flask import Flask, render_template, request, jsonify, send_from_directory
 
+from flask import Flask, jsonify, render_template, request, send_from_directory
+
+from .api_client import UltimateBackendClient, WebEPGClient
 from .config import Config
-from .api_client import WebEPGClient, UltimateBackendClient
 
 # Setup logging
 logging.basicConfig(
