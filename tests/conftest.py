@@ -4,14 +4,14 @@ from contextlib import contextmanager
 from unittest.mock import Mock, patch
 
 import pytest
-from flask import Flask, template_rendered
-
-# Add src to path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../src"))
+from flask import template_rendered
 
 from api_client import UltimateBackendClient, WebEPGClient
 from config import Config
 from src.app import app as flask_app
+
+# Add src to path
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../src"))
 
 
 @pytest.fixture

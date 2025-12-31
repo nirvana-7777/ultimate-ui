@@ -24,7 +24,7 @@ class WebEPGClient:
                 f"{self.base_url}/api/v1/health", timeout=self.timeout
             )
             return response.status_code == 200
-        except:
+        except requests.RequestException:
             return False
 
     def get_channels(self) -> List[Dict]:
@@ -48,7 +48,7 @@ class WebEPGClient:
             )
             response.raise_for_status()
             return response.json()
-        except:
+        except requests.RequestException:
             return None
 
     def get_channel_programs(
@@ -76,7 +76,7 @@ class WebEPGClient:
             )
             response.raise_for_status()
             return response.json()
-        except:
+        except requests.RequestException:
             return []
 
     def create_provider(self, name: str, xmltv_url: str) -> Optional[Dict]:
@@ -88,7 +88,7 @@ class WebEPGClient:
             )
             response.raise_for_status()
             return response.json()
-        except:
+        except requests.RequestException:
             return None
 
     def create_channel_alias(
@@ -119,7 +119,7 @@ class WebEPGClient:
             )
             response.raise_for_status()
             return response.json()
-        except:
+        except requests.RequestException:
             return {}
 
     def trigger_import(self) -> Dict:
@@ -142,7 +142,7 @@ class WebEPGClient:
             )
             response.raise_for_status()
             return response.json()
-        except:
+        except requests.RequestException:
             # Fallback: Try to calculate basic stats from other endpoints
             return self._calculate_basic_stats()
 
@@ -171,7 +171,7 @@ class WebEPGClient:
 
             stats["estimated_programs_today"] = programs_today
 
-        except:
+        except Exception:
             pass
 
         return stats
@@ -192,7 +192,7 @@ class UltimateBackendClient:
             )
             response.raise_for_status()
             return response.json()
-        except:
+        except requests.RequestException:
             return []
 
     def get_provider_channels(self, provider_id: str) -> List[Dict]:
@@ -204,7 +204,7 @@ class UltimateBackendClient:
             )
             response.raise_for_status()
             return response.json()
-        except:
+        except requests.RequestException:
             return []
 
     def get_all_channels(self) -> Dict[str, Any]:
