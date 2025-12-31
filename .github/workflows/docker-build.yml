@@ -206,7 +206,7 @@ jobs:
 
       - name: Install security tools
         run: |
-          pip install safety bandit trivy-python
+          pip install safety bandit
 
       - name: Run Safety (dependency vulnerability check)
         run: |
