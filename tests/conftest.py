@@ -6,11 +6,10 @@ from unittest.mock import Mock, patch
 import pytest
 from flask import template_rendered
 
-from api_client import UltimateBackendClient, WebEPGClient
-from config import Config
+from src import UltimateBackendClient, WebEPGClient, Config
 from src.app import app as flask_app
 
-# Add src to path
+# Add src to path (if needed for other imports)
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../src"))
 
 
@@ -39,7 +38,7 @@ def runner(app):
 @pytest.fixture
 def mock_webepg_client():
     """Mock WebEPGClient for testing."""
-    with patch("api_client.WebEPGClient") as mock:
+    with patch("src.api_client.WebEPGClient") as mock:
         client = Mock(spec=WebEPGClient)
         mock.return_value = client
         yield client
@@ -48,7 +47,7 @@ def mock_webepg_client():
 @pytest.fixture
 def mock_ultimate_backend_client():
     """Mock UltimateBackendClient for testing."""
-    with patch("api_client.UltimateBackendClient") as mock:
+    with patch("src.api_client.UltimateBackendClient") as mock:
         client = Mock(spec=UltimateBackendClient)
         mock.return_value = client
         yield client
