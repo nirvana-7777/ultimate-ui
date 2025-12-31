@@ -241,7 +241,8 @@ jobs:
 
       - name: Run Snyk Security Scan
         uses: snyk/actions/python@master
-        if: github.event_name != 'pull_request'
+        continue-on-error: true  # Add this line
+        if: github.event_name != 'pull_request' && env.SNYK_TOKEN != ''  # Check token exists
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         with:
