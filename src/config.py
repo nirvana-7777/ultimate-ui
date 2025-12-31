@@ -109,6 +109,11 @@ class Config:
         save_path = self._config_path or os.getenv(
             "ULTIMATE_UI_CONFIG", "config/config.yaml"
         )
+
+        # Ensure save_path is not None (should never happen with the default)
+        if save_path is None:
+            save_path = "config/config.yaml"
+
         os.makedirs(os.path.dirname(save_path), exist_ok=True)
 
         with open(save_path, "w") as f:
