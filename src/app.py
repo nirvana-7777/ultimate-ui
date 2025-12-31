@@ -409,7 +409,7 @@ def favicon():
     """Serve favicon."""
     try:
         return send_from_directory("static", "favicon.ico")
-    except:
+    except FileNotFoundError:
         # Return 204 No Content if favicon doesn't exist
         return "", 204
 
