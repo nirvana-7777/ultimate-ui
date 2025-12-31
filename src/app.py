@@ -21,6 +21,7 @@ logger = logging.getLogger(__name__)
 config_path = os.getenv("ULTIMATE_UI_CONFIG", "config/config.yaml")
 config = Config(config_path)
 
+
 # Initialize API clients with safe defaults
 def _get_config_value(key, default):
     """Safely get config value with fallback."""
@@ -30,9 +31,10 @@ def _get_config_value(key, default):
     except Exception:
         return default
 
+
 webepg_client = WebEPGClient(
     base_url=_get_config_value("webepg.url", "http://localhost:8080"),
-    timeout=_get_config_value("webepg.timeout", 10)
+    timeout=_get_config_value("webepg.timeout", 10),
 )
 
 ultimate_backend_client = UltimateBackendClient(

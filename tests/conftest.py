@@ -15,18 +15,26 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../src"))
 def mock_config_for_app_import():
     """Mock config before app.py is imported to prevent initialization errors."""
     mock_config = Mock()
-    mock_config.get = Mock(side_effect=lambda key, default=None: {
-        "webepg.url": "http://test-webepg:8080",
-        "webepg.timeout": 10,
-        "ultimate_backend.url": "http://test-ultimate:3000",
-        "ultimate_backend.timeout": 10,
-    }.get(key, default))
-    mock_config.to_dict = Mock(return_value={
-        "webepg": {"url": "http://test-webepg:8080", "timeout": 10},
-        "ultimate_backend": {"url": "http://test-ultimate:3000", "timeout": 10},
-        "ui": {"theme": "dark", "refresh_interval": 300, "timezone": "Europe/Berlin"},
-        "player": {"default_size": "medium", "default_bitrate": "auto"},
-    })
+    mock_config.get = Mock(
+        side_effect=lambda key, default=None: {
+            "webepg.url": "http://test-webepg:8080",
+            "webepg.timeout": 10,
+            "ultimate_backend.url": "http://test-ultimate:3000",
+            "ultimate_backend.timeout": 10,
+        }.get(key, default)
+    )
+    mock_config.to_dict = Mock(
+        return_value={
+            "webepg": {"url": "http://test-webepg:8080", "timeout": 10},
+            "ultimate_backend": {"url": "http://test-ultimate:3000", "timeout": 10},
+            "ui": {
+                "theme": "dark",
+                "refresh_interval": 300,
+                "timezone": "Europe/Berlin",
+            },
+            "player": {"default_size": "medium", "default_bitrate": "auto"},
+        }
+    )
 
     with patch("src.app.Config") as MockConfig:
         MockConfig.return_value = mock_config
@@ -65,7 +73,7 @@ def mock_webepg_client():
     with patch("src.app.webepg_client") as mock:
         client = Mock(spec=WebEPGClient)
         for attr in dir(WebEPGClient):
-            if not attr.startswith('_') and callable(getattr(WebEPGClient, attr)):
+            if not attr.startswith("_") and callable(getattr(WebEPGClient, attr)):
                 setattr(client, attr, Mock())
         mock.return_value = client
         # Replace the module-level client
@@ -78,7 +86,9 @@ def mock_ultimate_backend_client():
     with patch("src.app.ultimate_backend_client") as mock:
         client = Mock(spec=UltimateBackendClient)
         for attr in dir(UltimateBackendClient):
-            if not attr.startswith('_') and callable(getattr(UltimateBackendClient, attr)):
+            if not attr.startswith("_") and callable(
+                getattr(UltimateBackendClient, attr)
+            ):
                 setattr(client, attr, Mock())
         mock.return_value = client
         # Replace the module-level client
