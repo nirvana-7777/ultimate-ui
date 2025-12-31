@@ -90,7 +90,10 @@ class Config:
 
     def get_section(self, section: str) -> Dict[str, Any]:
         """Get entire configuration section."""
-        return self.config.get(section, {})
+        result = self.config.get(section, {})
+        if isinstance(result, dict):
+            return result
+        return {}
 
     def to_dict(self) -> Dict[str, Any]:
         """Get complete configuration as dictionary."""

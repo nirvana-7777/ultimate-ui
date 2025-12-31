@@ -12,3 +12,5 @@ watchdog==3.0.0
 ipython==8.17.2
 requests_mock==1.12.1
 beautifulsoup4==4.14.3
+types-PyYAML==6.0.12.20250915
+types-requests==2.32.4.20250913
