@@ -9,11 +9,9 @@ from flask import template_rendered
 # Add src to path (if needed for other imports)
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../src"))
 
-
-# Mock the config before importing app
-@pytest.fixture(scope="session", autouse=True)
-def mock_config_for_app_import():
-    """Mock config before app.py is imported to prevent initialization errors."""
+# Mock the config before importing app - using a module-level patch
+# This ensures the patch is applied before any imports from src.app
+with patch("src.app.Config") as MockConfig:
     mock_config = Mock()
     mock_config.get = Mock(
         side_effect=lambda key, default=None: {
@@ -35,14 +33,18 @@ def mock_config_for_app_import():
             "player": {"default_size": "medium", "default_bitrate": "auto"},
         }
     )
+    MockConfig.return_value = mock_config
 
-    with patch("src.app.Config") as MockConfig:
-        MockConfig.return_value = mock_config
-        yield mock_config
+    # Now import after the patch is applied
+    from src import Config, UltimateBackendClient, WebEPGClient
+    from src.app import app as flask_app
 
 
-from src import UltimateBackendClient, WebEPGClient, Config
-from src.app import app as flask_app
+@pytest.fixture(scope="session", autouse=True)
+def mock_config_for_app_import():
+    """Mock config before app.py is imported to prevent initialization errors."""
+    # Since we already patched at module level, just return the mock
+    return mock_config
 
 
 @pytest.fixture
