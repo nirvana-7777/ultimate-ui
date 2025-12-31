@@ -80,6 +80,9 @@ def mock_config_for_app_import():
             mock_webepg = Mock()
             mock_webepg.get_channels = Mock(return_value=[])
             mock_webepg.get_channel_programs = Mock(return_value=[])
+            mock_webepg.create_channel_alias = Mock(
+                return_value={"id": "alias1", "status": "created"}
+            )
             mock_webepg.get_import_status = Mock(
                 return_value={
                     "recent_imports": [],
@@ -100,12 +103,6 @@ def mock_config_for_app_import():
             mock_webepg.get_health = Mock(
                 return_value={"status": "healthy", "version": "1.0.0"}
             )
-            mock_webepg.get_providers = Mock(
-                return_value=[
-                    {"id": "provider1", "name": "IPTV Provider 1"},
-                    {"id": "provider2", "name": "IPTV Provider 2"},
-                ]
-            )
             mock_webepg.trigger_import = Mock(
                 return_value={"status": "started", "import_id": "123"}
             )
@@ -114,6 +111,18 @@ def mock_config_for_app_import():
 
             with patch("src.app.UltimateBackendClient") as MockUltimate:
                 mock_ultimate = Mock()
+                mock_ultimate.get_providers = Mock(
+                    return_value=[
+                        {"id": "provider1", "name": "IPTV Provider 1"},
+                        {"id": "provider2", "name": "IPTV Provider 2"},
+                    ]
+                )
+                mock_ultimate.get_provider_channels = Mock(
+                    return_value=[
+                        {"id": "ultimate_channel1", "name": "Ultimate Channel 1"},
+                        {"id": "ultimate_channel2", "name": "Ultimate Channel 2"},
+                    ]
+                )
                 mock_ultimate.get_health = Mock(
                     return_value={"status": "healthy", "version": "1.0.0"}
                 )

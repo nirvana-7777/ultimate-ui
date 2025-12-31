@@ -2,6 +2,7 @@
 Configuration management for ultimate-ui.
 """
 
+import copy
 import os
 from typing import Any, Dict, Optional
 
@@ -21,9 +22,12 @@ class Config:
 
     def __init__(self, config_path: Optional[str] = None):
         """Initialize configuration."""
-        self.config = self.DEFAULT_CONFIG.copy()
+        self.config = copy.deepcopy(self.DEFAULT_CONFIG)
 
-        # Load from YAML if provided
+        # Store the config path for saving (use provided or default)
+        self._config_path = config_path
+
+        # Load from YAML if provided and file exists
         if config_path and os.path.exists(config_path):
             self._load_yaml(config_path)
 
@@ -92,20 +96,23 @@ class Config:
         """Get entire configuration section."""
         result = self.config.get(section, {})
         if isinstance(result, dict):
-            return result
+            return copy.deepcopy(result)
         return {}
 
     def to_dict(self) -> Dict[str, Any]:
         """Get complete configuration as dictionary."""
-        return self.config.copy()
+        return copy.deepcopy(self.config)
 
     def save(self, config_data: Dict):
         """Save configuration to file."""
-        config_path = os.getenv("ULTIMATE_UI_CONFIG", "config/config.yaml")
-        os.makedirs(os.path.dirname(config_path), exist_ok=True)
+        # Use the stored path, or default if none was stored
+        save_path = self._config_path or os.getenv(
+            "ULTIMATE_UI_CONFIG", "config/config.yaml"
+        )
+        os.makedirs(os.path.dirname(save_path), exist_ok=True)
 
-        with open(config_path, "w") as f:
+        with open(save_path, "w") as f:
             yaml.dump(config_data, f, default_flow_style=False)
 
-        # Reload configuration
-        self._load_yaml(config_path)
+        # Reload configuration from the saved file
+        self._load_yaml(save_path)

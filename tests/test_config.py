@@ -65,6 +65,7 @@ class TestConfig:
 
     def test_get_value(self):
         """Test getting configuration values."""
+        # Don't pass any config path to avoid loading from file
         config = Config()
 
         # Test existing values
@@ -93,11 +94,12 @@ class TestConfig:
 
     def test_save_config(self):
         """Test saving configuration to file."""
-        config = Config()
-
         # Create a temporary directory for config
         with tempfile.TemporaryDirectory() as tmpdir:
             config_path = os.path.join(tmpdir, "config.yaml")
+
+            # Create Config with the temp path
+            config = Config(config_path)
 
             # Save new configuration
             new_config = {
