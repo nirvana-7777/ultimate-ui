@@ -6,11 +6,35 @@ from unittest.mock import Mock, patch
 import pytest
 from flask import template_rendered
 
-from src import UltimateBackendClient, WebEPGClient, Config
-from src.app import app as flask_app
-
 # Add src to path (if needed for other imports)
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../src"))
+
+
+# Mock the config before importing app
+@pytest.fixture(scope="session", autouse=True)
+def mock_config_for_app_import():
+    """Mock config before app.py is imported to prevent initialization errors."""
+    mock_config = Mock()
+    mock_config.get = Mock(side_effect=lambda key, default=None: {
+        "webepg.url": "http://test-webepg:8080",
+        "webepg.timeout": 10,
+        "ultimate_backend.url": "http://test-ultimate:3000",
+        "ultimate_backend.timeout": 10,
+    }.get(key, default))
+    mock_config.to_dict = Mock(return_value={
+        "webepg": {"url": "http://test-webepg:8080", "timeout": 10},
+        "ultimate_backend": {"url": "http://test-ultimate:3000", "timeout": 10},
+        "ui": {"theme": "dark", "refresh_interval": 300, "timezone": "Europe/Berlin"},
+        "player": {"default_size": "medium", "default_bitrate": "auto"},
+    })
+
+    with patch("src.app.Config") as MockConfig:
+        MockConfig.return_value = mock_config
+        yield mock_config
+
+
+from src import UltimateBackendClient, WebEPGClient, Config
+from src.app import app as flask_app
 
 
 @pytest.fixture
@@ -38,18 +62,26 @@ def runner(app):
 @pytest.fixture
 def mock_webepg_client():
     """Mock WebEPGClient for testing."""
-    with patch("src.api_client.WebEPGClient") as mock:
+    with patch("src.app.webepg_client") as mock:
         client = Mock(spec=WebEPGClient)
+        for attr in dir(WebEPGClient):
+            if not attr.startswith('_') and callable(getattr(WebEPGClient, attr)):
+                setattr(client, attr, Mock())
         mock.return_value = client
+        # Replace the module-level client
         yield client
 
 
 @pytest.fixture
 def mock_ultimate_backend_client():
     """Mock UltimateBackendClient for testing."""
-    with patch("src.api_client.UltimateBackendClient") as mock:
+    with patch("src.app.ultimate_backend_client") as mock:
         client = Mock(spec=UltimateBackendClient)
+        for attr in dir(UltimateBackendClient):
+            if not attr.startswith('_') and callable(getattr(UltimateBackendClient, attr)):
+                setattr(client, attr, Mock())
         mock.return_value = client
+        # Replace the module-level client
         yield client
 
 

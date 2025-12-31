@@ -1,6 +1,13 @@
+player:
+  default_bitrate: auto
+  default_size: medium
 ui:
-  refresh_interval: 500
-  theme: light
+  refresh_interval: 300
+  theme: dark
+  timezone: Europe/Berlin
+ultimate_backend:
+  timeout: 10
+  url: null
 webepg:
-  timeout: 20
-  url: http://saved-webepg:8080
+  timeout: 10
+  url: null

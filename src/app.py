@@ -21,14 +21,23 @@ logger = logging.getLogger(__name__)
 config_path = os.getenv("ULTIMATE_UI_CONFIG", "config/config.yaml")
 config = Config(config_path)
 
-# Initialize API clients
+# Initialize API clients with safe defaults
+def _get_config_value(key, default):
+    """Safely get config value with fallback."""
+    try:
+        value = config.get(key)
+        return value if value is not None else default
+    except Exception:
+        return default
+
 webepg_client = WebEPGClient(
-    base_url=config.get("webepg.url"), timeout=config.get("webepg.timeout", 10)
+    base_url=_get_config_value("webepg.url", "http://localhost:8080"),
+    timeout=_get_config_value("webepg.timeout", 10)
 )
 
 ultimate_backend_client = UltimateBackendClient(
-    base_url=config.get("ultimate_backend.url"),
-    timeout=config.get("ultimate_backend.timeout", 10),
+    base_url=_get_config_value("ultimate_backend.url", "http://localhost:3000"),
+    timeout=_get_config_value("ultimate_backend.timeout", 10),
 )
 
 # Create Flask app
