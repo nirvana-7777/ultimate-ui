@@ -315,13 +315,11 @@ jobs:
             dependency-check-report.html
 
   docker-build:
-    needs: [lint, test, codeql, security]
+    needs: [ lint, test, codeql, security ]
     runs-on: ubuntu-latest
-    # Remove the condition to run on PRs too, or customize as needed
-    # if: github.event_name != 'pull_request'
     strategy:
       matrix:
-        platform: [linux/amd64, linux/arm64]
+        platform: [ linux/amd64, linux/arm64 ]
 
     steps:
       - name: Checkout code
@@ -368,7 +366,6 @@ jobs:
           context: .
           file: ./docker/Dockerfile
           platforms: ${{ matrix.platform }}
-          # Only push on main/master branch, but build on PRs for testing
           push: ${{ github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master') }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
@@ -379,12 +376,23 @@ jobs:
             VERSION=${{ steps.meta.outputs.version }}
             COMMIT_SHA=${{ github.sha }}
 
+  docker-scout:
+    needs: [ docker-build ]
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+
+    steps:
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
       - name: Docker Scout CVE scanning
         uses: docker/scout-action@v1
-        if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
         with:
           command: cves
-          image: ${{ steps.meta.outputs.tags }}
+          image: ${{ env.DOCKER_IMAGE }}:latest
           only-severities: critical,high
           exit-code: true
           ignore-base: true
@@ -392,7 +400,7 @@ jobs:
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: ${{ steps.meta.outputs.tags }}
+          image-ref: ${{ env.DOCKER_IMAGE }}:latest
           format: 'sarif'
           output: 'trivy-image-results.sarif'
           severity: 'CRITICAL,HIGH'
