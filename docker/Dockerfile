@@ -1,6 +1,3 @@
-# Ultimate UI Dockerfile
-# Build and run the ultimate-ui web application
-
 # Stage 1: Build dependencies
 FROM python:3.11-slim AS builder
 
@@ -13,9 +10,13 @@ RUN apt-get update && apt-get install -y \
     libpq-dev \
     && rm -rf /var/lib/apt/lists/*
 
+# Create virtual environment
+RUN python -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
 # Copy requirements first for better caching
 COPY requirements.txt .
-RUN pip install --user --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
 
 # Stage 2: Runtime image
 FROM python:3.11-slim
@@ -30,8 +31,9 @@ RUN apt-get update && apt-get install -y \
 # Create non-root user
 RUN groupadd -r ultimate && useradd -r -g ultimate ultimate
 
-# Copy Python dependencies from builder
-COPY --from=builder /root/.local /root/.local
+# Copy virtual environment
+COPY --from=builder /opt/venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
 
 # Copy application code
 COPY . .
@@ -41,7 +43,6 @@ RUN mkdir -p /app/config /app/data /app/logs \
     && chown -R ultimate:ultimate /app
 
 # Set environment variables
-ENV PATH=/root/.local/bin:$PATH
 ENV PYTHONPATH=/app/src
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
@@ -58,7 +59,7 @@ USER ultimate
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:5000/ || exit 1
+    CMD curl -f http://localhost:5000/health || exit 1
 
 # Run the application
 CMD ["gunicorn", "--bind", "0.0.0.0:5000", "--workers", "4", "--threads", "2", "--timeout", "120", "src.app:app"]
