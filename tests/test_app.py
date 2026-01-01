@@ -2,7 +2,6 @@ import json
 import os
 import sys
 from datetime import datetime
-from unittest.mock import patch
 
 # Add src to path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../src")))
@@ -16,19 +15,29 @@ class TestAppRoutes:
         response = client.get("/")
         assert response.status_code == 200
 
+    def test_health_endpoint(self, client):
+        """Test health endpoint."""
+        response = client.get("/health")
+        assert response.status_code == 200
+        data = json.loads(response.data)
+        assert data["status"] == "healthy"
+        assert data["service"] == "ultimate-ui"
+
     def test_epg_display_page(
-        self, client, mock_webepg_client, sample_channels, sample_programs
+        self, client, mock_get_webepg_client, sample_channels, sample_programs
     ):
         """Test EPG display page."""
-        mock_webepg_client.get_channels.return_value = sample_channels
-        mock_webepg_client.get_channel_programs.return_value = sample_programs
+        mock_client = mock_get_webepg_client.return_value
+        mock_client.get_channels.return_value = sample_channels
+        mock_client.get_channel_programs.return_value = sample_programs
 
         response = client.get("/epg")
         assert response.status_code == 200
 
-    def test_epg_display_error_handling(self, client, mock_webepg_client):
+    def test_epg_display_error_handling(self, client, mock_get_webepg_client):
         """Test EPG display error handling."""
-        mock_webepg_client.get_channels.side_effect = Exception("API Error")
+        mock_client = mock_get_webepg_client.return_value
+        mock_client.get_channels.side_effect = Exception("API Error")
         response = client.get("/epg")
         assert response.status_code == 200
 
@@ -37,7 +46,7 @@ class TestAppRoutes:
         response = client.get("/config")
         assert response.status_code == 200
 
-    def test_configuration_page_post(self, client):
+    def test_configuration_page_post(self, client, mock_update_clients):
         """Test configuration page POST request."""
         data = {
             "webepg_url": "http://new-webepg:8080",
@@ -51,10 +60,10 @@ class TestAppRoutes:
         assert response.status_code == 200
         response_data = json.loads(response.data)
         assert response_data["success"] is True
+        mock_update_clients.assert_called_once()
 
-    def test_configuration_page_post_json(self, client):
+    def test_configuration_page_post_json(self, client, mock_update_clients):
         """Test configuration page POST with JSON."""
-        # Send flat keys as expected by the app
         data = {
             "webepg_url": "http://json-webepg:8080",
             "webepg_timeout": 20,
@@ -69,92 +78,94 @@ class TestAppRoutes:
         assert response.status_code == 200
         response_data = json.loads(response.data)
         assert response_data["success"] is True
+        mock_update_clients.assert_called_once()
 
     def test_mapping_page(
         self,
         client,
-        mock_webepg_client,
-        mock_ultimate_backend_client,
+        mock_get_webepg_client,
+        mock_get_ultimate_backend_client,
         sample_channels,
         sample_providers,
     ):
         """Test EPG mapping page."""
-        mock_webepg_client.get_channels.return_value = sample_channels
+        mock_webepg = mock_get_webepg_client.return_value
+        mock_ultimate = mock_get_ultimate_backend_client.return_value
+
+        mock_webepg.get_channels.return_value = sample_channels
+        mock_ultimate.get_providers.return_value = sample_providers
+        mock_ultimate.get_provider_channels.return_value = []
+
         response = client.get("/mapping")
         assert response.status_code == 200
 
-    def test_monitoring_page(self, client, mock_webepg_client):
+    def test_monitoring_page(self, client, mock_get_webepg_client):
         """Test monitoring page."""
-        mock_webepg_client.get_import_status.return_value = {
+        mock_client = mock_get_webepg_client.return_value
+        mock_client.get_import_status.return_value = {
             "recent_imports": [],
             "next_scheduled_import": datetime.now().isoformat(),
         }
-        mock_webepg_client.get_statistics.return_value = {
+        mock_client.get_statistics.return_value = {
             "total_channels": 10,
             "total_programs": 1000,
         }
-        mock_webepg_client.get_health.return_value = {"status": "healthy"}
+        mock_client.get_health.return_value = True
+
         response = client.get("/monitoring")
         assert response.status_code == 200
 
-    def test_api_refresh_epg(self, client, mock_webepg_client, sample_channels):
+    def test_api_refresh_epg(self, client, mock_get_webepg_client, sample_channels):
         """Test API endpoint for refreshing EPG."""
-        mock_webepg_client.get_channels.return_value = sample_channels
+        mock_client = mock_get_webepg_client.return_value
+        mock_client.get_channels.return_value = sample_channels
         response = client.get("/api/epg/refresh")
         assert response.status_code == 200
         response_data = json.loads(response.data)
         assert response_data["success"] is True
 
-    # Replace just the two failing test methods:
-
-    def test_api_get_channel_programs(self, client, sample_programs):
+    def test_api_get_channel_programs(
+        self, client, mock_get_webepg_client, sample_programs
+    ):
         """Test API endpoint for getting channel programs."""
-        from unittest.mock import patch
+        mock_client = mock_get_webepg_client.return_value
+        mock_client.get_channel_programs.return_value = sample_programs
 
-        import src.app
+        response = client.get(
+            "/api/channels/channel1/programs"
+            "?start=2024-01-01T00:00:00Z"
+            "&end=2024-01-02T00:00:00Z"
+        )
 
-        with patch.object(
-            src.app.webepg_client, "get_channel_programs", return_value=sample_programs
-        ):
-            response = client.get(
-                "/api/channels/channel1/programs"
-                "?start=2024-01-01T00:00:00Z"
-                "&end=2024-01-02T00:00:00Z"
-            )
+        assert response.status_code == 200
+        response_data = json.loads(response.data)
+        assert isinstance(response_data, list)
+        assert len(response_data) == 2
 
-            assert response.status_code == 200
-            response_data = json.loads(response.data)
-            assert isinstance(response_data, list)
-            assert len(response_data) == 2
-
-    def test_api_create_alias_success(self, client):
+    def test_api_create_alias_success(self, client, mock_get_webepg_client):
         """Test API endpoint for creating alias successfully."""
-        from unittest.mock import patch
+        mock_client = mock_get_webepg_client.return_value
+        mock_client.create_channel_alias.return_value = {
+            "id": "alias1",
+            "status": "created",
+        }
 
-        import src.app
+        data = {
+            "channel_identifier": "channel1",
+            "alias": "ard_hd",
+            "alias_type": "custom",
+        }
 
-        # Patch the actual webepg_client in the app module
-        with patch.object(
-            src.app.webepg_client,
-            "create_channel_alias",
-            return_value={"id": "alias1", "status": "created"},
-        ):
-            data = {
-                "channel_identifier": "channel1",
-                "alias": "ard_hd",
-                "alias_type": "custom",
-            }
+        response = client.post(
+            "/api/mapping/create-alias",
+            data=json.dumps(data),
+            content_type="application/json",
+        )
 
-            response = client.post(
-                "/api/mapping/create-alias",
-                data=json.dumps(data),
-                content_type="application/json",
-            )
-
-            assert response.status_code == 200
-            response_data = json.loads(response.data)
-            assert response_data["success"] is True
-            assert "alias" in response_data
+        assert response.status_code == 200
+        response_data = json.loads(response.data)
+        assert response_data["success"] is True
+        assert "alias" in response_data
 
     def test_api_get_channel_programs_missing_params(self, client):
         """Test API endpoint for getting channel programs with missing parameters."""
@@ -163,16 +174,19 @@ class TestAppRoutes:
         response_data = json.loads(response.data)
         assert "error" in response_data
 
-    def test_api_trigger_import(self, client, mock_webepg_client):
+    def test_api_trigger_import(self, client, mock_get_webepg_client):
         """Test API endpoint for triggering import."""
-        mock_webepg_client.trigger_import.return_value = {"success": True}
+        mock_client = mock_get_webepg_client.return_value
+        mock_client.trigger_import.return_value = {"success": True}
         response = client.post("/api/import/trigger")
         assert response.status_code == 200
 
     def test_api_get_providers(
-        self, client, mock_ultimate_backend_client, sample_providers
+        self, client, mock_get_ultimate_backend_client, sample_providers
     ):
         """Test API endpoint for getting providers."""
+        mock_client = mock_get_ultimate_backend_client.return_value
+        mock_client.get_providers.return_value = sample_providers
         response = client.get("/api/mapping/providers")
         assert response.status_code == 200
         response_data = json.loads(response.data)
@@ -190,11 +204,12 @@ class TestAppRoutes:
         response_data = json.loads(response.data)
         assert "error" in response_data
 
-    def test_api_get_monitoring_status(self, client, mock_webepg_client):
+    def test_api_get_monitoring_status(self, client, mock_get_webepg_client):
         """Test API endpoint for getting monitoring status."""
-        mock_webepg_client.get_import_status.return_value = {"recent_imports": []}
-        mock_webepg_client.get_statistics.return_value = {}
-        mock_webepg_client.get_health.return_value = {"status": "healthy"}
+        mock_client = mock_get_webepg_client.return_value
+        mock_client.get_import_status.return_value = {"recent_imports": []}
+        mock_client.get_statistics.return_value = {}
+        mock_client.get_health.return_value = True
         response = client.get("/api/monitoring/status")
         assert response.status_code == 200
         response_data = json.loads(response.data)
@@ -222,14 +237,12 @@ class TestAppRoutes:
         response_data = json.loads(response.data)
         assert "error" in response_data
 
-    def test_500_error_handler(self, client, mock_webepg_client):
+    def test_500_error_handler(self, client, mock_get_webepg_client):
         """Test 500 error handling."""
-        with patch(
-            "src.app.webepg_client.get_channels",
-            side_effect=Exception("Internal Error"),
-        ):
-            response = client.get("/epg")
-            assert response.status_code == 200
+        mock_client = mock_get_webepg_client.return_value
+        mock_client.get_channels.side_effect = Exception("Internal Error")
+        response = client.get("/epg")
+        assert response.status_code == 200
 
 
 class TestTemplateFilters:

@@ -10,15 +10,19 @@ from flask import template_rendered
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../src"))
 
 # Global mocks storage
-_GLOBAL_MOCKS = {"config": None, "webepg": None, "ultimate": None}
+_GLOBAL_MOCKS = {
+    "config": None,
+    "webepg": None,
+    "ultimate": None,
+    "get_webepg_client": None,
+    "get_ultimate_backend_client": None,
+    "update_clients": None,
+}
 
 
 @pytest.fixture(scope="session", autouse=True)
 def mock_config_for_app_import():
     """Mock config before app.py is imported to prevent initialization errors."""
-    # Use the global variable directly, no need for 'global' keyword
-    # since we're modifying the dictionary contents, not reassigning the variable
-
     # Mock the config class
     with patch("src.app.Config") as MockConfig:
         mock_config = Mock()
@@ -75,8 +79,8 @@ def mock_config_for_app_import():
         MockConfig.return_value = mock_config
         _GLOBAL_MOCKS["config"] = mock_config
 
-        # Mock the API clients before importing
-        with patch("src.app.WebEPGClient") as MockWebEPG:
+        # Mock the getter functions
+        with patch("src.app.get_webepg_client") as MockGetWebEPG:
             mock_webepg = Mock()
             mock_webepg.get_channels = Mock(return_value=[])
             mock_webepg.get_channel_programs = Mock(return_value=[])
@@ -100,16 +104,15 @@ def mock_config_for_app_import():
                     "days_covered": 7,
                 }
             )
-            mock_webepg.get_health = Mock(
-                return_value={"status": "healthy", "version": "1.0.0"}
-            )
+            mock_webepg.get_health = Mock(return_value=True)  # Changed to boolean
             mock_webepg.trigger_import = Mock(
                 return_value={"status": "started", "import_id": "123"}
             )
-            MockWebEPG.return_value = mock_webepg
+            MockGetWebEPG.return_value = mock_webepg
             _GLOBAL_MOCKS["webepg"] = mock_webepg
+            _GLOBAL_MOCKS["get_webepg_client"] = MockGetWebEPG
 
-            with patch("src.app.UltimateBackendClient") as MockUltimate:
+            with patch("src.app.get_ultimate_backend_client") as MockGetUltimate:
                 mock_ultimate = Mock()
                 mock_ultimate.get_providers = Mock(
                     return_value=[
@@ -123,53 +126,23 @@ def mock_config_for_app_import():
                         {"id": "ultimate_channel2", "name": "Ultimate Channel 2"},
                     ]
                 )
-                mock_ultimate.get_health = Mock(
-                    return_value={"status": "healthy", "version": "1.0.0"}
-                )
-                mock_ultimate.get_alias = Mock(
-                    return_value={
-                        "id": "alias1",
-                        "channel_id": "channel1",
-                        "alias": "ARD HD",
-                    }
-                )
-                mock_ultimate.create_alias = Mock(
-                    return_value={"id": "alias1", "status": "created"}
-                )
-                mock_ultimate.refresh_epg = Mock(
-                    return_value={
-                        "status": "refreshed",
-                        "timestamp": "2024-01-01T10:00:00Z",
-                    }
-                )
-                mock_ultimate.get_monitoring_status = Mock(
-                    return_value={
-                        "webepg": {
-                            "status": "healthy",
-                            "last_check": "2024-01-01T10:00:00Z",
-                        },
-                        "ultimate_backend": {
-                            "status": "healthy",
-                            "last_check": "2024-01-01T10:00:00Z",
-                        },
-                        "ultimate_ui": {
-                            "status": "healthy",
-                            "last_check": "2024-01-01T10:00:00Z",
-                        },
-                    }
-                )
-                MockUltimate.return_value = mock_ultimate
+                MockGetUltimate.return_value = mock_ultimate
                 _GLOBAL_MOCKS["ultimate"] = mock_ultimate
+                _GLOBAL_MOCKS["get_ultimate_backend_client"] = MockGetUltimate
 
-        yield _GLOBAL_MOCKS["config"]
+                with patch("src.app.update_clients") as MockUpdateClients:
+                    MockUpdateClients.return_value = None
+                    _GLOBAL_MOCKS["update_clients"] = MockUpdateClients
+
+                    yield _GLOBAL_MOCKS
 
 
 @pytest.fixture(autouse=True)
 def setup_mocks():
     """Apply mocks for each test."""
     # Reset mock calls before each test
-    for mock in _GLOBAL_MOCKS.values():
-        if mock:
+    for mock_name, mock in _GLOBAL_MOCKS.items():
+        if mock and hasattr(mock, "reset_mock"):
             mock.reset_mock()
 
     yield
@@ -203,16 +176,36 @@ def runner(app):
 
 
 @pytest.fixture
-def mock_webepg_client():
-    """Mock WebEPGClient for testing."""
+def mock_get_webepg_client():
+    """Mock the get_webepg_client function."""
     # Return the global mock that's already set up
+    return _GLOBAL_MOCKS["get_webepg_client"]
+
+
+@pytest.fixture
+def mock_get_ultimate_backend_client():
+    """Mock the get_ultimate_backend_client function."""
+    # Return the global mock that's already set up
+    return _GLOBAL_MOCKS["get_ultimate_backend_client"]
+
+
+@pytest.fixture
+def mock_update_clients():
+    """Mock the update_clients function."""
+    # Return the global mock that's already set up
+    return _GLOBAL_MOCKS["update_clients"]
+
+
+# Legacy fixtures for backward compatibility (optional)
+@pytest.fixture
+def mock_webepg_client():
+    """Legacy mock for backward compatibility."""
     return _GLOBAL_MOCKS["webepg"]
 
 
 @pytest.fixture
 def mock_ultimate_backend_client():
-    """Mock UltimateBackendClient for testing."""
-    # Return the global mock that's already set up
+    """Legacy mock for backward compatibility."""
     return _GLOBAL_MOCKS["ultimate"]
 
 
