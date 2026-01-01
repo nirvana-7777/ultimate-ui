@@ -357,7 +357,7 @@ def api_get_provider_channels(provider_id):
 
 @app.route("/api/mapping/create-alias", methods=["POST"])
 def api_create_alias():
-    """Create a channel alias in webepg."""
+    """Create a channel alias in webepg-service."""
     try:
         data = request.json
         channel_identifier = data.get("channel_identifier")
