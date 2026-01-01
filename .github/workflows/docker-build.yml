@@ -407,7 +407,6 @@ jobs:
   docker-test:
     needs: docker-build
     runs-on: ubuntu-latest
-    # Remove the matrix strategy block entirely
 
     steps:
       - name: Checkout code
@@ -423,184 +422,57 @@ jobs:
           file: ./docker/Dockerfile
           load: true
           tags: ultimate-ui:test
-          platforms: linux/amd64  # Explicitly use amd64
+          platforms: linux/amd64
           cache-from: type=gha
 
       - name: Run container smoke test
-        timeout-minutes: 10
+        timeout-minutes: 3
         run: |
-          # Create test configuration
+          # Create minimal test config
           mkdir -p test-config
-          cat > test-config/config.yaml << EOF
+          cat > test-config/config.yaml << 'EOF'
           webepg:
             url: "http://localhost:8080"
-            timeout: 2
+            timeout: 1
           ultimate_backend:
             url: "http://localhost:3000"
-            timeout: 2
+            timeout: 1
           ui:
             theme: "dark"
             refresh_interval: 300
             timezone: "UTC"
-          logging:
-            level: "DEBUG"
-            format: "json"
           EOF
-          
+
           # Start container
-          echo "Starting Ultimate UI container..."
+          echo "Starting container..."
           docker run -d --name ultimate-ui-test \
             -p 5000:5000 \
             -v $(pwd)/test-config:/app/config:ro \
-            -e FLASK_ENV=development \
-            -e PYTHONUNBUFFERED=1 \
             ultimate-ui:test
-          
-          # Wait for container to be ready
-          echo "Waiting for container to start..."
-          max_attempts=30
-          attempt=0
-          
-          until curl -f http://localhost:5000/ 2>/dev/null || [ $attempt -eq $max_attempts ]; do
-            attempt=$((attempt + 1))
-            echo "Waiting for service to be ready... (attempt $attempt/$max_attempts)"
-            sleep 2
-          done
-          
-          if [ $attempt -eq $max_attempts ]; then
-            echo "Service failed to start"
-            docker logs ultimate-ui-test
-            exit 1
-          fi
-          
-          echo "Health check passed!"
-          
-            # Check if container is still running
-            if ! docker ps | grep -q ultimate-ui-test-${{ matrix.arch }}; then
-              echo "Container stopped! Attempt $attempt/$max_attempts"
-              echo "Container logs:"
-              docker logs ultimate-ui-test-${{ matrix.arch }}
-              exit 1
-            fi
 
-            # Check if we can connect to the port
-            if docker exec ultimate-ui-test-${{ matrix.arch }} timeout 2 bash -c "echo > /dev/tcp/127.0.0.1/5000" 2>/dev/null; then
-              echo "Port 5000 is listening! Attempt $attempt/$max_attempts"
+          # Give it time to start
+          sleep 10
 
-              # Test the actual HTTP endpoint
-              if curl -s -f http://localhost:5000/ > /dev/null 2>&1; then
-                echo "HTTP endpoint responding! Attempt $attempt/$max_attempts"
-                success=1
-                break
-              else
-                echo "HTTP endpoint not responding yet... Attempt $attempt/$max_attempts"
-              fi
-            else
-              echo "Port 5000 not listening yet... Attempt $attempt/$max_attempts"
-            fi
-
-            # Show logs every 10 attempts for debugging
-            if [ $((attempt % 10)) -eq 0 ]; then
-              echo "=== Recent logs (attempt $attempt) ==="
-              docker logs --tail=5 ultimate-ui-test-${{ matrix.arch }}
-            fi
-
-            sleep 2
-          done
-
-          if [ $success -eq 0 ]; then
-            echo "Container failed to start properly within timeout"
-            echo "=== Complete container logs ==="
-            docker logs ultimate-ui-test-${{ matrix.arch }}
-            echo "=== Container inspect ==="
-            docker inspect ultimate-ui-test-${{ matrix.arch }}
-            exit 1
-          fi
-
-          # Test health endpoint
-          echo "Testing health endpoint..."
-          if ! curl -f http://localhost:5000/health 2>/dev/null; then
-            echo "Health endpoint not available, trying root endpoint..."
-            if ! curl -f http://localhost:5000/ 2>/dev/null; then
-              echo "No endpoints responding!"
-              docker logs ultimate-ui-test-${{ matrix.arch }}
-              exit 1
-            fi
-          fi
-
-          # Test static files
-          echo "Testing static files..."
-          curl -f http://localhost:5000/static/css/style.css 2>/dev/null || echo "WARNING: CSS file not found (non-blocking)"
-          curl -f http://localhost:5000/static/js/main.js 2>/dev/null || echo "WARNING: JS file not found (non-blocking)"
-
-          # Test API endpoints
-          echo "Testing API endpoints..."
-          curl -f http://localhost:5000/api/monitoring/status 2>/dev/null || echo "WARNING: API endpoint failed (non-blocking)"
-
-          # Test HTML templates
-          echo "Testing HTML templates..."
-          curl -s http://localhost:5000/ | grep -q "<html" || echo "WARNING: Main page missing HTML tag (non-blocking)"
-          curl -s http://localhost:5000/epg | grep -q "EPG" || echo "WARNING: EPG page not loading (non-blocking)"
-
-          echo "All smoke tests passed for ${{ matrix.arch }}!"
-
-      - name: Run integration tests
-        if: success()
-        run: |
-          echo "Running integration tests..."
-          
-          # Test configuration endpoint
-          curl -X POST http://localhost:5000/config \
-            -H "Content-Type: application/x-www-form-urlencoded" \
-            -d "webepg_url=http://test:8080&ultimate_backend_url=http://test:3000" \
-            || echo "WARNING: Configuration endpoint test failed (non-blocking)"
-
-          # Test API responses
-          API_RESPONSE=$(curl -s http://localhost:5000/api/monitoring/status || echo "{}")
-          if echo "$API_RESPONSE" | grep -q "success"; then
-            echo "API response structure is valid"
+          # Simple check: Is container running and serving HTML?
+          if docker ps | grep -q ultimate-ui-test && \
+             curl -s --max-time 5 http://localhost:5000/ | grep -q "<html"; then
+            echo "✅ Container is running and serving HTML"
+            docker stop ultimate-ui-test 2>/dev/null || true
+            docker rm -f ultimate-ui-test 2>/dev/null || true
+            echo "Smoke test passed!"
           else
-            echo "WARNING: API response structure may be invalid"
+            echo "❌ Test failed"
+            echo "Container status:"
+            docker ps -a | grep ultimate-ui-test || true
+            echo "Container logs:"
+            docker logs ultimate-ui-test 2>/dev/null || true
+            docker stop ultimate-ui-test 2>/dev/null || true
+            docker rm -f ultimate-ui-test 2>/dev/null || true
+            exit 1
           fi
-
-      - name: Performance test
-        if: success()
-        run: |
-          echo "Running performance tests..."
-          
-          # Measure response time
-          start_time=$(date +%s%N)
-          curl -s -o /dev/null -w "%{http_code}" http://localhost:5000/ > /dev/null
-          end_time=$(date +%s%N)
-          response_time=$((($end_time - $start_time)/1000000))
-          
-          echo "Response time: ${response_time}ms"
-          
-          if [ $response_time -gt 5000 ]; then
-            echo "WARNING: Response time exceeds 5 seconds"
-          fi
-
-          # Test concurrent requests
-          echo "Testing concurrent requests..."
-          for i in {1..10}; do
-            curl -s http://localhost:5000/health > /dev/null &
-          done
-          wait
-
-      - name: Check container logs
-        if: always()
-        run: |
-          echo "Container logs:"
-          docker logs ultimate-ui-test-${{ matrix.arch }} --tail 50
-
-      - name: Cleanup test container
-        if: always()
-        run: |
-          docker stop ultimate-ui-test-${{ matrix.arch }} || true
-          docker rm ultimate-ui-test-${{ matrix.arch }} || true
 
   deploy:
-    needs: [docker-build, docker-test]
+    needs: [docker-build, docker-test, docker-scout]
     runs-on: ubuntu-latest
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
 
@@ -684,7 +556,7 @@ jobs:
 
   notify:
     runs-on: ubuntu-latest
-    needs: [lint, test, frontend-check, codeql, security, docker-build, docker-test, deploy]
+    needs: [lint, test, frontend-check, codeql, security, docker-build, docker-scout, docker-test, deploy]
     if: always()
 
     steps:

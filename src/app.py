@@ -21,8 +21,11 @@ logger = logging.getLogger(__name__)
 config_path = os.getenv("ULTIMATE_UI_CONFIG", "config/config.yaml")
 config = Config(config_path)
 
+# Initialize API clients as None (lazy initialization)
+_webepg_client = None
+_ultimate_backend_client = None
 
-# Initialize API clients with safe defaults
+
 def _get_config_value(key, default):
     """Safely get config value with fallback."""
     try:
@@ -32,15 +35,40 @@ def _get_config_value(key, default):
         return default
 
 
-webepg_client = WebEPGClient(
-    base_url=_get_config_value("webepg.url", "http://localhost:8080"),
-    timeout=_get_config_value("webepg.timeout", 10),
-)
+def get_webepg_client():
+    """Get or create WebEPG client with lazy initialization."""
+    global _webepg_client
+    if _webepg_client is None:
+        _webepg_client = WebEPGClient(
+            base_url=_get_config_value("webepg.url", "http://localhost:8080"),
+            timeout=_get_config_value("webepg.timeout", 10),
+        )
+    return _webepg_client
 
-ultimate_backend_client = UltimateBackendClient(
-    base_url=_get_config_value("ultimate_backend.url", "http://localhost:3000"),
-    timeout=_get_config_value("ultimate_backend.timeout", 10),
-)
+
+def get_ultimate_backend_client():
+    """Get or create Ultimate Backend client with lazy initialization."""
+    global _ultimate_backend_client
+    if _ultimate_backend_client is None:
+        _ultimate_backend_client = UltimateBackendClient(
+            base_url=_get_config_value("ultimate_backend.url", "http://localhost:3000"),
+            timeout=_get_config_value("ultimate_backend.timeout", 10),
+        )
+    return _ultimate_backend_client
+
+
+def update_clients():
+    """Update clients with new configuration."""
+    global _webepg_client, _ultimate_backend_client
+    _webepg_client = WebEPGClient(
+        base_url=_get_config_value("webepg.url", "http://localhost:8080"),
+        timeout=_get_config_value("webepg.timeout", 10),
+    )
+    _ultimate_backend_client = UltimateBackendClient(
+        base_url=_get_config_value("ultimate_backend.url", "http://localhost:3000"),
+        timeout=_get_config_value("ultimate_backend.timeout", 10),
+    )
+
 
 # Create Flask app
 app = Flask(__name__, template_folder="templates", static_folder="static")
@@ -122,11 +150,24 @@ def index():
     return render_template("epg_display.html", active_tab="epg")
 
 
+@app.route("/health")
+def health():
+    """Simple health check endpoint."""
+    return jsonify(
+        {
+            "status": "healthy",
+            "timestamp": datetime.now().isoformat(),
+            "service": "ultimate-ui",
+        }
+    )
+
+
 @app.route("/epg")
 def epg_display():
     """EPG Display tab."""
     try:
-        channels = webepg_client.get_channels()
+        webepg = get_webepg_client()
+        channels = webepg.get_channels()
         # Get programs for the next 24 hours
         now = datetime.now()
         tomorrow = now + timedelta(days=1)
@@ -136,7 +177,7 @@ def epg_display():
         for channel in channels[:20]:  # Limit to 20 channels for performance
             if "id" in channel:
                 channel_id = channel["id"]
-                programs = webepg_client.get_channel_programs(
+                programs = webepg.get_channel_programs(
                     str(channel_id), now.isoformat(), tomorrow.isoformat()
                 )
                 channel["programs"] = programs[:10]  # Limit to 10 programs
@@ -192,15 +233,7 @@ def configuration():
             }
 
             config.save(config_data)
-
-            # Reinitialize clients with new URLs
-            webepg_client.base_url = config_data["webepg"]["url"].rstrip("/")
-            webepg_client.timeout = config_data["webepg"]["timeout"]
-
-            ultimate_backend_client.base_url = config_data["ultimate_backend"][
-                "url"
-            ].rstrip("/")
-            ultimate_backend_client.timeout = config_data["ultimate_backend"]["timeout"]
+            update_clients()  # Update clients with new config
 
             return jsonify({"success": True, "message": "Configuration saved!"})
 
@@ -216,11 +249,14 @@ def configuration():
 def epg_mapping():
     """EPG Mapping tab."""
     try:
+        webepg = get_webepg_client()
+        ultimate = get_ultimate_backend_client()
+
         # Get channels from webepg
-        webepg_channels = webepg_client.get_channels()
+        webepg_channels = webepg.get_channels()
 
         # Get providers from ultimate-backend
-        ultimate_providers = ultimate_backend_client.get_providers()
+        ultimate_providers = ultimate.get_providers()
 
         # Get first provider's channels if available
         ultimate_channels = []
@@ -228,9 +264,7 @@ def epg_mapping():
 
         if ultimate_providers:
             selected_provider = ultimate_providers[0].get("id")
-            ultimate_channels = ultimate_backend_client.get_provider_channels(
-                selected_provider
-            )
+            ultimate_channels = ultimate.get_provider_channels(selected_provider)
 
         return render_template(
             "epg_mapping.html",
@@ -257,14 +291,16 @@ def epg_mapping():
 def monitoring():
     """Monitoring tab - FIXED data structure."""
     try:
+        webepg = get_webepg_client()
+
         # Get import status from webepg
-        import_status = webepg_client.get_import_status()
+        import_status = webepg.get_import_status()
 
         # Get statistics
-        statistics = webepg_client.get_statistics()
+        statistics = webepg.get_statistics()
 
         # Check backend health
-        webepg_health = webepg_client.get_health()
+        webepg_health = webepg.get_health()
 
         # Ensure recent_imports exists in import_status
         if "recent_imports" not in import_status:
@@ -297,7 +333,8 @@ def monitoring():
 def api_refresh_epg():
     """Refresh EPG data."""
     try:
-        channels = webepg_client.get_channels()
+        webepg = get_webepg_client()
+        channels = webepg.get_channels()
         return jsonify({"success": True, "channels": channels})
     except Exception as e:
         logger.error(f"Error refreshing EPG: {e}")
@@ -309,13 +346,14 @@ def api_refresh_epg():
 def api_get_channel_programs(channel_id):
     """Get programs for a specific channel - PROXY to webepg."""
     try:
+        webepg = get_webepg_client()
         start = request.args.get("start")
         end = request.args.get("end")
 
         if not start or not end:
             return jsonify({"error": "start and end parameters required"}), 400
 
-        programs = webepg_client.get_channel_programs(channel_id, start, end)
+        programs = webepg.get_channel_programs(channel_id, start, end)
         return jsonify(programs)
     except Exception as e:
         logger.error(f"Error getting channel programs: {e}")
@@ -326,7 +364,8 @@ def api_get_channel_programs(channel_id):
 def api_trigger_import():
     """Trigger import job."""
     try:
-        result = webepg_client.trigger_import()
+        webepg = get_webepg_client()
+        result = webepg.trigger_import()
         return jsonify(result)
     except Exception as e:
         logger.error(f"Error triggering import: {e}")
@@ -337,7 +376,8 @@ def api_trigger_import():
 def api_get_providers():
     """Get providers from ultimate-backend."""
     try:
-        providers = ultimate_backend_client.get_providers()
+        ultimate = get_ultimate_backend_client()
+        providers = ultimate.get_providers()
         return jsonify({"success": True, "providers": providers})
     except Exception as e:
         logger.error(f"Error getting providers: {e}")
@@ -348,7 +388,8 @@ def api_get_providers():
 def api_get_provider_channels(provider_id):
     """Get channels for a specific provider."""
     try:
-        channels = ultimate_backend_client.get_provider_channels(provider_id)
+        ultimate = get_ultimate_backend_client()
+        channels = ultimate.get_provider_channels(provider_id)
         return jsonify({"success": True, "channels": channels})
     except Exception as e:
         logger.error(f"Error getting provider channels: {e}")
@@ -359,6 +400,7 @@ def api_get_provider_channels(provider_id):
 def api_create_alias():
     """Create a channel alias in webepg-service."""
     try:
+        webepg = get_webepg_client()
         data = request.json
         channel_identifier = data.get("channel_identifier")
         alias = data.get("alias")
@@ -367,9 +409,7 @@ def api_create_alias():
         if not channel_identifier or not alias:
             return jsonify({"success": False, "error": "Missing required fields"}), 400
 
-        result = webepg_client.create_channel_alias(
-            channel_identifier, alias, alias_type
-        )
+        result = webepg.create_channel_alias(channel_identifier, alias, alias_type)
 
         if result:
             return jsonify({"success": True, "alias": result})
@@ -385,9 +425,10 @@ def api_create_alias():
 def api_get_monitoring_status():
     """Get comprehensive monitoring status."""
     try:
-        import_status = webepg_client.get_import_status()
-        statistics = webepg_client.get_statistics()
-        webepg_health = webepg_client.get_health()
+        webepg = get_webepg_client()
+        import_status = webepg.get_import_status()
+        statistics = webepg.get_statistics()
+        webepg_health = webepg.get_health()
 
         # Ensure recent_imports exists
         if "recent_imports" not in import_status:
