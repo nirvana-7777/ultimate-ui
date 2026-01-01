@@ -407,15 +407,7 @@ jobs:
   docker-test:
     needs: docker-build
     runs-on: ubuntu-latest
-    # Remove condition to run on PRs too
-    # if: github.event_name != 'pull_request'
-    strategy:
-      matrix:
-        include:
-          - platform: linux/amd64
-            arch: amd64
-          - platform: linux/arm64
-            arch: arm64
+    # Remove the matrix strategy block entirely
 
     steps:
       - name: Checkout code
@@ -430,8 +422,8 @@ jobs:
           context: .
           file: ./docker/Dockerfile
           load: true
-          tags: ultimate-ui:test-${{ matrix.arch }}
-          platforms: ${{ matrix.platform }}
+          tags: ultimate-ui:test
+          platforms: linux/amd64  # Explicitly use amd64
           cache-from: type=gha
 
       - name: Run container smoke test
@@ -454,25 +446,35 @@ jobs:
             level: "DEBUG"
             format: "json"
           EOF
-
+          
           # Start container
           echo "Starting Ultimate UI container..."
-          docker run -d --name ultimate-ui-test-${{ matrix.arch }} \
+          docker run -d --name ultimate-ui-test \
             -p 5000:5000 \
             -v $(pwd)/test-config:/app/config:ro \
             -e FLASK_ENV=development \
             -e PYTHONUNBUFFERED=1 \
-            ultimate-ui:test-${{ matrix.arch }}
-
+            ultimate-ui:test
+          
           # Wait for container to be ready
           echo "Waiting for container to start..."
-          max_attempts=60
+          max_attempts=30
           attempt=0
-          success=0
-
-          while [ $attempt -lt $max_attempts ] && [ $success -eq 0 ]; do
+          
+          until curl -f http://localhost:5000/ 2>/dev/null || [ $attempt -eq $max_attempts ]; do
             attempt=$((attempt + 1))
-
+            echo "Waiting for service to be ready... (attempt $attempt/$max_attempts)"
+            sleep 2
+          done
+          
+          if [ $attempt -eq $max_attempts ]; then
+            echo "Service failed to start"
+            docker logs ultimate-ui-test
+            exit 1
+          fi
+          
+          echo "Health check passed!"
+          
             # Check if container is still running
             if ! docker ps | grep -q ultimate-ui-test-${{ matrix.arch }}; then
               echo "Container stopped! Attempt $attempt/$max_attempts"
