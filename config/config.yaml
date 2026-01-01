@@ -1,6 +1,13 @@
+player:
+  default_bitrate: auto
+  default_size: medium
 ui:
-  refresh_interval: 500
+  refresh_interval: 600
   theme: light
+  timezone: Europe/Berlin
+ultimate_backend:
+  timeout: 20
+  url: http://json-ultimate:3000
 webepg:
   timeout: 20
-  url: http://saved-webepg:8080
+  url: http://json-webepg:8080

@@ -117,12 +117,16 @@ class TestAppRoutes:
 
     def test_api_refresh_epg(self, client, mock_get_webepg_client, sample_channels):
         """Test API endpoint for refreshing EPG."""
+        # Clear any existing side effects and set return value
         mock_client = mock_get_webepg_client.return_value
+        mock_client.get_channels.side_effect = None  # Clear any side effects
         mock_client.get_channels.return_value = sample_channels
+
         response = client.get("/api/epg/refresh")
         assert response.status_code == 200
         response_data = json.loads(response.data)
         assert response_data["success"] is True
+        assert response_data["channels"] == sample_channels
 
     def test_api_get_channel_programs(
         self, client, mock_get_webepg_client, sample_programs
