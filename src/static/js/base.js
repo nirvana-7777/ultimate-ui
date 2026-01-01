@@ -5,9 +5,22 @@
 
 class BaseTemplate {
     constructor() {
-        this.data = window.TEMPLATE_DATA || {};
+        this.data = this.loadTemplateData();
         this.refreshTimer = null;
         this.initialized = false;
+    }
+
+    loadTemplateData() {
+        const dataElement = document.getElementById('template-data');
+        if (!dataElement) return {};
+
+        return {
+            activeTab: dataElement.getAttribute('data-active-tab') || 'epg',
+            refreshInterval: parseInt(dataElement.getAttribute('data-refresh-interval') || '300', 10),
+            currentTime: dataElement.getAttribute('data-current-time') || '',
+            theme: dataElement.getAttribute('data-theme') || 'dark',
+            config: JSON.parse(dataElement.getAttribute('data-config') || '{}')
+        };
     }
 
     init() {

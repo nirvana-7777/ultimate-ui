@@ -93,15 +93,12 @@
         <span class="sr-only">Lädt...</span>
     </div>
 
-    <!-- Pass template data to JavaScript -->
-    <script>
-        window.TEMPLATE_DATA = {
-            activeTab: "{{ active_tab }}",
-            refreshInterval: {{ config.ui.refresh_interval }},
-            currentTime: "{{ current_time }}",
-            config: {{ config|tojson }},
-            theme: "{{ config.ui.theme }}"
-        };
-    </script>
+    <div id="template-data"
+         data-active-tab="{{ active_tab }}"
+         data-refresh-interval="{{ config.ui.refresh_interval }}"
+         data-current-time="{{ current_time }}"
+         data-theme="{{ config.ui.theme }}"
+         data-config="{{ config|tojson|safe }}">
+    </div>
 </body>
 </html>

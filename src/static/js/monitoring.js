@@ -9,7 +9,26 @@ class MonitoringManager {
         this.importCountdownInterval = null;
         this.charts = {};
         this.initialized = false;
-        this.monitoringData = window.MONITORING_DATA || {};
+        this.monitoringData = this.loadMonitoringData();
+    }
+
+    loadMonitoringData() {
+        const dataElement = document.getElementById('monitoring-data');
+        if (!dataElement) return {};
+
+        try {
+            return {
+                config: JSON.parse(dataElement.getAttribute('data-config') || '{}'),
+                webepg_health: JSON.parse(dataElement.getAttribute('data-webepg-health') || 'false'),
+                statistics: JSON.parse(dataElement.getAttribute('data-statistics') || '{}'),
+                import_status: JSON.parse(dataElement.getAttribute('data-import-status') || '{}'),
+                config_path: dataElement.getAttribute('data-config-path') || '',
+                error: JSON.parse(dataElement.getAttribute('data-error') || 'null')
+            };
+        } catch (e) {
+            console.error('Error parsing monitoring data:', e);
+            return {};
+        }
     }
 
     init() {

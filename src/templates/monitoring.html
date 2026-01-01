@@ -333,16 +333,12 @@
 
 <script src="{{ url_for('static', filename='js/monitoring.js') }}" defer></script>
 
-<!-- Pass monitoring data to JavaScript -->
-<script>
-    // Make monitoring data available to JavaScript
-    window.MONITORING_DATA = {
-        config: {{ config|tojson }},
-        webepg_health: {{ webepg_health|tojson }},
-        statistics: {{ statistics|tojson }},
-        import_status: {{ import_status|tojson }},
-        config_path: "{{ config_path }}",
-        error: {{ error|tojson if error else 'null' }}
-    };
-</script>
+<div id="monitoring-data"
+     data-config="{{ config|tojson|safe }}"
+     data-webepg-health="{{ webepg_health|tojson|safe }}"
+     data-statistics="{{ statistics|tojson|safe }}"
+     data-import-status="{{ import_status|tojson|safe }}"
+     data-config-path="{{ config_path }}"
+     data-error="{{ error|tojson|safe if error else 'null' }}">
+</div>
 {% endblock %}
