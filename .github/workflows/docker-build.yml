@@ -437,6 +437,7 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: .
+          file: ./docker/Dockerfile
           load: true
           tags: ultimate-ui:test-${{ matrix.arch }}
           platforms: ${{ matrix.platform }}
