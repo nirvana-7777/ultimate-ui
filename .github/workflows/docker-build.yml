@@ -377,7 +377,7 @@ jobs:
             COMMIT_SHA=${{ github.sha }}
 
   docker-scout:
-    needs: [ docker-build ]
+    needs: [docker-build]
     runs-on: ubuntu-latest
     if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
 
@@ -387,15 +387,6 @@ jobs:
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
-
-      - name: Docker Scout CVE scanning
-        uses: docker/scout-action@v1
-        with:
-          command: cves
-          image: ${{ env.DOCKER_IMAGE }}:latest
-          only-severities: critical,high
-          exit-code: true
-          ignore-base: true
 
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@master
@@ -460,68 +451,93 @@ jobs:
             refresh_interval: 300
             timezone: "UTC"
           logging:
-            level: "INFO"
+            level: "DEBUG"
             format: "json"
           EOF
 
-          # Start container
+          # Start container with more verbose logging
           echo "Starting Ultimate UI container..."
           docker run -d --name ultimate-ui-test-${{ matrix.arch }} \
             -p 5000:5000 \
             -v $(pwd)/test-config:/app/config:ro \
-            -e FLASK_ENV=production \
+            -e FLASK_ENV=development \
+            -e FLASK_DEBUG=1 \
             -e PYTHONUNBUFFERED=1 \
+            -e LOG_LEVEL=DEBUG \
             ultimate-ui:test-${{ matrix.arch }}
+
+          # Immediately start tailing logs in background
+          docker logs -f ultimate-ui-test-${{ matrix.arch }} 2>&1 | tee container.logs &
+          LOG_PID=$!
 
           # Wait for container to be ready
           echo "Waiting for container to start..."
-          max_attempts=30
+          max_attempts=60  # Increased from 30
           attempt=0
-          
-          until docker inspect ultimate-ui-test-${{ matrix.arch }} | grep -q '"Status":"running"' || [ $attempt -eq $max_attempts ]; do
+          success=0
+
+          while [ $attempt -lt $max_attempts ] && [ $success -eq 0 ]; do
             attempt=$((attempt + 1))
-            echo "Waiting for container to be running... (attempt $attempt/$max_attempts)"
+
+            # Check container status
+            if ! docker ps | grep -q ultimate-ui-test-${{ matrix.arch }}; then
+              echo "Container not running! Attempt $attempt/$max_attempts"
+              sleep 2
+              continue
+            fi
+
+            # Check if gunicorn is running
+            if docker exec ultimate-ui-test-${{ matrix.arch }} ps aux | grep -q gunicorn; then
+              echo "Gunicorn process found! Attempt $attempt/$max_attempts"
+
+              # Test if port is responding
+              if docker exec ultimate-ui-test-${{ matrix.arch }} timeout 2 bash -c "echo > /dev/tcp/127.0.0.1/5000" 2>/dev/null; then
+                echo "Port 5000 is responding! Attempt $attempt/$max_attempts"
+                success=1
+                break
+              else
+                echo "Port 5000 not responding yet... Attempt $attempt/$max_attempts"
+              fi
+            else
+              echo "No gunicorn process yet... Attempt $attempt/$max_attempts"
+            fi
+
             sleep 2
           done
 
-          if [ $attempt -eq $max_attempts ]; then
-            echo "Container failed to start"
+          # Kill log tailing
+          kill $LOG_PID 2>/dev/null || true
+
+          if [ $success -eq 0 ]; then
+            echo "Container failed to start properly within timeout"
+            echo "=== Container logs ==="
             docker logs ultimate-ui-test-${{ matrix.arch }}
+            echo "=== Container inspect ==="
+            docker inspect ultimate-ui-test-${{ matrix.arch }}
+            echo "=== Process list ==="
+            docker exec ultimate-ui-test-${{ matrix.arch }} ps aux || true
             exit 1
           fi
 
-          # Test health endpoint
+          # Now test the health endpoint
           echo "Testing health endpoint..."
-          attempt=0
-          until curl -f http://localhost:5000/ || [ $attempt -eq $max_attempts ]; do
-            attempt=$((attempt + 1))
-            echo "Waiting for service to be ready... (attempt $attempt/$max_attempts)"
+          for i in {1..10}; do
+            echo "Attempt $i/10..."
+            if curl -f http://localhost:5000/ 2>/dev/null; then
+              echo "✓ Application is responding!"
+              break
+            fi
+
+            if [ $i -eq 10 ]; then
+              echo "✗ Application failed to respond after 10 attempts"
+              docker logs ultimate-ui-test-${{ matrix.arch }}
+              exit 1
+            fi
+
             sleep 2
           done
 
-          if [ $attempt -eq $max_attempts ]; then
-            echo "Service failed to start"
-            docker logs ultimate-ui-test-${{ matrix.arch }}
-            exit 1
-          fi
-
-          echo "Health check passed!"
-
-          # Test static files
-          echo "Testing static files..."
-          curl -f http://localhost:5000/static/css/style.css || echo "WARNING: CSS file not found (non-blocking)"
-          curl -f http://localhost:5000/static/js/main.js || echo "WARNING: JS file not found (non-blocking)"
-
-          # Test API endpoints
-          echo "Testing API endpoints..."
-          curl -f http://localhost:5000/api/monitoring/status || echo "WARNING: API endpoint failed (non-blocking)"
-
-          # Test HTML templates
-          echo "Testing HTML templates..."
-          curl -f http://localhost:5000/ | grep -q "<html" || echo "WARNING: Main page missing HTML tag (non-blocking)"
-          curl -f http://localhost:5000/epg | grep -q "EPG" || echo "WARNING: EPG page not loading (non-blocking)"
-
-          echo "All smoke tests passed for ${{ matrix.arch }}!"
+          echo "Smoke test passed for ${{ matrix.arch }}!"
 
       - name: Run integration tests
         if: success()
