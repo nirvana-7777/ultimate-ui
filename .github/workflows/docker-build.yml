@@ -313,7 +313,8 @@ jobs:
   docker-build:
     needs: [lint, test, codeql, security]
     runs-on: ubuntu-latest
-    if: github.event_name != 'pull_request'
+    # Remove the condition to run on PRs too, or customize as needed
+    # if: github.event_name != 'pull_request'
     strategy:
       matrix:
         platform: [linux/amd64, linux/arm64]
@@ -332,7 +333,7 @@ jobs:
 
       - name: Log in to Docker Hub
         uses: docker/login-action@v3
-        if: github.event_name != 'pull_request'
+        if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
@@ -363,7 +364,8 @@ jobs:
           context: .
           file: ./docker/Dockerfile
           platforms: ${{ matrix.platform }}
-          push: ${{ github.event_name != 'pull_request' }}
+          # Only push on main/master branch, but build on PRs for testing
+          push: ${{ github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master') }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
@@ -375,7 +377,7 @@ jobs:
 
       - name: Docker Scout CVE scanning
         uses: docker/scout-action@v1
-        if: github.event_name != 'pull_request'
+        if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
         with:
           command: cves
           image: ${{ steps.meta.outputs.tags }}
@@ -402,7 +404,8 @@ jobs:
   docker-test:
     needs: docker-build
     runs-on: ubuntu-latest
-    if: github.event_name != 'pull_request'
+    # Remove condition to run on PRs too
+    # if: github.event_name != 'pull_request'
     strategy:
       matrix:
         include:
@@ -703,8 +706,9 @@ jobs:
           fi
 
       - name: Send Slack notification
-        if: always() && secrets.SLACK_BOT_TOKEN != ''
+        if: always()
         uses: slackapi/slack-github-action@v1.25.0
+        continue-on-error: true
         with:
           channel-id: ${{ secrets.SLACK_CHANNEL_ID }}
           slack-message: |
