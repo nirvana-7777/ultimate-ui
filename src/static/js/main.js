@@ -966,6 +966,6 @@ window.debounce = debounce;
 window.throttle = throttle;
 
 // Make Toast available globally for easy use
-window.showToast = Toast.show;
-window.showLoading = LoadingSpinner.show;
-window.hideLoading = LoadingSpinner.hide;
+window.showToast = (message, type, duration) => Toast.show(message, type, duration);
+window.showLoading = (message) => LoadingSpinner.show(message);
+window.hideLoading = () => LoadingSpinner.hide();
