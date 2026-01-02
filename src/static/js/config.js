@@ -133,7 +133,7 @@ class ConfigManager {
     }
 
     async testWebEPGConnection() {
-        const statusDiv = document.getElementById('webepg-status');
+        const statusDiv = document.getElementById('webepg-connection-status');
         const statusText = statusDiv?.querySelector('.status-text');
 
         if (!statusDiv || !statusText) return;
