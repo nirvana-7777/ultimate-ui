@@ -14,13 +14,26 @@ class BaseTemplate {
         const dataElement = document.getElementById('template-data');
         if (!dataElement) return {};
 
-        return {
-            activeTab: dataElement.getAttribute('data-active-tab') || 'epg',
-            refreshInterval: parseInt(dataElement.getAttribute('data-refresh-interval') || '300', 10),
-            currentTime: dataElement.getAttribute('data-current-time') || '',
-            theme: dataElement.getAttribute('data-theme') || 'dark',
-            config: JSON.parse(dataElement.getAttribute('data-config') || '{}')
-        };
+        const data = {};
+
+        // Get string values
+        data.activeTab = dataElement.getAttribute('data-active-tab') || 'epg';
+        data.refreshInterval = parseInt(dataElement.getAttribute('data-refresh-interval') || '300', 10);
+        data.currentTime = dataElement.getAttribute('data-current-time') || '';
+        data.theme = dataElement.getAttribute('data-theme') || 'dark';
+
+        // Safely parse JSON config
+        const configStr = dataElement.getAttribute('data-config');
+        try {
+            // Handle escaped JSON
+            const decoded = configStr.replace(/&quot;/g, '"').replace(/&#39;/g, "'");
+            data.config = JSON.parse(decoded);
+        } catch (e) {
+            console.error('Failed to parse config JSON:', e, 'Raw:', configStr);
+            data.config = {};
+        }
+
+        return data;
     }
 
     init() {
