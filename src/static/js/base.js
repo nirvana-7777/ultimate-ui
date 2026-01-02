@@ -22,16 +22,8 @@ class BaseTemplate {
         data.currentTime = dataElement.getAttribute('data-current-time') || '';
         data.theme = dataElement.getAttribute('data-theme') || 'dark';
 
-        // Safely parse JSON config
-        const configStr = dataElement.getAttribute('data-config');
-        try {
-            // Handle escaped JSON
-            const decoded = configStr.replace(/&quot;/g, '"').replace(/&#39;/g, "'");
-            data.config = JSON.parse(decoded);
-        } catch (e) {
-            console.error('Failed to parse config JSON:', e, 'Raw:', configStr);
-            data.config = {};
-        }
+        // We're not passing config via JSON anymore
+        data.config = {};
 
         return data;
     }
