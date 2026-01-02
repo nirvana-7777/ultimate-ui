@@ -449,6 +449,68 @@ def api_get_monitoring_status():
         return jsonify({"success": False, "error": str(e)}), 500
 
 
+@app.route("/api/test/webepg")
+def api_test_webepg():
+    """Test WebEPG connection."""
+    try:
+        webepg = get_webepg_client()
+
+        # Test health endpoint
+        is_healthy = webepg.get_health()
+
+        if is_healthy:
+            # Get some basic stats to verify connection
+            channels = webepg.get_channels()
+            return jsonify(
+                {
+                    "success": True,
+                    "status": "online",
+                    "channels_count": len(channels),
+                    "url": webepg.base_url,
+                }
+            )
+        else:
+            return (
+                jsonify(
+                    {
+                        "success": False,
+                        "status": "offline",
+                        "error": "Health check failed",
+                        "url": webepg.base_url,
+                    }
+                ),
+                503,
+            )
+
+    except Exception as e:
+        logger.error(f"Error testing WebEPG: {e}")
+        return (
+            jsonify(
+                {
+                    "success": False,
+                    "status": "offline",
+                    "error": str(e),
+                    "url": _get_config_value("webepg.url", "http://localhost:8080"),
+                }
+            ),
+            500,
+        )
+
+
+@app.route("/api/test/ultimate-backend")
+def api_test_ultimate_backend():
+    """Test ultimate-backend connection."""
+    try:
+        ultimate = get_ultimate_backend_client()
+        providers = ultimate.get_providers()
+        return jsonify(
+            {"success": True, "status": "online", "providers_count": len(providers)}
+        )
+    except Exception as e:
+        logger.error(f"Error testing ultimate-backend: {e}")
+        return jsonify({"success": False, "status": "offline", "error": str(e)}), 500
+
+
 # Static file serving
 @app.route("/static/<path:filename>")
 def serve_static(filename):

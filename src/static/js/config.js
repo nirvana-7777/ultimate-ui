@@ -133,7 +133,6 @@ class ConfigManager {
     }
 
     async testWebEPGConnection() {
-        const url = document.getElementById('webepg_url').value;
         const statusDiv = document.getElementById('webepg-status');
         const statusText = statusDiv?.querySelector('.status-text');
 
@@ -142,27 +141,31 @@ class ConfigManager {
         statusDiv.className = 'connection-status testing';
         statusText.textContent = 'Teste Verbindung...';
 
-        try {
-            const response = await fetch(url + '/api/v1/health');
+        const startTime = Date.now();
 
-            if (response.ok) {
+        try {
+            const response = await fetch('/api/test/webepg');
+            const responseTime = Date.now() - startTime;
+            const data = await response.json();
+
+            if (data.success && data.status === 'online') {
                 statusDiv.className = 'connection-status connected';
-                statusText.textContent = 'Verbindung erfolgreich';
-                window.showToast?.('WebEPG Verbindung erfolgreich', 'success');
+                statusText.textContent = `Verbindung erfolgreich (${responseTime}ms) - ${data.channels_count} Kanäle`;
+                window.showToast?.(`WebEPG Verbindung erfolgreich: ${data.channels_count} Kanäle gefunden`, 'success');
             } else {
                 statusDiv.className = 'connection-status error';
-                statusText.textContent = 'Fehler: ' + response.status;
-                window.showToast?.('WebEPG Verbindung fehlgeschlagen: ' + response.status, 'error');
+                statusText.textContent = 'Fehler: ' + (data.error || response.status);
+                window.showToast?.('WebEPG Verbindung fehlgeschlagen: ' + (data.error || response.status), 'error');
             }
         } catch (error) {
+            const responseTime = Date.now() - startTime;
             statusDiv.className = 'connection-status error';
-            statusText.textContent = 'Verbindung fehlgeschlagen';
+            statusText.textContent = `Verbindung fehlgeschlagen (${responseTime}ms)`;
             window.showToast?.('WebEPG Verbindung fehlgeschlagen: ' + error.message, 'error');
         }
     }
 
     async testUltimateBackendConnection() {
-        const url = document.getElementById('ultimate_backend_url').value;
         const statusDiv = document.getElementById('ultimate-backend-status');
         const statusText = statusDiv?.querySelector('.status-text');
 
@@ -172,16 +175,17 @@ class ConfigManager {
         statusText.textContent = 'Teste Verbindung...';
 
         try {
-            const response = await fetch(url + '/api/providers');
+            const response = await fetch('/api/test/ultimate-backend');
+            const data = await response.json();
 
-            if (response.ok) {
+            if (data.success && data.status === 'online') {
                 statusDiv.className = 'connection-status connected';
                 statusText.textContent = 'Verbindung erfolgreich';
                 window.showToast?.('Ultimate Backend Verbindung erfolgreich', 'success');
             } else {
                 statusDiv.className = 'connection-status error';
-                statusText.textContent = 'Fehler: ' + response.status;
-                window.showToast?.('Ultimate Backend Verbindung fehlgeschlagen: ' + response.status, 'error');
+                statusText.textContent = 'Fehler: ' + (data.error || 'Unknown');
+                window.showToast?.('Ultimate Backend Verbindung fehlgeschlagen: ' + (data.error || 'Unknown'), 'error');
             }
         } catch (error) {
             statusDiv.className = 'connection-status error';
