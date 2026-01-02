@@ -14,21 +14,25 @@ class MonitoringManager {
 
     loadMonitoringData() {
         const dataElement = document.getElementById('monitoring-data');
-        if (!dataElement) return {};
+        const windowData = window.MONITORING_DATA || {};
 
-        try {
-            return {
-                config: JSON.parse(dataElement.getAttribute('data-config') || '{}'),
-                webepg_health: JSON.parse(dataElement.getAttribute('data-webepg-health') || 'false'),
-                statistics: JSON.parse(dataElement.getAttribute('data-statistics') || '{}'),
-                import_status: JSON.parse(dataElement.getAttribute('data-import-status') || '{}'),
-                config_path: dataElement.getAttribute('data-config-path') || '',
-                error: JSON.parse(dataElement.getAttribute('data-error') || 'null')
-            };
-        } catch (e) {
-            console.error('Error parsing monitoring data:', e);
-            return {};
+        // Merge data from both sources
+        const data = { ...windowData };
+
+        // Get data from data attributes
+        if (dataElement) {
+            data.webepg_health = dataElement.getAttribute('data-webepg-health') === 'true';
+            data.config_path = dataElement.getAttribute('data-config-path') || '';
+            const errorAttr = dataElement.getAttribute('data-error');
+            data.error = errorAttr || null;
         }
+
+        // Ensure all required fields exist
+        data.config = data.config || {};
+        data.statistics = data.statistics || {};
+        data.import_status = data.import_status || {};
+
+        return data;
     }
 
     init() {
