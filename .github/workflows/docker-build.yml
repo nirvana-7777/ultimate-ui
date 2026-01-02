@@ -429,7 +429,7 @@ jobs:
           # Start container
           echo "Starting container..."
           docker run -d --name ultimate-ui-test \
-            -p 5000:5000 \
+            -p 7779:7779 \
             -v $(pwd)/test-config:/app/config:ro \
             ultimate-ui:test
 
@@ -438,7 +438,7 @@ jobs:
 
           # Simple check: Is container running and serving HTML?
           if docker ps | grep -q ultimate-ui-test && \
-             curl -s --max-time 5 http://localhost:5000/ | grep -q "<html"; then
+             curl -s --max-time 5 http://localhost:7779/ | grep -q "<html"; then
             echo "✅ Container is running and serving HTML"
             docker stop ultimate-ui-test 2>/dev/null || true
             docker rm -f ultimate-ui-test 2>/dev/null || true
@@ -506,7 +506,7 @@ jobs:
             docker run -d \
               --name ultimate-ui-staging \
               --restart unless-stopped \
-              -p 5000:5000 \
+              -p 7779:7779 \
               -v /opt/ultimate-ui/config:/app/config \
               -v /opt/ultimate-ui/logs:/app/logs \
               -e FLASK_ENV=production \
@@ -527,7 +527,7 @@ jobs:
           
           # Verify service is running
           ssh -o StrictHostKeyChecking=no -i deploy_key $DEPLOY_USER@$DEPLOY_HOST \
-            "curl -f http://localhost:5000/health || exit 1"
+            "curl -f http://localhost:7779/health || exit 1"
           
           echo "Deployment verified successfully!"
 
@@ -535,7 +535,7 @@ jobs:
         if: success()
         run: |
           echo "🚀 Ultimate UI deployed to staging!"
-          echo "URL: http://${{ secrets.DEPLOY_HOST_STAGING }}:5000"
+          echo "URL: http://${{ secrets.DEPLOY_HOST_STAGING }}:7779"
 
   notify:
     runs-on: ubuntu-latest
@@ -565,7 +565,7 @@ jobs:
           if [[ "${{ github.event_name }}" == "push" && "${{ github.ref }}" == "refs/heads/main" ]]; then
             echo ""
             echo "📦 Docker Image: ${{ env.DOCKER_IMAGE }}:latest"
-            echo "🌐 Staging URL: http://${{ secrets.DEPLOY_HOST_STAGING }}:5000"
+            echo "🌐 Staging URL: http://${{ secrets.DEPLOY_HOST_STAGING }}:7779"
           fi
 
       - name: Create workflow summary
@@ -591,7 +591,7 @@ jobs:
             echo "" >> $GITHUB_STEP_SUMMARY
             echo "📦 **Docker Image:** \`${{ env.DOCKER_IMAGE }}:latest\`" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
-            echo "🌐 **Staging Environment:** http://${{ secrets.DEPLOY_HOST_STAGING }}:5000" >> $GITHUB_STEP_SUMMARY
+            echo "🌐 **Staging Environment:** http://${{ secrets.DEPLOY_HOST_STAGING }}:7779" >> $GITHUB_STEP_SUMMARY
           fi
 
       - name: Send Slack notification
