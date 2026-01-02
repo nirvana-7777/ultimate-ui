@@ -17,7 +17,7 @@ class TestTemplates:
                 print(
                     f"Decoded: {response.data.decode('utf-8', errors='replace')[:500]}"
                 )
-            except:
+            except Exception:  # Fixed: replaced bare 'except' with 'Exception'
                 print("Could not decode response")
 
         assert response.status_code == 200
@@ -45,7 +45,6 @@ class TestTemplates:
 
         # Check for config forms
         config_forms = soup.find_all("form")
-        has_config_form = len(config_forms) > 0
 
         # Check for test buttons
         test_buttons = soup.find_all(
@@ -159,7 +158,7 @@ class TestTemplates:
         """Test monitoring template - robust version."""
         response = client.get("/monitoring")
 
-        print(f"\n=== Testing /monitoring route ===")
+        print("\n=== Testing /monitoring route ===")  # Fixed: removed f-string without placeholders
         print(f"Response status code: {response.status_code}")
         assert response.status_code == 200
 
@@ -245,9 +244,11 @@ class TestTemplates:
             ]
         )
 
+        # Fixed: Split long line into multiple lines
         assert has_monitoring_content, (
             "No monitoring content found. "
-            "Expected at least one of: monitoring keywords, monitoring elements, or monitoring script data."
+            "Expected at least one of: monitoring keywords, "
+            "monitoring elements, or monitoring script data."
         )
 
         print("=== Monitoring template test passed ===")
