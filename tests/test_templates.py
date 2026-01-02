@@ -158,7 +158,9 @@ class TestTemplates:
         """Test monitoring template - robust version."""
         response = client.get("/monitoring")
 
-        print("\n=== Testing /monitoring route ===")  # Fixed: removed f-string without placeholders
+        print(
+            "\n=== Testing /monitoring route ==="
+        )  # Fixed: removed f-string without placeholders
         print(f"Response status code: {response.status_code}")
         assert response.status_code == 200
 
