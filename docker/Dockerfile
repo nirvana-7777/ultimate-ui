@@ -49,17 +49,17 @@ ENV PYTHONUNBUFFERED=1
 ENV FLASK_APP=src.app
 ENV FLASK_ENV=production
 ENV ULTIMATE_UI_CONFIG=/app/config/config.yaml
-ENV PORT=5000
+ENV PORT=7779
 
 # Expose port
-EXPOSE 5000
+EXPOSE 7779
 
 # Switch to non-root user
 USER ultimate
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:5000/health || exit 1
+    CMD curl -f http://localhost:7779/health || exit 1
 
 # Run the application
-CMD ["gunicorn", "--bind", "0.0.0.0:5000", "--workers", "4", "--threads", "2", "--timeout", "120", "src.app:app"]
+CMD ["gunicorn", "--bind", "0.0.0.0:7779", "--workers", "4", "--threads", "2", "--timeout", "120", "src.app:app"]
