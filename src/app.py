@@ -518,6 +518,15 @@ def serve_static(filename):
     return send_from_directory("static", filename)
 
 
+@app.route("/providers")
+def epg_providers():
+    return render_template(
+        "providers.html",
+        active_tab="providers",
+        current_time=datetime.now().strftime("%H:%M"),
+    )
+
+
 @app.route("/favicon.ico")
 def favicon():
     """Serve favicon."""

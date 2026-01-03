@@ -1,0 +1,137 @@
+[file name]: providers.html
+[file content begin]
+{% extends "base.html" %}
+
+{% block content %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/providers.css') }}">
+
+<div class="providers-container">
+    <div class="providers-header">
+        <h2>EPG Provider Management</h2>
+        <p class="providers-subtitle">Manage your EPG data sources and monitor import status</p>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="stats-container">
+        <div class="stat-card">
+            <div class="stat-icon">📡</div>
+            <div class="stat-content">
+                <h3 id="total-providers">0</h3>
+                <p>Total Providers</p>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon">✅</div>
+            <div class="stat-content">
+                <h3 id="enabled-providers">0</h3>
+                <p>Enabled</p>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon">❌</div>
+            <div class="stat-content">
+                <h3 id="disabled-providers">0</h3>
+                <p>Disabled</p>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon">📊</div>
+            <div class="stat-content">
+                <h3 id="success-rate">0%</h3>
+                <p>Success Rate</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Action Buttons -->
+    <div class="providers-actions">
+        <button class="btn-add-provider" id="add-provider-btn">
+            <span class="btn-icon">+</span>
+            Add Provider
+        </button>
+        <button class="btn-secondary" id="test-all-btn">
+            <span class="btn-icon">🔍</span>
+            Test All Connections
+        </button>
+        <button class="btn-secondary" id="import-all-btn">
+            <span class="btn-icon">🔄</span>
+            Import All Enabled
+        </button>
+        <button class="btn-secondary" id="refresh-providers-btn">
+            <span class="btn-icon">⟳</span>
+            Refresh
+        </button>
+    </div>
+
+    <!-- Providers Table -->
+    <div class="providers-table-container">
+        <div class="table-header">
+            <h3>EPG Providers</h3>
+            <div class="table-controls">
+                <input type="text" id="provider-search" placeholder="Search providers..." class="search-input">
+                <div class="view-toggle">
+                    <button class="view-btn active" data-view="table">
+                        <span class="btn-icon">📋</span>
+                    </button>
+                    <button class="view-btn" data-view="cards">
+                        <span class="btn-icon">🃏</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Table View -->
+        <div class="providers-table-view active" id="table-view">
+            <table class="providers-table">
+                <thead>
+                    <tr>
+                        <th>Status</th>
+                        <th>Name</th>
+                        <th>XMLTV URL</th>
+                        <th>Last Import</th>
+                        <th>Import Stats</th>
+                        <th class="text-center">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="providers-table-body">
+                    <!-- Will be populated by JavaScript -->
+                    <tr class="loading-row">
+                        <td colspan="6">
+                            <div class="loading-spinner-small"></div>
+                            <span>Loading providers...</span>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Cards View -->
+        <div class="providers-cards-view" id="cards-view">
+            <div class="cards-grid" id="providers-cards-grid">
+                <!-- Will be populated by JavaScript -->
+                <div class="loading-card">
+                    <div class="loading-spinner-small"></div>
+                    <span>Loading providers...</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Empty State -->
+        <div class="empty-state hidden" id="empty-state">
+            <div class="empty-icon">📡</div>
+            <h3>No EPG Providers</h3>
+            <p>You haven't added any EPG providers yet.</p>
+            <button class="btn-add-provider" id="add-first-provider-btn">
+                <span class="btn-icon">+</span>
+                Add Your First Provider
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Add/Edit Provider Modal (will be created dynamically) -->
+<!-- Test Connection Modal (will be created dynamically) -->
+
+<script src="{{ url_for('static', filename='js/providers.js') }}" defer></script>
+{% endblock %}
+[file content end]
