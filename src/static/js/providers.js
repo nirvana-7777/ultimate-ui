@@ -7,6 +7,31 @@ class ProviderManager {
         this.currentView = 'table';
         this.currentModal = null;
         this.initialized = false;
+        this.webepgBaseUrl = '';
+        this.loadConfig();
+    }
+
+    loadConfig() {
+        // Try to get WebEPG URL from config
+        try {
+            // Check if we have config data from the config page
+            if (window.CONFIG_DATA && window.CONFIG_DATA.webepg && window.CONFIG_DATA.webepg.url) {
+                this.webepgBaseUrl = window.CONFIG_DATA.webepg.url;
+            } else {
+                // Try to get from localStorage or form
+                const webepgUrlInput = document.getElementById('webepg_url');
+                if (webepgUrlInput) {
+                    this.webepgBaseUrl = webepgUrlInput.value;
+                }
+            }
+            
+            // Remove trailing slash if present
+            this.webepgBaseUrl = this.webepgBaseUrl.replace(/\/$/, '');
+            
+            console.log('Using WebEPG base URL:', this.webepgBaseUrl);
+        } catch (error) {
+            console.warn('Could not load WebEPG URL from config:', error);
+        }
     }
 
     async init() {
@@ -45,12 +70,15 @@ class ProviderManager {
     async loadProviders() {
         try {
             if (window.showLoading) window.showLoading('Loading providers...');
-            const data = await UTILS.APIClient.get('/api/v1/providers');
+            
+            // Use WebEPG backend URL
+            const url = this.getApiUrl('/api/v1/providers');
+            const data = await this.makeRequest(url);
             this.providers = data || [];
             this.renderProviders();
         } catch (error) {
             console.error('Error loading providers:', error);
-            if (window.showToast) window.showToast('Failed to load providers', 'error');
+            if (window.showToast) window.showToast('Failed to load providers. Check WebEPG backend configuration.', 'error');
         } finally {
             if (window.hideLoading) window.hideLoading();
         }
@@ -58,12 +86,84 @@ class ProviderManager {
 
     async loadImportLogs() {
         try {
-            const data = await UTILS.APIClient.get('/api/v1/import/status');
+            // Use WebEPG backend URL
+            const url = this.getApiUrl('/api/v1/import/status');
+            const data = await this.makeRequest(url);
             this.importLogs = data?.recent_imports || [];
         } catch (error) {
             console.error('Error loading import logs:', error);
             // Don't show toast for this, it's not critical
         }
+    }
+
+    getApiUrl(endpoint) {
+        // If we have a WebEPG base URL, use it
+        if (this.webepgBaseUrl) {
+            return `${this.webepgBaseUrl}${endpoint}`;
+        }
+        
+        // Otherwise, try to use relative URL (might work if CORS is enabled)
+        return endpoint;
+    }
+
+    async makeRequest(url, options = {}) {
+        try {
+            // Add timeout to options
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+            
+            const response = await fetch(url, {
+                ...options,
+                signal: controller.signal
+            });
+            
+            clearTimeout(timeoutId);
+
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+
+            const contentType = response.headers.get('content-type');
+            if (contentType && contentType.includes('application/json')) {
+                return await response.json();
+            }
+
+            return await response.text();
+        } catch (error) {
+            console.error('Request failed:', error);
+            
+            if (error.name === 'AbortError') {
+                throw new Error('Request timeout');
+            }
+            
+            throw error;
+        }
+    }
+
+    async postData(url, data) {
+        return await this.makeRequest(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(data)
+        });
+    }
+
+    async putData(url, data) {
+        return await this.makeRequest(url, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(data)
+        });
+    }
+
+    async deleteData(url) {
+        return await this.makeRequest(url, {
+            method: 'DELETE'
+        });
     }
 
     getProviderImportLogs(providerId) {
@@ -93,10 +193,10 @@ class ProviderManager {
         }
 
         let html = '';
-
+        
         this.providers.forEach(provider => {
             const latestImport = this.getLatestImportLog(provider.id);
-
+            
             html += `
                 <tr data-provider-id="${provider.id}">
                     <td>
@@ -123,7 +223,7 @@ class ProviderManager {
                     <td>
                         <div class="last-import">
                             ${latestImport ? `
-                                <span class="import-time">${UTILS.DateTime.format(latestImport.completed_at || latestImport.started_at, 'relative')}</span>
+                                <span class="import-time">${this.formatRelativeTime(latestImport.completed_at || latestImport.started_at)}</span>
                                 <span class="import-status ${latestImport.status}">${latestImport.status}</span>
                             ` : '<span class="text-muted">Never</span>'}
                         </div>
@@ -178,10 +278,10 @@ class ProviderManager {
         }
 
         let html = '';
-
+        
         this.providers.forEach(provider => {
             const latestImport = this.getLatestImportLog(provider.id);
-
+            
             html += `
                 <div class="provider-card" data-provider-id="${provider.id}">
                     <div class="card-header">
@@ -203,7 +303,7 @@ class ProviderManager {
                         <div class="detail-item">
                             <span class="detail-label">Last Import</span>
                             <span class="detail-value">
-                                ${latestImport ? UTILS.DateTime.format(latestImport.completed_at || latestImport.started_at, 'relative') : 'Never'}
+                                ${latestImport ? this.formatRelativeTime(latestImport.completed_at || latestImport.started_at) : 'Never'}
                             </span>
                         </div>
                         <div class="detail-item">
@@ -264,7 +364,7 @@ class ProviderManager {
         const total = this.providers.length;
         const enabled = this.providers.filter(p => p.enabled).length;
         const disabled = total - enabled;
-
+        
         // Calculate success rate from import logs
         const successfulImports = this.importLogs.filter(log => log.status === 'success').length;
         const totalImports = this.importLogs.length;
@@ -278,16 +378,16 @@ class ProviderManager {
 
     switchView(view) {
         this.currentView = view;
-
+        
         // Update buttons
         document.querySelectorAll('.view-btn').forEach(btn => {
             btn.classList.toggle('active', btn.getAttribute('data-view') === view);
         });
-
+        
         // Show/hide views
         const tableView = document.getElementById('table-view');
         const cardsView = document.getElementById('cards-view');
-
+        
         if (view === 'table') {
             tableView.classList.add('active');
             cardsView.classList.remove('active');
@@ -299,13 +399,13 @@ class ProviderManager {
 
     filterProviders(searchTerm) {
         const term = searchTerm.toLowerCase().trim();
-
+        
         // Filter table rows
         document.querySelectorAll('#providers-table-body tr[data-provider-id]').forEach(row => {
             const text = row.textContent.toLowerCase();
             row.style.display = text.includes(term) ? '' : 'none';
         });
-
+        
         // Filter cards
         document.querySelectorAll('.provider-card').forEach(card => {
             const text = card.textContent.toLowerCase();
@@ -314,6 +414,12 @@ class ProviderManager {
     }
 
     showAddProviderModal() {
+        // First check if we have a WebEPG URL configured
+        if (!this.webepgBaseUrl) {
+            this.showConfigWarning();
+            return;
+        }
+        
         const modal = UTILS.UIComponents.createModal({
             title: 'Add New EPG Provider',
             content: `
@@ -357,24 +463,52 @@ class ProviderManager {
                 }
             ]
         });
-
+        
         this.currentModal = modal;
+    }
+
+    showConfigWarning() {
+        UTILS.UIComponents.createModal({
+            title: 'Configuration Required',
+            content: `
+                <div style="padding: 20px; text-align: center;">
+                    <div style="font-size: 48px; margin-bottom: 20px;">⚠️</div>
+                    <h3>WebEPG Backend Not Configured</h3>
+                    <p>Please configure the WebEPG backend URL in the Configuration tab first.</p>
+                    <p>Go to: <strong>Configuration → Backend-Einstellungen → WebEPG Backend</strong></p>
+                </div>
+            `,
+            buttons: [
+                {
+                    text: 'Go to Configuration',
+                    className: 'modal-btn primary',
+                    onClick: () => {
+                        window.location.href = '/configuration';
+                    }
+                },
+                {
+                    text: 'Cancel',
+                    className: 'modal-btn secondary',
+                    closeOnClick: true
+                }
+            ]
+        });
     }
 
     async testNewProviderConnection() {
         const name = document.getElementById('provider-name')?.value;
         const url = document.getElementById('provider-url')?.value;
-
+        
         if (!name || !url) {
             if (window.showToast) window.showToast('Please enter provider name and URL', 'warning');
             return;
         }
-
+        
         // Create a simple test by fetching the URL
         try {
             if (window.showLoading) window.showLoading('Testing connection...');
             const response = await fetch(url, { method: 'HEAD' });
-
+            
             if (response.ok) {
                 if (window.showToast) window.showToast('Connection successful! XMLTV URL is accessible.', 'success');
             } else {
@@ -391,30 +525,31 @@ class ProviderManager {
         const name = document.getElementById('provider-name')?.value;
         const url = document.getElementById('provider-url')?.value;
         const enabled = document.getElementById('provider-enabled')?.checked;
-
+        
         if (!name || !url) {
             if (window.showToast) window.showToast('Please fill in all required fields', 'warning');
             return;
         }
-
+        
         try {
             if (window.showLoading) window.showLoading('Saving provider...');
-
-            const response = await UTILS.APIClient.post('/api/v1/providers', {
+            
+            const apiUrl = this.getApiUrl('/api/v1/providers');
+            await this.postData(apiUrl, {
                 name: name,
                 xmltv_url: url,
                 enabled: enabled
             });
-
+            
             if (window.showToast) window.showToast('Provider added successfully!', 'success');
-
+            
             // Close modal and refresh data
             if (this.currentModal) {
                 this.currentModal.close();
             }
-
+            
             await this.refreshData();
-
+            
         } catch (error) {
             if (window.showToast) window.showToast(`Failed to add provider: ${error.message}`, 'error');
         } finally {
@@ -425,7 +560,7 @@ class ProviderManager {
     async showEditProviderModal(providerId) {
         const provider = this.providers.find(p => p.id === providerId);
         if (!provider) return;
-
+        
         const modal = UTILS.UIComponents.createModal({
             title: 'Edit EPG Provider',
             content: `
@@ -468,18 +603,18 @@ class ProviderManager {
                 }
             ]
         });
-
+        
         this.currentModal = modal;
     }
 
     async testEditProviderConnection(providerId) {
         const url = document.getElementById('edit-provider-url')?.value;
-
+        
         if (!url) {
             if (window.showToast) window.showToast('Please enter a URL', 'warning');
             return;
         }
-
+        
         await this.testProviderConnection(providerId, url);
     }
 
@@ -487,30 +622,31 @@ class ProviderManager {
         const name = document.getElementById('edit-provider-name')?.value;
         const url = document.getElementById('edit-provider-url')?.value;
         const enabled = document.getElementById('edit-provider-enabled')?.checked;
-
+        
         if (!name || !url) {
             if (window.showToast) window.showToast('Please fill in all required fields', 'warning');
             return;
         }
-
+        
         try {
             if (window.showLoading) window.showLoading('Updating provider...');
-
-            await UTILS.APIClient.put(`/api/v1/providers/${providerId}`, {
+            
+            const apiUrl = this.getApiUrl(`/api/v1/providers/${providerId}`);
+            await this.putData(apiUrl, {
                 name: name,
                 xmltv_url: url,
                 enabled: enabled
             });
-
+            
             if (window.showToast) window.showToast('Provider updated successfully!', 'success');
-
+            
             // Close modal and refresh data
             if (this.currentModal) {
                 this.currentModal.close();
             }
-
+            
             await this.refreshData();
-
+            
         } catch (error) {
             if (window.showToast) window.showToast(`Failed to update provider: ${error.message}`, 'error');
         } finally {
@@ -522,18 +658,19 @@ class ProviderManager {
         try {
             const provider = this.providers.find(p => p.id === providerId);
             if (!provider) return;
-
+            
             if (window.showLoading) window.showLoading(`${enabled ? 'Enabling' : 'Disabling'} provider...`);
-
-            await UTILS.APIClient.put(`/api/v1/providers/${providerId}`, {
+            
+            const apiUrl = this.getApiUrl(`/api/v1/providers/${providerId}`);
+            await this.putData(apiUrl, {
                 name: provider.name,
                 xmltv_url: provider.xmltv_url,
                 enabled: enabled
             });
-
+            
             if (window.showToast) window.showToast(`Provider ${enabled ? 'enabled' : 'disabled'} successfully!`, 'success');
             await this.refreshData();
-
+            
         } catch (error) {
             if (window.showToast) window.showToast(`Failed to update provider status: ${error.message}`, 'error');
         } finally {
@@ -545,15 +682,16 @@ class ProviderManager {
         if (!confirm('Are you sure you want to delete this provider? This action cannot be undone.')) {
             return;
         }
-
+        
         try {
             if (window.showLoading) window.showLoading('Deleting provider...');
-
-            await UTILS.APIClient.delete(`/api/v1/providers/${providerId}`);
-
+            
+            const apiUrl = this.getApiUrl(`/api/v1/providers/${providerId}`);
+            await this.deleteData(apiUrl);
+            
             if (window.showToast) window.showToast('Provider deleted successfully!', 'success');
             await this.refreshData();
-
+            
         } catch (error) {
             if (window.showToast) window.showToast(`Failed to delete provider: ${error.message}`, 'error');
         } finally {
@@ -564,9 +702,9 @@ class ProviderManager {
     async testProviderConnection(providerId, customUrl = null) {
         const provider = this.providers.find(p => p.id === providerId);
         if (!provider) return;
-
+        
         const url = customUrl || provider.xmltv_url;
-
+        
         // Show test modal
         const modal = UTILS.UIComponents.createModal({
             title: 'Test Connection',
@@ -586,64 +724,64 @@ class ProviderManager {
             ],
             backdropClose: false
         });
-
+        
         try {
             const startTime = Date.now();
-
+            
             // First, try HEAD request
             const response = await fetch(url, { method: 'HEAD' });
             const headTime = Date.now() - startTime;
-
+            
             let details = `HEAD request: ${response.status} ${response.statusText}\n`;
             details += `Response time: ${headTime}ms\n\n`;
-
+            
             if (response.ok) {
                 // Try to get first few KB to verify it's XMLTV
                 const contentResponse = await fetch(url);
                 const text = await contentResponse.text();
                 const totalTime = Date.now() - startTime;
-
+                
                 details += `Content type: ${contentResponse.headers.get('content-type')}\n`;
                 details += `Total size: ${text.length} characters\n`;
                 details += `Total time: ${totalTime}ms\n\n`;
-
+                
                 // Check if it looks like XMLTV
                 if (text.includes('<?xml') && (text.includes('<tv>') || text.includes('<!DOCTYPE tv'))) {
                     details += '✓ Valid XMLTV format detected\n';
-
+                    
                     modal.updateContent(`
                         <div class="test-status success">
                             <span>✅ Connection successful!</span>
                         </div>
                         <div class="test-details">${details}</div>
                     `);
-
+                    
                     if (window.showToast) window.showToast('Connection test successful!', 'success');
                 } else {
                     details += '⚠️ Warning: Content does not appear to be valid XMLTV\n';
-
+                    
                     modal.updateContent(`
                         <div class="test-status error">
                             <span>⚠️ Connection successful but content may not be XMLTV</span>
                         </div>
                         <div class="test-details">${details}</div>
                     `);
-
+                    
                     if (window.showToast) window.showToast('Connected but content may not be XMLTV', 'warning');
                 }
             } else {
                 details += `✗ Failed: ${response.status} ${response.statusText}`;
-
+                
                 modal.updateContent(`
                     <div class="test-status error">
                         <span>❌ Connection failed</span>
                     </div>
                     <div class="test-details">${details}</div>
                 `);
-
+                
                 if (window.showToast) window.showToast(`Connection failed: ${response.status}`, 'error');
             }
-
+            
         } catch (error) {
             modal.updateContent(`
                 <div class="test-status error">
@@ -651,7 +789,7 @@ class ProviderManager {
                 </div>
                 <div class="test-details">${error.message}</div>
             `);
-
+            
             if (window.showToast) window.showToast(`Connection error: ${error.message}`, 'error');
         }
     }
@@ -659,15 +797,16 @@ class ProviderManager {
     async triggerProviderImport(providerId) {
         try {
             if (window.showLoading) window.showLoading('Triggering import...');
-
-            // Note: You'll need to implement this endpoint
-            await UTILS.APIClient.post(`/api/v1/providers/${providerId}/import/trigger`);
-
+            
+            // Note: You'll need to implement this endpoint in WebEPG backend
+            const apiUrl = this.getApiUrl(`/api/v1/providers/${providerId}/import/trigger`);
+            await this.postData(apiUrl, {});
+            
             if (window.showToast) window.showToast('Import triggered successfully!', 'success');
-
+            
             // Wait a bit and refresh to see import status
             setTimeout(() => this.refreshData(), 2000);
-
+            
         } catch (error) {
             if (window.showToast) window.showToast(`Failed to trigger import: ${error.message}`, 'error');
         } finally {
@@ -678,11 +817,11 @@ class ProviderManager {
     async testAllConnections() {
         try {
             if (window.showLoading) window.showLoading('Testing all provider connections...');
-
+            
             const enabledProviders = this.providers.filter(p => p.enabled);
             let successful = 0;
             let failed = 0;
-
+            
             for (const provider of enabledProviders) {
                 try {
                     const response = await fetch(provider.xmltv_url, { method: 'HEAD' });
@@ -695,13 +834,13 @@ class ProviderManager {
                     failed++;
                 }
             }
-
+            
             const message = `Connection test complete: ${successful} successful, ${failed} failed`;
             if (window.showToast) {
-                window.showToast(message,
+                window.showToast(message, 
                     failed === 0 ? 'success' : failed === enabledProviders.length ? 'error' : 'warning');
             }
-
+                     
         } catch (error) {
             if (window.showToast) window.showToast(`Failed to test connections: ${error.message}`, 'error');
         } finally {
@@ -713,17 +852,18 @@ class ProviderManager {
         if (!confirm('Trigger import for all enabled providers? This may take several minutes.')) {
             return;
         }
-
+        
         try {
             if (window.showLoading) window.showLoading('Triggering import for all enabled providers...');
-
-            await UTILS.APIClient.post('/api/v1/import/trigger');
-
+            
+            const apiUrl = this.getApiUrl('/api/v1/import/trigger');
+            await this.postData(apiUrl, {});
+            
             if (window.showToast) window.showToast('Import triggered for all enabled providers!', 'success');
-
+            
             // Wait and refresh to see import status
             setTimeout(() => this.refreshData(), 3000);
-
+            
         } catch (error) {
             if (window.showToast) window.showToast(`Failed to trigger import: ${error.message}`, 'error');
         } finally {
@@ -748,13 +888,40 @@ class ProviderManager {
         if (url.length <= maxLength) return url;
         return url.substring(0, maxLength - 3) + '...';
     }
+
+    formatRelativeTime(dateString) {
+        if (!dateString) return 'Never';
+        
+        try {
+            if (window.UTILS && window.UTILS.DateTime) {
+                return window.UTILS.DateTime.format(dateString, 'relative');
+            }
+            
+            // Fallback implementation
+            const date = new Date(dateString);
+            const now = new Date();
+            const diffMs = now - date;
+            const diffMins = Math.floor(diffMs / 60000);
+            const diffHours = Math.floor(diffMs / 3600000);
+            const diffDays = Math.floor(diffMs / 86400000);
+            
+            if (diffMins < 1) return 'Just now';
+            if (diffMins < 60) return `${diffMins} minutes ago`;
+            if (diffHours < 24) return `${diffHours} hours ago`;
+            if (diffDays < 7) return `${diffDays} days ago`;
+            
+            return date.toLocaleDateString();
+        } catch {
+            return dateString;
+        }
+    }
 }
 
 // Initialize when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
     const providerManager = new ProviderManager();
     providerManager.init();
-
+    
     // Make available globally
     window.providerManager = providerManager;
 });
