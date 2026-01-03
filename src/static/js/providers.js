@@ -1,4 +1,4 @@
-// Ultimate UI - EPG Provider Management JavaScript
+// Ultimate UI - EPG Provider Management JavaScript - USING PROXY ENDPOINTS
 
 class ProviderManager {
     constructor() {
@@ -7,64 +7,11 @@ class ProviderManager {
         this.currentView = 'table';
         this.currentModal = null;
         this.initialized = false;
-        this.webepgBaseUrl = this.loadWebEPGUrl();
-    }
-
-    loadWebEPGUrl() {
-        try {
-            // Method 1: Try to get from config data passed from server
-            if (window.CONFIG_DATA && window.CONFIG_DATA.webepg && window.CONFIG_DATA.webepg.url) {
-                console.log('Found WebEPG URL in CONFIG_DATA:', window.CONFIG_DATA.webepg.url);
-                return window.CONFIG_DATA.webepg.url.replace(/\/$/, '');
-            }
-            
-            // Method 2: Try to get from localStorage (if config was saved)
-            const savedConfig = localStorage.getItem('ultimate-ui-config');
-            if (savedConfig) {
-                try {
-                    const config = JSON.parse(savedConfig);
-                    if (config.webepg && config.webepg.url) {
-                        console.log('Found WebEPG URL in localStorage:', config.webepg.url);
-                        return config.webepg.url.replace(/\/$/, '');
-                    }
-                } catch (e) {
-                    // Ignore parse errors
-                }
-            }
-            
-            // Method 3: Look for the config form field on current page
-            const webepgUrlInput = document.getElementById('webepg_url');
-            if (webepgUrlInput && webepgUrlInput.value) {
-                console.log('Found WebEPG URL in form field:', webepgUrlInput.value);
-                return webepgUrlInput.value.replace(/\/$/, '');
-            }
-            
-            // Method 4: Look for config form field on any page
-            const allInputs = document.querySelectorAll('input[id*="webepg"], input[name*="webepg"]');
-            for (const input of allInputs) {
-                if (input.value && input.value.includes('http')) {
-                    console.log('Found WebEPG URL in alternate field:', input.value);
-                    return input.value.replace(/\/$/, '');
-                }
-            }
-            
-            console.warn('Could not find WebEPG URL in any source');
-            return '';
-            
-        } catch (error) {
-            console.error('Error loading WebEPG URL:', error);
-            return '';
-        }
+        // No longer need webepgBaseUrl - we use local proxy endpoints
     }
 
     async init() {
         if (this.initialized) return;
-
-        // Check if we have a WebEPG URL before proceeding
-        if (!this.webepgBaseUrl) {
-            this.showConfigWarning();
-            return;
-        }
 
         this.setupEventListeners();
         await this.loadProviders();
@@ -99,18 +46,19 @@ class ProviderManager {
     async loadProviders() {
         try {
             if (window.showLoading) window.showLoading('Loading providers...');
-            
-            const url = `${this.webepgBaseUrl}/api/v1/providers`;
+
+            // Use Flask proxy endpoint (avoids CORS)
+            const url = `/api/providers`;
             console.log('Loading providers from:', url);
-            
+
             const data = await this.makeRequest(url);
             this.providers = data || [];
             this.renderProviders();
-            
+
             console.log(`Loaded ${this.providers.length} providers`);
         } catch (error) {
             console.error('Error loading providers:', error);
-            if (window.showToast) window.showToast(`Failed to load providers: ${error.message}. Check WebEPG backend configuration.`, 'error');
+            if (window.showToast) window.showToast(`Failed to load providers: ${error.message}`, 'error');
         } finally {
             if (window.hideLoading) window.hideLoading();
         }
@@ -118,12 +66,13 @@ class ProviderManager {
 
     async loadImportLogs() {
         try {
-            const url = `${this.webepgBaseUrl}/api/v1/import/status`;
+            // Use Flask proxy endpoint (avoids CORS)
+            const url = `/api/import/status`;
             console.log('Loading import logs from:', url);
-            
+
             const data = await this.makeRequest(url);
             this.importLogs = data?.recent_imports || [];
-            
+
             console.log(`Loaded ${this.importLogs.length} import logs`);
         } catch (error) {
             console.error('Error loading import logs:', error);
@@ -134,11 +83,11 @@ class ProviderManager {
     async makeRequest(url, options = {}) {
         try {
             console.log('Making request to:', url);
-            
+
             // Add timeout to options
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
-            
+
             const response = await fetch(url, {
                 ...options,
                 signal: controller.signal,
@@ -148,7 +97,7 @@ class ProviderManager {
                     ...options.headers
                 }
             });
-            
+
             clearTimeout(timeoutId);
 
             if (!response.ok) {
@@ -163,15 +112,15 @@ class ProviderManager {
             return await response.text();
         } catch (error) {
             console.error('Request failed:', error);
-            
+
             if (error.name === 'AbortError') {
                 throw new Error('Request timeout after 10 seconds');
             }
-            
+
             if (error.message.includes('Failed to fetch')) {
-                throw new Error('Network error: Could not connect to WebEPG backend');
+                throw new Error('Network error: Could not connect to server');
             }
-            
+
             throw error;
         }
     }
@@ -223,10 +172,10 @@ class ProviderManager {
         }
 
         let html = '';
-        
+
         this.providers.forEach(provider => {
             const latestImport = this.getLatestImportLog(provider.id);
-            
+
             html += `
                 <tr data-provider-id="${provider.id}">
                     <td>
@@ -308,10 +257,10 @@ class ProviderManager {
         }
 
         let html = '';
-        
+
         this.providers.forEach(provider => {
             const latestImport = this.getLatestImportLog(provider.id);
-            
+
             html += `
                 <div class="provider-card" data-provider-id="${provider.id}">
                     <div class="card-header">
@@ -394,7 +343,7 @@ class ProviderManager {
         const total = this.providers.length;
         const enabled = this.providers.filter(p => p.enabled).length;
         const disabled = total - enabled;
-        
+
         // Calculate success rate from import logs
         const successfulImports = this.importLogs.filter(log => log.status === 'success').length;
         const totalImports = this.importLogs.length;
@@ -408,16 +357,16 @@ class ProviderManager {
 
     switchView(view) {
         this.currentView = view;
-        
+
         // Update buttons
         document.querySelectorAll('.view-btn').forEach(btn => {
             btn.classList.toggle('active', btn.getAttribute('data-view') === view);
         });
-        
+
         // Show/hide views
         const tableView = document.getElementById('table-view');
         const cardsView = document.getElementById('cards-view');
-        
+
         if (view === 'table') {
             tableView.classList.add('active');
             cardsView.classList.remove('active');
@@ -429,13 +378,13 @@ class ProviderManager {
 
     filterProviders(searchTerm) {
         const term = searchTerm.toLowerCase().trim();
-        
+
         // Filter table rows
         document.querySelectorAll('#providers-table-body tr[data-provider-id]').forEach(row => {
             const text = row.textContent.toLowerCase();
             row.style.display = text.includes(term) ? '' : 'none';
         });
-        
+
         // Filter cards
         document.querySelectorAll('.provider-card').forEach(card => {
             const text = card.textContent.toLowerCase();
@@ -478,72 +427,35 @@ class ProviderManager {
                 {
                     text: 'Test Connection',
                     className: 'modal-btn secondary',
-                    onClick: () => this.testNewProviderConnection()
+                    onClick: () => this.testNewProviderConnection(),
+                    closeOnClick: false
                 },
                 {
                     text: 'Save Provider',
                     className: 'modal-btn primary',
-                    onClick: () => this.saveNewProvider()
+                    onClick: () => this.saveNewProvider(),
+                    closeOnClick: false
                 }
             ]
         });
-        
-        this.currentModal = modal;
-    }
 
-    showConfigWarning() {
-        UTILS.UIComponents.createModal({
-            title: 'WebEPG Configuration Required',
-            content: `
-                <div style="padding: 20px; text-align: center;">
-                    <div style="font-size: 48px; margin-bottom: 20px;">⚙️</div>
-                    <h3>WebEPG Backend Not Configured</h3>
-                    <p>The EPG Provider Management requires the WebEPG backend URL to be configured.</p>
-                    <p><strong>Please complete these steps:</strong></p>
-                    <ol style="text-align: left; margin: 20px 40px;">
-                        <li>Go to the <strong>Configuration</strong> tab</li>
-                        <li>Navigate to <strong>Backend-Einstellungen</strong></li>
-                        <li>Enter your WebEPG backend URL (e.g., http://localhost:8080)</li>
-                        <li>Click "Save All Settings"</li>
-                        <li>Return to this tab and refresh the page</li>
-                    </ol>
-                    <p><em>Current WebEPG URL: ${this.webepgBaseUrl || 'Not configured'}</em></p>
-                </div>
-            `,
-            buttons: [
-                {
-                    text: 'Go to Configuration',
-                    className: 'modal-btn primary',
-                    onClick: () => {
-                        window.location.href = '/configuration';
-                    }
-                },
-                {
-                    text: 'Try Again',
-                    className: 'modal-btn secondary',
-                    onClick: () => {
-                        // Reload and try to get config again
-                        window.location.reload();
-                    }
-                }
-            ]
-        });
+        this.currentModal = modal;
     }
 
     async testNewProviderConnection() {
         const name = document.getElementById('provider-name')?.value;
         const url = document.getElementById('provider-url')?.value;
-        
+
         if (!name || !url) {
             if (window.showToast) window.showToast('Please enter provider name and URL', 'warning');
             return;
         }
-        
+
         // Create a simple test by fetching the URL
         try {
             if (window.showLoading) window.showLoading('Testing connection...');
             const response = await fetch(url, { method: 'HEAD' });
-            
+
             if (response.ok) {
                 if (window.showToast) window.showToast('Connection successful! XMLTV URL is accessible.', 'success');
             } else {
@@ -560,31 +472,32 @@ class ProviderManager {
         const name = document.getElementById('provider-name')?.value;
         const url = document.getElementById('provider-url')?.value;
         const enabled = document.getElementById('provider-enabled')?.checked;
-        
+
         if (!name || !url) {
             if (window.showToast) window.showToast('Please fill in all required fields', 'warning');
             return;
         }
-        
+
         try {
             if (window.showLoading) window.showLoading('Saving provider...');
-            
-            const apiUrl = `${this.webepgBaseUrl}/api/v1/providers`;
+
+            // Use Flask proxy endpoint
+            const apiUrl = `/api/providers`;
             await this.postData(apiUrl, {
                 name: name,
                 xmltv_url: url,
                 enabled: enabled
             });
-            
+
             if (window.showToast) window.showToast('Provider added successfully!', 'success');
-            
+
             // Close modal and refresh data
             if (this.currentModal) {
                 this.currentModal.close();
             }
-            
+
             await this.refreshData();
-            
+
         } catch (error) {
             if (window.showToast) window.showToast(`Failed to add provider: ${error.message}`, 'error');
         } finally {
@@ -595,7 +508,7 @@ class ProviderManager {
     async showEditProviderModal(providerId) {
         const provider = this.providers.find(p => p.id === providerId);
         if (!provider) return;
-        
+
         const modal = UTILS.UIComponents.createModal({
             title: 'Edit EPG Provider',
             content: `
@@ -629,27 +542,29 @@ class ProviderManager {
                 {
                     text: 'Test Connection',
                     className: 'modal-btn secondary',
-                    onClick: () => this.testEditProviderConnection(providerId)
+                    onClick: () => this.testEditProviderConnection(providerId),
+                    closeOnClick: false
                 },
                 {
                     text: 'Save Changes',
                     className: 'modal-btn primary',
-                    onClick: () => this.updateProvider(providerId)
+                    onClick: () => this.updateProvider(providerId),
+                    closeOnClick: false
                 }
             ]
         });
-        
+
         this.currentModal = modal;
     }
 
     async testEditProviderConnection(providerId) {
         const url = document.getElementById('edit-provider-url')?.value;
-        
+
         if (!url) {
             if (window.showToast) window.showToast('Please enter a URL', 'warning');
             return;
         }
-        
+
         await this.testProviderConnection(providerId, url);
     }
 
@@ -657,31 +572,32 @@ class ProviderManager {
         const name = document.getElementById('edit-provider-name')?.value;
         const url = document.getElementById('edit-provider-url')?.value;
         const enabled = document.getElementById('edit-provider-enabled')?.checked;
-        
+
         if (!name || !url) {
             if (window.showToast) window.showToast('Please fill in all required fields', 'warning');
             return;
         }
-        
+
         try {
             if (window.showLoading) window.showLoading('Updating provider...');
-            
-            const apiUrl = `${this.webepgBaseUrl}/api/v1/providers/${providerId}`;
+
+            // Use Flask proxy endpoint
+            const apiUrl = `/api/providers/${providerId}`;
             await this.putData(apiUrl, {
                 name: name,
                 xmltv_url: url,
                 enabled: enabled
             });
-            
+
             if (window.showToast) window.showToast('Provider updated successfully!', 'success');
-            
+
             // Close modal and refresh data
             if (this.currentModal) {
                 this.currentModal.close();
             }
-            
+
             await this.refreshData();
-            
+
         } catch (error) {
             if (window.showToast) window.showToast(`Failed to update provider: ${error.message}`, 'error');
         } finally {
@@ -693,19 +609,20 @@ class ProviderManager {
         try {
             const provider = this.providers.find(p => p.id === providerId);
             if (!provider) return;
-            
+
             if (window.showLoading) window.showLoading(`${enabled ? 'Enabling' : 'Disabling'} provider...`);
-            
-            const apiUrl = `${this.webepgBaseUrl}/api/v1/providers/${providerId}`;
+
+            // Use Flask proxy endpoint
+            const apiUrl = `/api/providers/${providerId}`;
             await this.putData(apiUrl, {
                 name: provider.name,
                 xmltv_url: provider.xmltv_url,
                 enabled: enabled
             });
-            
+
             if (window.showToast) window.showToast(`Provider ${enabled ? 'enabled' : 'disabled'} successfully!`, 'success');
             await this.refreshData();
-            
+
         } catch (error) {
             if (window.showToast) window.showToast(`Failed to update provider status: ${error.message}`, 'error');
         } finally {
@@ -717,16 +634,17 @@ class ProviderManager {
         if (!confirm('Are you sure you want to delete this provider? This action cannot be undone.')) {
             return;
         }
-        
+
         try {
             if (window.showLoading) window.showLoading('Deleting provider...');
-            
-            const apiUrl = `${this.webepgBaseUrl}/api/v1/providers/${providerId}`;
+
+            // Use Flask proxy endpoint
+            const apiUrl = `/api/providers/${providerId}`;
             await this.deleteData(apiUrl);
-            
+
             if (window.showToast) window.showToast('Provider deleted successfully!', 'success');
             await this.refreshData();
-            
+
         } catch (error) {
             if (window.showToast) window.showToast(`Failed to delete provider: ${error.message}`, 'error');
         } finally {
@@ -737,9 +655,9 @@ class ProviderManager {
     async testProviderConnection(providerId, customUrl = null) {
         const provider = this.providers.find(p => p.id === providerId);
         if (!provider) return;
-        
+
         const url = customUrl || provider.xmltv_url;
-        
+
         // Show test modal
         const modal = UTILS.UIComponents.createModal({
             title: 'Test Connection',
@@ -759,64 +677,40 @@ class ProviderManager {
             ],
             backdropClose: false
         });
-        
+
         try {
-            const startTime = Date.now();
-            
-            // First, try HEAD request
-            const response = await fetch(url, { method: 'HEAD' });
-            const headTime = Date.now() - startTime;
-            
-            let details = `HEAD request: ${response.status} ${response.statusText}\n`;
-            details += `Response time: ${headTime}ms\n\n`;
-            
-            if (response.ok) {
-                // Try to get first few KB to verify it's XMLTV
-                const contentResponse = await fetch(url);
-                const text = await contentResponse.text();
-                const totalTime = Date.now() - startTime;
-                
-                details += `Content type: ${contentResponse.headers.get('content-type')}\n`;
-                details += `Total size: ${text.length} characters\n`;
-                details += `Total time: ${totalTime}ms\n\n`;
-                
-                // Check if it looks like XMLTV
-                if (text.includes('<?xml') && (text.includes('<tv>') || text.includes('<!DOCTYPE tv'))) {
-                    details += '✓ Valid XMLTV format detected\n';
-                    
-                    modal.updateContent(`
-                        <div class="test-status success">
-                            <span>✅ Connection successful!</span>
-                        </div>
-                        <div class="test-details">${details}</div>
-                    `);
-                    
-                    if (window.showToast) window.showToast('Connection test successful!', 'success');
-                } else {
-                    details += '⚠️ Warning: Content does not appear to be valid XMLTV\n';
-                    
-                    modal.updateContent(`
-                        <div class="test-status error">
-                            <span>⚠️ Connection successful but content may not be XMLTV</span>
-                        </div>
-                        <div class="test-details">${details}</div>
-                    `);
-                    
-                    if (window.showToast) window.showToast('Connected but content may not be XMLTV', 'warning');
-                }
+            // Use Flask proxy endpoint for test
+            const response = await fetch(`/api/providers/${providerId}/test`);
+            const result = await response.json();
+
+            let details = `Status: ${result.status}\n`;
+            if (result.content_type) {
+                details += `Content type: ${result.content_type}\n`;
+            }
+            if (result.is_xmltv !== undefined) {
+                details += `Valid XMLTV: ${result.is_xmltv ? '✓ Yes' : '✗ No'}\n`;
+            }
+            if (result.message) {
+                details += `\n${result.message}`;
+            }
+
+            if (result.success) {
+                modal.updateContent(`
+                    <div class="test-status success">
+                        <span>✅ Connection successful!</span>
+                    </div>
+                    <div class="test-details">${details}</div>
+                `);
+                if (window.showToast) window.showToast('Connection test successful!', 'success');
             } else {
-                details += `✗ Failed: ${response.status} ${response.statusText}`;
-                
                 modal.updateContent(`
                     <div class="test-status error">
                         <span>❌ Connection failed</span>
                     </div>
                     <div class="test-details">${details}</div>
                 `);
-                
-                if (window.showToast) window.showToast(`Connection failed: ${response.status}`, 'error');
+                if (window.showToast) window.showToast('Connection test failed', 'error');
             }
-            
         } catch (error) {
             modal.updateContent(`
                 <div class="test-status error">
@@ -824,7 +718,6 @@ class ProviderManager {
                 </div>
                 <div class="test-details">${error.message}</div>
             `);
-            
             if (window.showToast) window.showToast(`Connection error: ${error.message}`, 'error');
         }
     }
@@ -832,16 +725,16 @@ class ProviderManager {
     async triggerProviderImport(providerId) {
         try {
             if (window.showLoading) window.showLoading('Triggering import...');
-            
-            // Note: You'll need to implement this endpoint in WebEPG backend
-            const apiUrl = `${this.webepgBaseUrl}/api/v1/providers/${providerId}/import/trigger`;
+
+            // Use Flask proxy endpoint
+            const apiUrl = `/api/providers/${providerId}/import/trigger`;
             await this.postData(apiUrl, {});
-            
+
             if (window.showToast) window.showToast('Import triggered successfully!', 'success');
-            
+
             // Wait a bit and refresh to see import status
             setTimeout(() => this.refreshData(), 2000);
-            
+
         } catch (error) {
             if (window.showToast) window.showToast(`Failed to trigger import: ${error.message}`, 'error');
         } finally {
@@ -852,15 +745,16 @@ class ProviderManager {
     async testAllConnections() {
         try {
             if (window.showLoading) window.showLoading('Testing all provider connections...');
-            
+
             const enabledProviders = this.providers.filter(p => p.enabled);
             let successful = 0;
             let failed = 0;
-            
+
             for (const provider of enabledProviders) {
                 try {
-                    const response = await fetch(provider.xmltv_url, { method: 'HEAD' });
-                    if (response.ok) {
+                    const response = await fetch(`/api/providers/${provider.id}/test`);
+                    const result = await response.json();
+                    if (result.success) {
                         successful++;
                     } else {
                         failed++;
@@ -869,13 +763,13 @@ class ProviderManager {
                     failed++;
                 }
             }
-            
+
             const message = `Connection test complete: ${successful} successful, ${failed} failed`;
             if (window.showToast) {
-                window.showToast(message, 
+                window.showToast(message,
                     failed === 0 ? 'success' : failed === enabledProviders.length ? 'error' : 'warning');
             }
-                     
+
         } catch (error) {
             if (window.showToast) window.showToast(`Failed to test connections: ${error.message}`, 'error');
         } finally {
@@ -887,18 +781,19 @@ class ProviderManager {
         if (!confirm('Trigger import for all enabled providers? This may take several minutes.')) {
             return;
         }
-        
+
         try {
             if (window.showLoading) window.showLoading('Triggering import for all enabled providers...');
-            
-            const apiUrl = `${this.webepgBaseUrl}/api/v1/import/trigger`;
+
+            // Use Flask proxy endpoint
+            const apiUrl = `/api/import/trigger`;
             await this.postData(apiUrl, {});
-            
+
             if (window.showToast) window.showToast('Import triggered for all enabled providers!', 'success');
-            
+
             // Wait and refresh to see import status
             setTimeout(() => this.refreshData(), 3000);
-            
+
         } catch (error) {
             if (window.showToast) window.showToast(`Failed to trigger import: ${error.message}`, 'error');
         } finally {
@@ -906,7 +801,7 @@ class ProviderManager {
         }
     }
 
-    async refreshData() {
+ async refreshData() {
         await this.loadProviders();
         await this.loadImportLogs();
         this.updateStatistics();
@@ -926,12 +821,12 @@ class ProviderManager {
 
     formatRelativeTime(dateString) {
         if (!dateString) return 'Never';
-        
+
         try {
             if (window.UTILS && window.UTILS.DateTime) {
                 return window.UTILS.DateTime.format(dateString, 'relative');
             }
-            
+
             // Fallback implementation
             const date = new Date(dateString);
             const now = new Date();
@@ -939,12 +834,12 @@ class ProviderManager {
             const diffMins = Math.floor(diffMs / 60000);
             const diffHours = Math.floor(diffMs / 3600000);
             const diffDays = Math.floor(diffMs / 86400000);
-            
+
             if (diffMins < 1) return 'Just now';
             if (diffMins < 60) return `${diffMins} minutes ago`;
             if (diffHours < 24) return `${diffHours} hours ago`;
             if (diffDays < 7) return `${diffDays} days ago`;
-            
+
             return date.toLocaleDateString();
         } catch {
             return dateString;
@@ -956,7 +851,7 @@ class ProviderManager {
 document.addEventListener('DOMContentLoaded', () => {
     const providerManager = new ProviderManager();
     providerManager.init();
-    
+
     // Make available globally
     window.providerManager = providerManager;
 });

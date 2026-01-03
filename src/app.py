@@ -1,5 +1,5 @@
 """
-Main Flask application for ultimate-ui - FIXED VERSION
+Main Flask application for ultimate-ui - FIXED VERSION WITH PROVIDER PROXIES
 """
 
 import logging
@@ -326,7 +326,132 @@ def monitoring():
         )
 
 
-# API endpoints for AJAX calls
+@app.route("/providers")
+def epg_providers():
+    """EPG Providers tab."""
+    return render_template(
+        "providers.html",
+        active_tab="providers",
+        current_time=datetime.now().strftime("%H:%M"),
+    )
+
+
+# ============================================================================
+# API PROXY ENDPOINTS - Avoid CORS by proxying WebEPG requests through Flask
+# ============================================================================
+
+
+@app.route("/api/providers", methods=["GET"])
+def api_list_providers():
+    """PROXY: List all providers from WebEPG backend."""
+    try:
+        webepg = get_webepg_client()
+        providers = webepg.request("GET", "/api/v1/providers")
+        return jsonify(providers)
+    except Exception as e:
+        logger.error(f"Error listing providers: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/providers/<int:provider_id>", methods=["GET"])
+def api_get_provider(provider_id):
+    """PROXY: Get provider by ID from WebEPG backend."""
+    try:
+        webepg = get_webepg_client()
+        provider = webepg.request("GET", f"/api/v1/providers/{provider_id}")
+        return jsonify(provider)
+    except Exception as e:
+        logger.error(f"Error getting provider {provider_id}: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/providers", methods=["POST"])
+def api_create_provider():
+    """PROXY: Create a new provider in WebEPG backend."""
+    try:
+        webepg = get_webepg_client()
+        data = request.get_json()
+
+        if not data:
+            return jsonify({"error": "Request body is required"}), 400
+
+        provider = webepg.request("POST", "/api/v1/providers", json=data)
+        return jsonify(provider), 201
+    except Exception as e:
+        logger.error(f"Error creating provider: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/providers/<int:provider_id>", methods=["PUT"])
+def api_update_provider(provider_id):
+    """PROXY: Update a provider in WebEPG backend."""
+    try:
+        webepg = get_webepg_client()
+        data = request.get_json()
+
+        if not data:
+            return jsonify({"error": "Request body is required"}), 400
+
+        provider = webepg.request("PUT", f"/api/v1/providers/{provider_id}", json=data)
+        return jsonify(provider)
+    except Exception as e:
+        logger.error(f"Error updating provider {provider_id}: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/providers/<int:provider_id>", methods=["DELETE"])
+def api_delete_provider(provider_id):
+    """PROXY: Delete a provider from WebEPG backend."""
+    try:
+        webepg = get_webepg_client()
+        webepg.request("DELETE", f"/api/v1/providers/{provider_id}")
+        return "", 204
+    except Exception as e:
+        logger.error(f"Error deleting provider {provider_id}: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/providers/<int:provider_id>/test", methods=["GET"])
+def api_test_provider(provider_id):
+    """PROXY: Test provider connection via WebEPG backend."""
+    try:
+        webepg = get_webepg_client()
+        result = webepg.request("GET", f"/api/v1/providers/{provider_id}/test")
+        return jsonify(result)
+    except Exception as e:
+        logger.error(f"Error testing provider {provider_id}: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/providers/<int:provider_id>/import/trigger", methods=["POST"])
+def api_trigger_provider_import(provider_id):
+    """PROXY: Trigger import for specific provider via WebEPG backend."""
+    try:
+        webepg = get_webepg_client()
+        result = webepg.request(
+            "POST", f"/api/v1/providers/{provider_id}/import/trigger"
+        )
+        return jsonify(result)
+    except Exception as e:
+        logger.error(f"Error triggering import for provider {provider_id}: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/import/status", methods=["GET"])
+def api_import_status():
+    """PROXY: Get import status from WebEPG backend."""
+    try:
+        webepg = get_webepg_client()
+        status = webepg.get_import_status()
+        return jsonify(status)
+    except Exception as e:
+        logger.error(f"Error getting import status: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+# ============================================================================
+# EXISTING API ENDPOINTS
+# ============================================================================
 
 
 @app.route("/api/epg/refresh")
@@ -341,7 +466,6 @@ def api_refresh_epg():
         return jsonify({"success": False, "error": str(e)}), 500
 
 
-# NEW - Proxy endpoint for channel programs
 @app.route("/api/channels/<channel_id>/programs")
 def api_get_channel_programs(channel_id):
     """Get programs for a specific channel - PROXY to webepg."""
@@ -373,7 +497,7 @@ def api_trigger_import():
 
 
 @app.route("/api/mapping/providers")
-def api_get_providers():
+def api_get_mapping_providers():
     """Get providers from ultimate-backend."""
     try:
         ultimate = get_ultimate_backend_client()
@@ -516,15 +640,6 @@ def api_test_ultimate_backend():
 def serve_static(filename):
     """Serve static files."""
     return send_from_directory("static", filename)
-
-
-@app.route("/providers")
-def epg_providers():
-    return render_template(
-        "providers.html",
-        active_tab="providers",
-        current_time=datetime.now().strftime("%H:%M"),
-    )
 
 
 @app.route("/favicon.ico")
