@@ -1,5 +1,3 @@
-[file name]: providers.html
-[file content begin]
 {% extends "base.html" %}
 
 {% block content %}
@@ -129,9 +127,19 @@
     </div>
 </div>
 
-<!-- Add/Edit Provider Modal (will be created dynamically) -->
-<!-- Test Connection Modal (will be created dynamically) -->
+<!-- Pass configuration data to JavaScript -->
+<script>
+    // Make configuration data available to JavaScript
+    window.CONFIG_DATA = {
+        webepg: {{ config.webepg|tojson }},
+        ultimate_backend: {{ config.ultimate_backend|tojson }},
+        ui: {{ config.ui|tojson }},
+        player: {{ config.player|tojson }},
+        database: {{ config.database|tojson }},
+        cache: {{ config.get('cache', {})|tojson }},
+        logging: {{ config.get('logging', {})|tojson }}
+    };
+</script>
 
 <script src="{{ url_for('static', filename='js/providers.js') }}" defer></script>
 {% endblock %}
-[file content end]
