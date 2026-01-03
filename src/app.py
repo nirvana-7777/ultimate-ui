@@ -346,7 +346,7 @@ def api_list_providers():
     """PROXY: List all providers from WebEPG backend."""
     try:
         webepg = get_webepg_client()
-        providers = webepg.request("GET", "/api/v1/providers")
+        providers = webepg.get_providers()
         return jsonify(providers)
     except Exception as e:
         logger.error(f"Error listing providers: {e}")
@@ -358,8 +358,12 @@ def api_get_provider(provider_id):
     """PROXY: Get provider by ID from WebEPG backend."""
     try:
         webepg = get_webepg_client()
-        provider = webepg.request("GET", f"/api/v1/providers/{provider_id}")
-        return jsonify(provider)
+        # WebEPGClient doesn't have get_provider, use session directly
+        response = webepg.session.get(
+            f"{webepg.base_url}/api/v1/providers/{provider_id}", timeout=webepg.timeout
+        )
+        response.raise_for_status()
+        return jsonify(response.json())
     except Exception as e:
         logger.error(f"Error getting provider {provider_id}: {e}")
         return jsonify({"error": str(e)}), 500
@@ -375,8 +379,24 @@ def api_create_provider():
         if not data:
             return jsonify({"error": "Request body is required"}), 400
 
-        provider = webepg.request("POST", "/api/v1/providers", json=data)
-        return jsonify(provider), 201
+        # Use the existing create_provider method but pass all data
+        result = webepg.create_provider(
+            name=data.get("name"), xmltv_url=data.get("xmltv_url")
+        )
+
+        # If enabled flag was provided, update it
+        if result and "enabled" in data:
+            provider_id = result.get("id")
+            if provider_id:
+                response = webepg.session.put(
+                    f"{webepg.base_url}/api/v1/providers/{provider_id}",
+                    json=data,
+                    timeout=webepg.timeout,
+                )
+                response.raise_for_status()
+                return jsonify(response.json()), 201
+
+        return jsonify(result), 201
     except Exception as e:
         logger.error(f"Error creating provider: {e}")
         return jsonify({"error": str(e)}), 500
@@ -392,8 +412,13 @@ def api_update_provider(provider_id):
         if not data:
             return jsonify({"error": "Request body is required"}), 400
 
-        provider = webepg.request("PUT", f"/api/v1/providers/{provider_id}", json=data)
-        return jsonify(provider)
+        response = webepg.session.put(
+            f"{webepg.base_url}/api/v1/providers/{provider_id}",
+            json=data,
+            timeout=webepg.timeout,
+        )
+        response.raise_for_status()
+        return jsonify(response.json())
     except Exception as e:
         logger.error(f"Error updating provider {provider_id}: {e}")
         return jsonify({"error": str(e)}), 500
@@ -404,7 +429,10 @@ def api_delete_provider(provider_id):
     """PROXY: Delete a provider from WebEPG backend."""
     try:
         webepg = get_webepg_client()
-        webepg.request("DELETE", f"/api/v1/providers/{provider_id}")
+        response = webepg.session.delete(
+            f"{webepg.base_url}/api/v1/providers/{provider_id}", timeout=webepg.timeout
+        )
+        response.raise_for_status()
         return "", 204
     except Exception as e:
         logger.error(f"Error deleting provider {provider_id}: {e}")
@@ -416,8 +444,12 @@ def api_test_provider(provider_id):
     """PROXY: Test provider connection via WebEPG backend."""
     try:
         webepg = get_webepg_client()
-        result = webepg.request("GET", f"/api/v1/providers/{provider_id}/test")
-        return jsonify(result)
+        response = webepg.session.get(
+            f"{webepg.base_url}/api/v1/providers/{provider_id}/test",
+            timeout=webepg.timeout,
+        )
+        response.raise_for_status()
+        return jsonify(response.json())
     except Exception as e:
         logger.error(f"Error testing provider {provider_id}: {e}")
         return jsonify({"error": str(e)}), 500
@@ -428,10 +460,12 @@ def api_trigger_provider_import(provider_id):
     """PROXY: Trigger import for specific provider via WebEPG backend."""
     try:
         webepg = get_webepg_client()
-        result = webepg.request(
-            "POST", f"/api/v1/providers/{provider_id}/import/trigger"
+        response = webepg.session.post(
+            f"{webepg.base_url}/api/v1/providers/{provider_id}/import/trigger",
+            timeout=webepg.timeout,
         )
-        return jsonify(result)
+        response.raise_for_status()
+        return jsonify(response.json())
     except Exception as e:
         logger.error(f"Error triggering import for provider {provider_id}: {e}")
         return jsonify({"error": str(e)}), 500
