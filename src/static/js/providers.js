@@ -7,35 +7,64 @@ class ProviderManager {
         this.currentView = 'table';
         this.currentModal = null;
         this.initialized = false;
-        this.webepgBaseUrl = '';
-        this.loadConfig();
+        this.webepgBaseUrl = this.loadWebEPGUrl();
     }
 
-    loadConfig() {
-        // Try to get WebEPG URL from config
+    loadWebEPGUrl() {
         try {
-            // Check if we have config data from the config page
+            // Method 1: Try to get from config data passed from server
             if (window.CONFIG_DATA && window.CONFIG_DATA.webepg && window.CONFIG_DATA.webepg.url) {
-                this.webepgBaseUrl = window.CONFIG_DATA.webepg.url;
-            } else {
-                // Try to get from localStorage or form
-                const webepgUrlInput = document.getElementById('webepg_url');
-                if (webepgUrlInput) {
-                    this.webepgBaseUrl = webepgUrlInput.value;
+                console.log('Found WebEPG URL in CONFIG_DATA:', window.CONFIG_DATA.webepg.url);
+                return window.CONFIG_DATA.webepg.url.replace(/\/$/, '');
+            }
+            
+            // Method 2: Try to get from localStorage (if config was saved)
+            const savedConfig = localStorage.getItem('ultimate-ui-config');
+            if (savedConfig) {
+                try {
+                    const config = JSON.parse(savedConfig);
+                    if (config.webepg && config.webepg.url) {
+                        console.log('Found WebEPG URL in localStorage:', config.webepg.url);
+                        return config.webepg.url.replace(/\/$/, '');
+                    }
+                } catch (e) {
+                    // Ignore parse errors
                 }
             }
             
-            // Remove trailing slash if present
-            this.webepgBaseUrl = this.webepgBaseUrl.replace(/\/$/, '');
+            // Method 3: Look for the config form field on current page
+            const webepgUrlInput = document.getElementById('webepg_url');
+            if (webepgUrlInput && webepgUrlInput.value) {
+                console.log('Found WebEPG URL in form field:', webepgUrlInput.value);
+                return webepgUrlInput.value.replace(/\/$/, '');
+            }
             
-            console.log('Using WebEPG base URL:', this.webepgBaseUrl);
+            // Method 4: Look for config form field on any page
+            const allInputs = document.querySelectorAll('input[id*="webepg"], input[name*="webepg"]');
+            for (const input of allInputs) {
+                if (input.value && input.value.includes('http')) {
+                    console.log('Found WebEPG URL in alternate field:', input.value);
+                    return input.value.replace(/\/$/, '');
+                }
+            }
+            
+            console.warn('Could not find WebEPG URL in any source');
+            return '';
+            
         } catch (error) {
-            console.warn('Could not load WebEPG URL from config:', error);
+            console.error('Error loading WebEPG URL:', error);
+            return '';
         }
     }
 
     async init() {
         if (this.initialized) return;
+
+        // Check if we have a WebEPG URL before proceeding
+        if (!this.webepgBaseUrl) {
+            this.showConfigWarning();
+            return;
+        }
 
         this.setupEventListeners();
         await this.loadProviders();
@@ -71,14 +100,17 @@ class ProviderManager {
         try {
             if (window.showLoading) window.showLoading('Loading providers...');
             
-            // Use WebEPG backend URL
-            const url = this.getApiUrl('/api/v1/providers');
+            const url = `${this.webepgBaseUrl}/api/v1/providers`;
+            console.log('Loading providers from:', url);
+            
             const data = await this.makeRequest(url);
             this.providers = data || [];
             this.renderProviders();
+            
+            console.log(`Loaded ${this.providers.length} providers`);
         } catch (error) {
             console.error('Error loading providers:', error);
-            if (window.showToast) window.showToast('Failed to load providers. Check WebEPG backend configuration.', 'error');
+            if (window.showToast) window.showToast(`Failed to load providers: ${error.message}. Check WebEPG backend configuration.`, 'error');
         } finally {
             if (window.hideLoading) window.hideLoading();
         }
@@ -86,35 +118,35 @@ class ProviderManager {
 
     async loadImportLogs() {
         try {
-            // Use WebEPG backend URL
-            const url = this.getApiUrl('/api/v1/import/status');
+            const url = `${this.webepgBaseUrl}/api/v1/import/status`;
+            console.log('Loading import logs from:', url);
+            
             const data = await this.makeRequest(url);
             this.importLogs = data?.recent_imports || [];
+            
+            console.log(`Loaded ${this.importLogs.length} import logs`);
         } catch (error) {
             console.error('Error loading import logs:', error);
             // Don't show toast for this, it's not critical
         }
     }
 
-    getApiUrl(endpoint) {
-        // If we have a WebEPG base URL, use it
-        if (this.webepgBaseUrl) {
-            return `${this.webepgBaseUrl}${endpoint}`;
-        }
-        
-        // Otherwise, try to use relative URL (might work if CORS is enabled)
-        return endpoint;
-    }
-
     async makeRequest(url, options = {}) {
         try {
+            console.log('Making request to:', url);
+            
             // Add timeout to options
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
             
             const response = await fetch(url, {
                 ...options,
-                signal: controller.signal
+                signal: controller.signal,
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json',
+                    ...options.headers
+                }
             });
             
             clearTimeout(timeoutId);
@@ -133,7 +165,11 @@ class ProviderManager {
             console.error('Request failed:', error);
             
             if (error.name === 'AbortError') {
-                throw new Error('Request timeout');
+                throw new Error('Request timeout after 10 seconds');
+            }
+            
+            if (error.message.includes('Failed to fetch')) {
+                throw new Error('Network error: Could not connect to WebEPG backend');
             }
             
             throw error;
@@ -143,9 +179,6 @@ class ProviderManager {
     async postData(url, data) {
         return await this.makeRequest(url, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
             body: JSON.stringify(data)
         });
     }
@@ -153,9 +186,6 @@ class ProviderManager {
     async putData(url, data) {
         return await this.makeRequest(url, {
             method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json',
-            },
             body: JSON.stringify(data)
         });
     }
@@ -414,12 +444,6 @@ class ProviderManager {
     }
 
     showAddProviderModal() {
-        // First check if we have a WebEPG URL configured
-        if (!this.webepgBaseUrl) {
-            this.showConfigWarning();
-            return;
-        }
-        
         const modal = UTILS.UIComponents.createModal({
             title: 'Add New EPG Provider',
             content: `
@@ -469,13 +493,21 @@ class ProviderManager {
 
     showConfigWarning() {
         UTILS.UIComponents.createModal({
-            title: 'Configuration Required',
+            title: 'WebEPG Configuration Required',
             content: `
                 <div style="padding: 20px; text-align: center;">
-                    <div style="font-size: 48px; margin-bottom: 20px;">⚠️</div>
+                    <div style="font-size: 48px; margin-bottom: 20px;">⚙️</div>
                     <h3>WebEPG Backend Not Configured</h3>
-                    <p>Please configure the WebEPG backend URL in the Configuration tab first.</p>
-                    <p>Go to: <strong>Configuration → Backend-Einstellungen → WebEPG Backend</strong></p>
+                    <p>The EPG Provider Management requires the WebEPG backend URL to be configured.</p>
+                    <p><strong>Please complete these steps:</strong></p>
+                    <ol style="text-align: left; margin: 20px 40px;">
+                        <li>Go to the <strong>Configuration</strong> tab</li>
+                        <li>Navigate to <strong>Backend-Einstellungen</strong></li>
+                        <li>Enter your WebEPG backend URL (e.g., http://localhost:8080)</li>
+                        <li>Click "Save All Settings"</li>
+                        <li>Return to this tab and refresh the page</li>
+                    </ol>
+                    <p><em>Current WebEPG URL: ${this.webepgBaseUrl || 'Not configured'}</em></p>
                 </div>
             `,
             buttons: [
@@ -487,9 +519,12 @@ class ProviderManager {
                     }
                 },
                 {
-                    text: 'Cancel',
+                    text: 'Try Again',
                     className: 'modal-btn secondary',
-                    closeOnClick: true
+                    onClick: () => {
+                        // Reload and try to get config again
+                        window.location.reload();
+                    }
                 }
             ]
         });
@@ -534,7 +569,7 @@ class ProviderManager {
         try {
             if (window.showLoading) window.showLoading('Saving provider...');
             
-            const apiUrl = this.getApiUrl('/api/v1/providers');
+            const apiUrl = `${this.webepgBaseUrl}/api/v1/providers`;
             await this.postData(apiUrl, {
                 name: name,
                 xmltv_url: url,
@@ -631,7 +666,7 @@ class ProviderManager {
         try {
             if (window.showLoading) window.showLoading('Updating provider...');
             
-            const apiUrl = this.getApiUrl(`/api/v1/providers/${providerId}`);
+            const apiUrl = `${this.webepgBaseUrl}/api/v1/providers/${providerId}`;
             await this.putData(apiUrl, {
                 name: name,
                 xmltv_url: url,
@@ -661,7 +696,7 @@ class ProviderManager {
             
             if (window.showLoading) window.showLoading(`${enabled ? 'Enabling' : 'Disabling'} provider...`);
             
-            const apiUrl = this.getApiUrl(`/api/v1/providers/${providerId}`);
+            const apiUrl = `${this.webepgBaseUrl}/api/v1/providers/${providerId}`;
             await this.putData(apiUrl, {
                 name: provider.name,
                 xmltv_url: provider.xmltv_url,
@@ -686,7 +721,7 @@ class ProviderManager {
         try {
             if (window.showLoading) window.showLoading('Deleting provider...');
             
-            const apiUrl = this.getApiUrl(`/api/v1/providers/${providerId}`);
+            const apiUrl = `${this.webepgBaseUrl}/api/v1/providers/${providerId}`;
             await this.deleteData(apiUrl);
             
             if (window.showToast) window.showToast('Provider deleted successfully!', 'success');
@@ -799,7 +834,7 @@ class ProviderManager {
             if (window.showLoading) window.showLoading('Triggering import...');
             
             // Note: You'll need to implement this endpoint in WebEPG backend
-            const apiUrl = this.getApiUrl(`/api/v1/providers/${providerId}/import/trigger`);
+            const apiUrl = `${this.webepgBaseUrl}/api/v1/providers/${providerId}/import/trigger`;
             await this.postData(apiUrl, {});
             
             if (window.showToast) window.showToast('Import triggered successfully!', 'success');
@@ -856,7 +891,7 @@ class ProviderManager {
         try {
             if (window.showLoading) window.showLoading('Triggering import for all enabled providers...');
             
-            const apiUrl = this.getApiUrl('/api/v1/import/trigger');
+            const apiUrl = `${this.webepgBaseUrl}/api/v1/import/trigger`;
             await this.postData(apiUrl, {});
             
             if (window.showToast) window.showToast('Import triggered for all enabled providers!', 'success');
