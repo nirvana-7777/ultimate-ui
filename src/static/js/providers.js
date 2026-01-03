@@ -1,8 +1,4 @@
-[file name]: providers.js
-[file content begin]
-/**
- * Ultimate UI - EPG Provider Management JavaScript
- */
+// Ultimate UI - EPG Provider Management JavaScript
 
 class ProviderManager {
     constructor() {
@@ -48,15 +44,15 @@ class ProviderManager {
 
     async loadProviders() {
         try {
-            showLoading('Loading providers...');
+            if (window.showLoading) window.showLoading('Loading providers...');
             const data = await UTILS.APIClient.get('/api/v1/providers');
             this.providers = data || [];
             this.renderProviders();
         } catch (error) {
             console.error('Error loading providers:', error);
-            showToast('Failed to load providers', 'error');
+            if (window.showToast) window.showToast('Failed to load providers', 'error');
         } finally {
-            hideLoading();
+            if (window.hideLoading) window.hideLoading();
         }
     }
 
@@ -119,7 +115,7 @@ class ProviderManager {
                             <span class="url-text" title="${this.escapeHtml(provider.xmltv_url)}">
                                 ${this.escapeHtml(this.truncateUrl(provider.xmltv_url))}
                             </span>
-                            <button class="btn-copy" onclick="navigator.clipboard.writeText('${this.escapeHtml(provider.xmltv_url)}'); showToast('URL copied to clipboard', 'success')" title="Copy URL">
+                            <button class="btn-copy" onclick="navigator.clipboard.writeText('${this.escapeHtml(provider.xmltv_url)}'); window.showToast('URL copied to clipboard', 'success')" title="Copy URL">
                                 📋
                             </button>
                         </div>
@@ -148,19 +144,19 @@ class ProviderManager {
                     </td>
                     <td class="text-center">
                         <div class="provider-actions">
-                            <button class="action-btn edit" onclick="providerManager.showEditProviderModal(${provider.id})" title="Edit Provider">
+                            <button class="action-btn edit" onclick="window.providerManager.showEditProviderModal(${provider.id})" title="Edit Provider">
                                 ✏️
                             </button>
-                            <button class="action-btn test" onclick="providerManager.testProviderConnection(${provider.id})" title="Test Connection">
+                            <button class="action-btn test" onclick="window.providerManager.testProviderConnection(${provider.id})" title="Test Connection">
                                 🔍
                             </button>
-                            <button class="action-btn import" onclick="providerManager.triggerProviderImport(${provider.id})" title="Trigger Import">
+                            <button class="action-btn import" onclick="window.providerManager.triggerProviderImport(${provider.id})" title="Trigger Import">
                                 🔄
                             </button>
-                            <button class="action-btn toggle" onclick="providerManager.toggleProviderStatus(${provider.id}, ${!provider.enabled})" title="${provider.enabled ? 'Disable' : 'Enable'} Provider">
+                            <button class="action-btn toggle" onclick="window.providerManager.toggleProviderStatus(${provider.id}, ${!provider.enabled})" title="${provider.enabled ? 'Disable' : 'Enable'} Provider">
                                 ${provider.enabled ? '⏸️' : '▶️'}
                             </button>
-                            <button class="action-btn delete" onclick="providerManager.deleteProvider(${provider.id})" title="Delete Provider">
+                            <button class="action-btn delete" onclick="window.providerManager.deleteProvider(${provider.id})" title="Delete Provider">
                                 🗑️
                             </button>
                         </div>
@@ -231,13 +227,13 @@ class ProviderManager {
                     </div>
                     
                     <div class="card-actions">
-                        <button class="card-btn secondary" onclick="providerManager.showEditProviderModal(${provider.id})">
+                        <button class="card-btn secondary" onclick="window.providerManager.showEditProviderModal(${provider.id})">
                             ✏️ Edit
                         </button>
-                        <button class="card-btn secondary" onclick="providerManager.testProviderConnection(${provider.id})">
+                        <button class="card-btn secondary" onclick="window.providerManager.testProviderConnection(${provider.id})">
                             🔍 Test
                         </button>
-                        <button class="card-btn primary" onclick="providerManager.triggerProviderImport(${provider.id})">
+                        <button class="card-btn primary" onclick="window.providerManager.triggerProviderImport(${provider.id})">
                             🔄 Import
                         </button>
                     </div>
@@ -370,24 +366,24 @@ class ProviderManager {
         const url = document.getElementById('provider-url')?.value;
 
         if (!name || !url) {
-            showToast('Please enter provider name and URL', 'warning');
+            if (window.showToast) window.showToast('Please enter provider name and URL', 'warning');
             return;
         }
 
         // Create a simple test by fetching the URL
         try {
-            showLoading('Testing connection...');
+            if (window.showLoading) window.showLoading('Testing connection...');
             const response = await fetch(url, { method: 'HEAD' });
 
             if (response.ok) {
-                showToast('Connection successful! XMLTV URL is accessible.', 'success');
+                if (window.showToast) window.showToast('Connection successful! XMLTV URL is accessible.', 'success');
             } else {
-                showToast(`Connection failed: ${response.status} ${response.statusText}`, 'error');
+                if (window.showToast) window.showToast(`Connection failed: ${response.status} ${response.statusText}`, 'error');
             }
         } catch (error) {
-            showToast(`Connection error: ${error.message}`, 'error');
+            if (window.showToast) window.showToast(`Connection error: ${error.message}`, 'error');
         } finally {
-            hideLoading();
+            if (window.hideLoading) window.hideLoading();
         }
     }
 
@@ -397,12 +393,12 @@ class ProviderManager {
         const enabled = document.getElementById('provider-enabled')?.checked;
 
         if (!name || !url) {
-            showToast('Please fill in all required fields', 'warning');
+            if (window.showToast) window.showToast('Please fill in all required fields', 'warning');
             return;
         }
 
         try {
-            showLoading('Saving provider...');
+            if (window.showLoading) window.showLoading('Saving provider...');
 
             const response = await UTILS.APIClient.post('/api/v1/providers', {
                 name: name,
@@ -410,7 +406,7 @@ class ProviderManager {
                 enabled: enabled
             });
 
-            showToast('Provider added successfully!', 'success');
+            if (window.showToast) window.showToast('Provider added successfully!', 'success');
 
             // Close modal and refresh data
             if (this.currentModal) {
@@ -420,9 +416,9 @@ class ProviderManager {
             await this.refreshData();
 
         } catch (error) {
-            showToast(`Failed to add provider: ${error.message}`, 'error');
+            if (window.showToast) window.showToast(`Failed to add provider: ${error.message}`, 'error');
         } finally {
-            hideLoading();
+            if (window.hideLoading) window.hideLoading();
         }
     }
 
@@ -480,7 +476,7 @@ class ProviderManager {
         const url = document.getElementById('edit-provider-url')?.value;
 
         if (!url) {
-            showToast('Please enter a URL', 'warning');
+            if (window.showToast) window.showToast('Please enter a URL', 'warning');
             return;
         }
 
@@ -493,12 +489,12 @@ class ProviderManager {
         const enabled = document.getElementById('edit-provider-enabled')?.checked;
 
         if (!name || !url) {
-            showToast('Please fill in all required fields', 'warning');
+            if (window.showToast) window.showToast('Please fill in all required fields', 'warning');
             return;
         }
 
         try {
-            showLoading('Updating provider...');
+            if (window.showLoading) window.showLoading('Updating provider...');
 
             await UTILS.APIClient.put(`/api/v1/providers/${providerId}`, {
                 name: name,
@@ -506,7 +502,7 @@ class ProviderManager {
                 enabled: enabled
             });
 
-            showToast('Provider updated successfully!', 'success');
+            if (window.showToast) window.showToast('Provider updated successfully!', 'success');
 
             // Close modal and refresh data
             if (this.currentModal) {
@@ -516,9 +512,9 @@ class ProviderManager {
             await this.refreshData();
 
         } catch (error) {
-            showToast(`Failed to update provider: ${error.message}`, 'error');
+            if (window.showToast) window.showToast(`Failed to update provider: ${error.message}`, 'error');
         } finally {
-            hideLoading();
+            if (window.hideLoading) window.hideLoading();
         }
     }
 
@@ -527,7 +523,7 @@ class ProviderManager {
             const provider = this.providers.find(p => p.id === providerId);
             if (!provider) return;
 
-            showLoading(`${enabled ? 'Enabling' : 'Disabling'} provider...`);
+            if (window.showLoading) window.showLoading(`${enabled ? 'Enabling' : 'Disabling'} provider...`);
 
             await UTILS.APIClient.put(`/api/v1/providers/${providerId}`, {
                 name: provider.name,
@@ -535,13 +531,13 @@ class ProviderManager {
                 enabled: enabled
             });
 
-            showToast(`Provider ${enabled ? 'enabled' : 'disabled'} successfully!`, 'success');
+            if (window.showToast) window.showToast(`Provider ${enabled ? 'enabled' : 'disabled'} successfully!`, 'success');
             await this.refreshData();
 
         } catch (error) {
-            showToast(`Failed to update provider status: ${error.message}`, 'error');
+            if (window.showToast) window.showToast(`Failed to update provider status: ${error.message}`, 'error');
         } finally {
-            hideLoading();
+            if (window.hideLoading) window.hideLoading();
         }
     }
 
@@ -551,17 +547,17 @@ class ProviderManager {
         }
 
         try {
-            showLoading('Deleting provider...');
+            if (window.showLoading) window.showLoading('Deleting provider...');
 
             await UTILS.APIClient.delete(`/api/v1/providers/${providerId}`);
 
-            showToast('Provider deleted successfully!', 'success');
+            if (window.showToast) window.showToast('Provider deleted successfully!', 'success');
             await this.refreshData();
 
         } catch (error) {
-            showToast(`Failed to delete provider: ${error.message}`, 'error');
+            if (window.showToast) window.showToast(`Failed to delete provider: ${error.message}`, 'error');
         } finally {
-            hideLoading();
+            if (window.hideLoading) window.hideLoading();
         }
     }
 
@@ -622,7 +618,7 @@ class ProviderManager {
                         <div class="test-details">${details}</div>
                     `);
 
-                    showToast('Connection test successful!', 'success');
+                    if (window.showToast) window.showToast('Connection test successful!', 'success');
                 } else {
                     details += '⚠️ Warning: Content does not appear to be valid XMLTV\n';
 
@@ -633,7 +629,7 @@ class ProviderManager {
                         <div class="test-details">${details}</div>
                     `);
 
-                    showToast('Connected but content may not be XMLTV', 'warning');
+                    if (window.showToast) window.showToast('Connected but content may not be XMLTV', 'warning');
                 }
             } else {
                 details += `✗ Failed: ${response.status} ${response.statusText}`;
@@ -645,7 +641,7 @@ class ProviderManager {
                     <div class="test-details">${details}</div>
                 `);
 
-                showToast(`Connection failed: ${response.status}`, 'error');
+                if (window.showToast) window.showToast(`Connection failed: ${response.status}`, 'error');
             }
 
         } catch (error) {
@@ -656,32 +652,32 @@ class ProviderManager {
                 <div class="test-details">${error.message}</div>
             `);
 
-            showToast(`Connection error: ${error.message}`, 'error');
+            if (window.showToast) window.showToast(`Connection error: ${error.message}`, 'error');
         }
     }
 
     async triggerProviderImport(providerId) {
         try {
-            showLoading('Triggering import...');
+            if (window.showLoading) window.showLoading('Triggering import...');
 
             // Note: You'll need to implement this endpoint
             await UTILS.APIClient.post(`/api/v1/providers/${providerId}/import/trigger`);
 
-            showToast('Import triggered successfully!', 'success');
+            if (window.showToast) window.showToast('Import triggered successfully!', 'success');
 
             // Wait a bit and refresh to see import status
             setTimeout(() => this.refreshData(), 2000);
 
         } catch (error) {
-            showToast(`Failed to trigger import: ${error.message}`, 'error');
+            if (window.showToast) window.showToast(`Failed to trigger import: ${error.message}`, 'error');
         } finally {
-            hideLoading();
+            if (window.hideLoading) window.hideLoading();
         }
     }
 
     async testAllConnections() {
         try {
-            showLoading('Testing all provider connections...');
+            if (window.showLoading) window.showLoading('Testing all provider connections...');
 
             const enabledProviders = this.providers.filter(p => p.enabled);
             let successful = 0;
@@ -700,13 +696,16 @@ class ProviderManager {
                 }
             }
 
-            showToast(`Connection test complete: ${successful} successful, ${failed} failed`,
-                     failed === 0 ? 'success' : failed === enabledProviders.length ? 'error' : 'warning');
+            const message = `Connection test complete: ${successful} successful, ${failed} failed`;
+            if (window.showToast) {
+                window.showToast(message,
+                    failed === 0 ? 'success' : failed === enabledProviders.length ? 'error' : 'warning');
+            }
 
         } catch (error) {
-            showToast(`Failed to test connections: ${error.message}`, 'error');
+            if (window.showToast) window.showToast(`Failed to test connections: ${error.message}`, 'error');
         } finally {
-            hideLoading();
+            if (window.hideLoading) window.hideLoading();
         }
     }
 
@@ -716,19 +715,19 @@ class ProviderManager {
         }
 
         try {
-            showLoading('Triggering import for all enabled providers...');
+            if (window.showLoading) window.showLoading('Triggering import for all enabled providers...');
 
             await UTILS.APIClient.post('/api/v1/import/trigger');
 
-            showToast('Import triggered for all enabled providers!', 'success');
+            if (window.showToast) window.showToast('Import triggered for all enabled providers!', 'success');
 
             // Wait and refresh to see import status
             setTimeout(() => this.refreshData(), 3000);
 
         } catch (error) {
-            showToast(`Failed to trigger import: ${error.message}`, 'error');
+            if (window.showToast) window.showToast(`Failed to trigger import: ${error.message}`, 'error');
         } finally {
-            hideLoading();
+            if (window.hideLoading) window.hideLoading();
         }
     }
 
@@ -759,4 +758,3 @@ document.addEventListener('DOMContentLoaded', () => {
     // Make available globally
     window.providerManager = providerManager;
 });
-[file content end]
