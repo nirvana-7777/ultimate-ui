@@ -2,6 +2,7 @@
 
 {% block content %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/config.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/providers.css') }}">
 
 <div class="config-container">
     <div class="config-header">
@@ -14,6 +15,9 @@
         <div class="config-tabs" role="tablist">
             <button class="config-tab active" data-tab="backend" id="tab-backend" role="tab" aria-selected="true" aria-controls="section-backend">
                 Backend-Einstellungen
+            </button>
+            <button class="config-tab" data-tab="providers" id="tab-providers" role="tab" aria-selected="false" aria-controls="section-providers">
+                EPG Provider
             </button>
             <button class="config-tab" data-tab="ui" id="tab-ui" role="tab" aria-selected="false" aria-controls="section-ui">
                 UI-Einstellungen
@@ -98,6 +102,127 @@
                     </div>
                 </div>
             </form>
+        </div>
+
+        <!-- EPG Providers Configuration -->
+        <div class="config-section" id="section-providers" role="tabpanel" aria-labelledby="tab-providers">
+            <h3>EPG Provider Management</h3>
+            <p class="section-description">Verwalten Sie Ihre EPG-Datenquellen und überwachen Sie den Import-Status</p>
+
+            <!-- Statistics Cards -->
+            <div class="stats-container">
+                <div class="stat-card">
+                    <div class="stat-icon">📡</div>
+                    <div class="stat-content">
+                        <h3 id="total-providers">0</h3>
+                        <p>Total Providers</p>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">✅</div>
+                    <div class="stat-content">
+                        <h3 id="enabled-providers">0</h3>
+                        <p>Enabled</p>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">❌</div>
+                    <div class="stat-content">
+                        <h3 id="disabled-providers">0</h3>
+                        <p>Disabled</p>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">📊</div>
+                    <div class="stat-content">
+                        <h3 id="success-rate">0%</h3>
+                        <p>Success Rate</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="providers-actions">
+                <button class="btn-add-provider" id="add-provider-btn">
+                    <span class="btn-icon">+</span>
+                    Provider hinzufügen
+                </button>
+                <button class="btn-secondary" id="test-all-btn">
+                    <span class="btn-icon">🔍</span>
+                    Alle testen
+                </button>
+                <button class="btn-secondary" id="import-all-btn">
+                    <span class="btn-icon">🔄</span>
+                    Alle importieren
+                </button>
+                <button class="btn-secondary" id="refresh-providers-btn">
+                    <span class="btn-icon">⟳</span>
+                    Aktualisieren
+                </button>
+            </div>
+
+            <!-- Providers Table -->
+            <div class="providers-table-container">
+                <div class="table-header">
+                    <h3>EPG Providers</h3>
+                    <div class="table-controls">
+                        <input type="text" id="provider-search" placeholder="Provider suchen..." class="search-input">
+                        <div class="view-toggle">
+                            <button class="view-btn active" data-view="table">
+                                <span class="btn-icon">📋</span>
+                            </button>
+                            <button class="view-btn" data-view="cards">
+                                <span class="btn-icon">🃏</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Table View -->
+                <div class="providers-table-view active" id="table-view">
+                    <table class="providers-table">
+                        <thead>
+                            <tr>
+                                <th>Status</th>
+                                <th>Name</th>
+                                <th>XMLTV URL</th>
+                                <th>Letzter Import</th>
+                                <th>Import Stats</th>
+                                <th class="text-center">Aktionen</th>
+                            </tr>
+                        </thead>
+                        <tbody id="providers-table-body">
+                            <tr class="loading-row">
+                                <td colspan="6">
+                                    <div class="loading-spinner-small"></div>
+                                    <span>Lade Provider...</span>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Cards View -->
+                <div class="providers-cards-view" id="cards-view">
+                    <div class="cards-grid" id="providers-cards-grid">
+                        <div class="loading-card">
+                            <div class="loading-spinner-small"></div>
+                            <span>Lade Provider...</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Empty State -->
+                <div class="empty-state hidden" id="empty-state">
+                    <div class="empty-icon">📡</div>
+                    <h3>Keine EPG Provider</h3>
+                    <p>Sie haben noch keine EPG-Provider hinzugefügt.</p>
+                    <button class="btn-add-provider" id="add-first-provider-btn">
+                        <span class="btn-icon">+</span>
+                        Ersten Provider hinzufügen
+                    </button>
+                </div>
+            </div>
         </div>
 
         <!-- UI Configuration -->
@@ -374,4 +499,7 @@
         config_path: "{{ config_path }}"
     };
 </script>
+
+<!-- Load providers.js for the EPG Providers tab -->
+<script src="{{ url_for('static', filename='js/providers.js') }}" defer></script>
 {% endblock %}

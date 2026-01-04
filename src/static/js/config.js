@@ -1,5 +1,6 @@
 /**
  * Ultimate UI - Configuration Page JavaScript
+ * Handles Backend, UI, Player, and Advanced tabs
  */
 
 class ConfigManager {
@@ -52,6 +53,11 @@ class ConfigManager {
         const activeSection = document.getElementById('section-' + tabName);
         if (activeSection) {
             activeSection.classList.add('active');
+        }
+
+        // If switching to providers tab, initialize provider manager if needed
+        if (tabName === 'providers' && window.providerManager && !window.providerManager.initialized) {
+            window.providerManager.init();
         }
     }
 

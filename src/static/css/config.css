@@ -1,7 +1,7 @@
 /* Configuration Page Styles */
 
 .config-container {
-    max-width: 900px;
+    max-width: 1200px;
     margin: 0 auto;
 }
 
@@ -25,6 +25,7 @@
     margin-bottom: 30px;
     border-bottom: 1px solid var(--border-color);
     padding-bottom: 1px;
+    overflow-x: auto;
 }
 
 .config-tab {
@@ -74,6 +75,12 @@
     margin: 25px 0 15px 0;
     font-size: 16px;
     color: var(--text-secondary);
+}
+
+.section-description {
+    color: var(--text-secondary);
+    font-size: 14px;
+    margin-bottom: 25px;
 }
 
 .config-form {
@@ -226,6 +233,7 @@
     align-items: center;
     gap: 15px;
     margin-top: 10px;
+    flex-wrap: wrap;
 }
 
 .btn-test {
@@ -258,6 +266,11 @@
     background-color: var(--text-muted);
 }
 
+.connection-status.testing .status-dot {
+    background-color: var(--accent-color);
+    animation: pulse 1s infinite;
+}
+
 .connection-status.connected .status-dot {
     background-color: var(--success-color);
 }
@@ -268,6 +281,15 @@
 
 .connection-status .status-text {
     color: var(--text-secondary);
+}
+
+@keyframes pulse {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.5;
+    }
 }
 
 .config-actions {
@@ -341,10 +363,16 @@
     font-size: 13px;
 }
 
+/* Responsive Design */
 @media (max-width: 768px) {
+    .config-container {
+        max-width: 100%;
+    }
+
     .config-tabs {
         overflow-x: auto;
         padding-bottom: 0;
+        -webkit-overflow-scrolling: touch;
     }
 
     .config-tab {
@@ -356,6 +384,14 @@
         padding: 20px;
     }
 
+    .form-row {
+        flex-direction: column;
+    }
+
+    .form-col {
+        min-width: 100%;
+    }
+
     .config-actions {
         flex-direction: column;
     }
@@ -365,5 +401,18 @@
     .btn-export,
     .btn-import {
         width: 100%;
+    }
+
+    .form-actions {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .btn-test {
+        width: 100%;
+    }
+
+    .connection-status {
+        justify-content: center;
     }
 }
