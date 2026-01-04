@@ -4,8 +4,9 @@ Main Flask application for ultimate-ui - FIXED VERSION WITH PROVIDER PROXIES
 
 import logging
 import os
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
+import pytz
 from flask import Flask, jsonify, render_template, request, send_from_directory
 
 from .api_client import UltimateBackendClient, WebEPGClient
@@ -77,22 +78,92 @@ app = Flask(__name__, template_folder="templates", static_folder="static")
 app.secret_key = os.getenv("SECRET_KEY", "dev-secret-key-change-in-production")
 
 
-# Template filters - FIXED
 @app.template_filter("format_time")
 def format_time(value):
-    """Format datetime to HH:MM time string."""
+    """Format datetime to HH:MM time string with timezone conversion."""
     if not value:
         return ""
+
     try:
-        # Handle both string and datetime objects
+        # Get timezone from config
+        ui_timezone = config.get("ui.timezone", "Europe/Berlin")
+
+        # Parse the date
         if isinstance(value, str):
-            # Try to parse ISO format
-            date = datetime.fromisoformat(value.replace("Z", "+00:00"))
+            # Handle ISO format with timezone
+            if "Z" in value:
+                date = datetime.fromisoformat(value.replace("Z", "+00:00"))
+            elif "+" in value or "-" in value[10:]:  # Has timezone offset
+                date = datetime.fromisoformat(value)
+            else:
+                # Assume UTC if no timezone specified
+                date = datetime.fromisoformat(value + "+00:00")
         else:
             date = value
-        return date.strftime("%H:%M")
+
+        # Ensure datetime has timezone info
+        if date.tzinfo is None:
+            date = date.replace(tzinfo=timezone.utc)
+
+        # Convert to configured timezone
+        target_tz = pytz.timezone(ui_timezone)
+        local_date = date.astimezone(target_tz)
+
+        # Format as HH:MM
+        return local_date.strftime("%H:%M")
+
     except Exception as e:
         logger.warning(f"Could not format time {value}: {e}")
+        # Fallback: try to return just the time part if it's a string
+        if isinstance(value, str) and "T" in value:
+            try:
+                return value.split("T")[1][:5]  # Extract HH:MM from ISO string
+            except (IndexError, ValueError, AttributeError) as fallback_error:
+                logger.debug(f"Fallback formatting also failed: {fallback_error}")
+
+        # Return a safe representation
+        if isinstance(value, str):
+            return value[:16]  # Return first 16 chars of string
+        elif hasattr(value, "__str__"):
+            return str(value)
+        else:
+            return ""
+
+
+@app.template_filter("format_datetime")
+def format_datetime(value):
+    """Format datetime with date and time in local timezone."""
+    if not value:
+        return ""
+
+    try:
+        # Get timezone from config
+        ui_timezone = config.get("ui.timezone", "Europe/Berlin")
+
+        # Parse the date
+        if isinstance(value, str):
+            if "Z" in value:
+                date = datetime.fromisoformat(value.replace("Z", "+00:00"))
+            elif "+" in value or "-" in value[10:]:
+                date = datetime.fromisoformat(value)
+            else:
+                date = datetime.fromisoformat(value + "+00:00")
+        else:
+            date = value
+
+        # Ensure datetime has timezone info
+        if date.tzinfo is None:
+            date = date.replace(tzinfo=timezone.utc)
+
+        # Convert to configured timezone
+        target_tz = pytz.timezone(ui_timezone)
+        local_date = date.astimezone(target_tz)
+
+        # Format as localized date/time
+        return local_date.strftime("%d.%m.%Y %H:%M")
+
+    except Exception as e:
+        logger.warning(f"Could not format datetime {value}: {e}")
         return str(value)
 
 
@@ -169,7 +240,7 @@ def epg_display():
         webepg = get_webepg_client()
         channels = webepg.get_channels()
         # Get programs for the next 24 hours
-        now = datetime.now()
+        now = datetime.now(timezone.utc)  # Use UTC timezone-aware
         tomorrow = now + timedelta(days=1)
 
         # For each channel, get upcoming programs
@@ -180,13 +251,42 @@ def epg_display():
                 programs = webepg.get_channel_programs(
                     str(channel_id), now.isoformat(), tomorrow.isoformat()
                 )
+
+                # Ensure programs have proper datetime objects
+                for program in programs:
+                    # Convert string times to datetime objects
+                    for time_field in ["start_time", "end_time"]:
+                        if time_field in program and isinstance(
+                            program[time_field], str
+                        ):
+                            try:
+                                time_str = program[time_field]
+                                if "Z" in time_str:
+                                    program[time_field] = datetime.fromisoformat(
+                                        time_str.replace("Z", "+00:00")
+                                    )
+                                elif "+" in time_str or "-" in time_str[10:]:
+                                    program[time_field] = datetime.fromisoformat(
+                                        time_str
+                                    )
+                                else:
+                                    # Assume UTC
+                                    program[time_field] = datetime.fromisoformat(
+                                        time_str + "+00:00"
+                                    )
+                            except Exception as e:
+                                logger.warning(
+                                    f"Could not parse {time_field}: {program[time_field]}: {e}"
+                                )
+                                # Keep as string if parsing fails
+
                 channel["programs"] = programs[:10]  # Limit to 10 programs
                 channels_with_programs.append(channel)
 
         return render_template(
             "epg_display.html",
             channels=channels_with_programs,
-            current_date=now.strftime("%Y-%m-%d"),  # ADDED
+            current_date=now.strftime("%Y-%m-%d"),
             active_tab="epg",
         )
     except Exception as e:

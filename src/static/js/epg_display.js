@@ -265,10 +265,37 @@ class EPGDisplayManager {
     updateLiveIndicators() {
         const now = new Date();
 
+        // Get configured timezone from template data
+        const templateData = document.getElementById('template-data');
+        const configuredTimezone = templateData?.getAttribute('data-timezone') || 'Europe/Berlin';
+
         document.querySelectorAll('.program-item').forEach(program => {
             const startTime = new Date(program.getAttribute('data-start'));
             const endTime = new Date(program.getAttribute('data-end'));
 
+            // Convert times to configured timezone for display
+            const startStr = startTime.toLocaleTimeString('de-DE', {
+                timeZone: configuredTimezone,
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+            const endStr = endTime.toLocaleTimeString('de-DE', {
+                timeZone: configuredTimezone,
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+
+            // Update displayed times
+            const startElement = program.querySelector('.start-time');
+            const endElement = program.querySelector('.end-time');
+            if (startElement && !startElement.textContent.includes(':')) {
+                startElement.textContent = startStr;
+            }
+            if (endElement && !endElement.textContent.includes(':')) {
+                endElement.textContent = endStr;
+            }
+
+            // Check if program is live (using browser's local time)
             if (startTime <= now && endTime >= now) {
                 program.classList.add('live', 'laufend');
             } else {

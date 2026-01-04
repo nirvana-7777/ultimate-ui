@@ -104,7 +104,8 @@
          data-active-tab="{{ active_tab }}"
          data-refresh-interval="{{ config.ui.refresh_interval if config and config.ui else 300 }}"
          data-current-time="{{ current_time }}"
-         data-theme="{{ config.ui.theme if config and config.ui else 'dark' }}">
+         data-theme="{{ config.ui.theme if config and config.ui else 'dark' }}"
+         data-timezone="{{ config.ui.timezone if config and config.ui else 'Europe/Berlin' }}">
     </div>
 </body>
 </html>
