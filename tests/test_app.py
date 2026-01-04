@@ -1,7 +1,8 @@
 import json
 import os
 import sys
-from datetime import datetime
+from datetime import datetime, timezone
+from unittest.mock import patch
 
 # Add src to path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../src")))
@@ -255,10 +256,17 @@ class TestTemplateFilters:
     def test_format_time_filter(self, app):
         from src.app import format_time
 
-        assert format_time("2024-01-01T20:30:00Z") == "20:30"
-        assert format_time(None) == ""
-        dt = datetime(2024, 1, 1, 14, 45)
-        assert format_time(dt) == "14:45"
+        # Mock the config to return UTC timezone for testing
+        with patch("src.app.config") as mock_config:
+            mock_config.get.return_value = "UTC"
+
+            # Test with UTC timezone (should return same time)
+            assert format_time("2024-01-01T20:30:00Z") == "20:30"
+            assert format_time(None) == ""
+
+            # Test with datetime object in UTC
+            dt = datetime(2024, 1, 1, 14, 45, tzinfo=timezone.utc)
+            assert format_time(dt) == "14:45"
 
     def test_truncate_filter(self, app):
         from src.app import truncate_filter
