@@ -34,7 +34,7 @@ def mock_config_for_app_import():
                 "ultimate_backend.timeout": 10,
                 "ui.theme": "dark",
                 "ui.refresh_interval": 300,
-                "ui.timezone": "Europe/Berlin",
+                "ui.timezone": "UTC",
                 "player.default_size": "medium",
                 "player.default_bitrate": "auto",
                 "database.retention_days": 7,
@@ -55,7 +55,7 @@ def mock_config_for_app_import():
                 "ui": {
                     "theme": "dark",
                     "refresh_interval": 300,
-                    "timezone": "Europe/Berlin",
+                    "timezone": "UTC",
                     "show_icons": True,
                     "show_descriptions": True,
                 },
@@ -229,7 +229,7 @@ def test_config():
             "ultimate_backend.timeout": 5,
             "ui.theme": "dark",
             "ui.refresh_interval": 300,
-            "ui.timezone": "Europe/Berlin",
+            "ui.timezone": "UTC",
             "player.default_size": "medium",
             "player.default_bitrate": "auto",
             "database.retention_days": 7,
@@ -243,7 +243,7 @@ def test_config():
             "ui": {
                 "theme": "dark",
                 "refresh_interval": 300,
-                "timezone": "Europe/Berlin",
+                "timezone": "UTC",
             },
             "player": {"default_size": "medium", "default_bitrate": "auto"},
             "database": {"retention_days": 7},
@@ -290,15 +290,20 @@ def sample_channels():
 
 @pytest.fixture
 def sample_programs():
-    """Sample program data for testing."""
+    """Sample program data for testing with UTC timezone."""
+    from datetime import datetime, timedelta, timezone
+
+    # Use current UTC time for realistic testing
+    now = datetime.now(timezone.utc)
+
     return [
         {
             "id": "program1",
             "title": "Tagesschau",
             "subtitle": "20:00 Uhr",
             "description": "Nachrichtensendung",
-            "start_time": "2024-01-01T20:00:00Z",
-            "end_time": "2024-01-01T20:15:00Z",
+            "start_time": now.isoformat(),
+            "end_time": (now + timedelta(minutes=15)).isoformat(),
             "category": "news",
             "stream": "http://example.com/stream1.m3u8",
         },
@@ -307,8 +312,8 @@ def sample_programs():
             "title": "Sportschau",
             "subtitle": "Fußball",
             "description": "Sportsendung",
-            "start_time": "2024-01-01T20:15:00Z",
-            "end_time": "2024-01-01T21:00:00Z",
+            "start_time": (now + timedelta(minutes=15)).isoformat(),
+            "end_time": (now + timedelta(hours=1)).isoformat(),
             "category": "sport",
             "stream": "http://example.com/stream2.m3u8",
         },
