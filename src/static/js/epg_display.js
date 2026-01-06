@@ -87,7 +87,16 @@ class EPGDisplayManager {
                             const programsResponse = await fetch(
                                 `/api/channels/${channel.id}/programs?start=${now.toISOString()}&end=${tomorrow.toISOString()}`
                             );
-                            const programs = await programsResponse.json();
+                            const programsData = await programsResponse.json();
+
+                            // Handle both response formats: {success, programs} or direct array
+                            let programs = [];
+                            if (programsData && programsData.success && Array.isArray(programsData.programs)) {
+                                programs = programsData.programs;
+                            } else if (Array.isArray(programsData)) {
+                                programs = programsData;
+                            }
+
                             channel.programs = programs.slice(0, 10); // Limit to 10 programs
                             return channel;
                         } catch (err) {
