@@ -1,11 +1,11 @@
 /**
- * Ultimate UI - EPG Display Page JavaScript
- * Handles EPG display functionality, filtering, and player controls
+ * Enhanced EPG Display Manager - Client-Side Loading
+ * Fixes: loading state, pagination, duplicates
  */
 
 class EPGDisplayManager {
     constructor() {
-        this.epgData = window.EPG_DATA || {};
+        this.channels = [];
         this.currentView = 'list';
         this.currentDate = new Date();
         this.filters = {
@@ -18,16 +18,284 @@ class EPGDisplayManager {
         this.isPlayerInitialized = false;
         this.initialized = false;
         this.liveIndicatorInterval = null;
+
+        // Pagination
+        this.channelsPerPage = 20;
+        this.currentPage = 0;
+        this.isLoading = false;
+        this.hasMoreChannels = true;
+
+        // IntersectionObserver for infinite scroll
+        this.scrollObserver = null;
     }
 
     init() {
         if (this.initialized) return;
 
         this.setupEventListeners();
-        this.initializeComponents();
+        this.setupInfiniteScroll();
+        this.loadInitialData();
         this.startBackgroundTasks();
 
         this.initialized = true;
+    }
+
+    async loadInitialData() {
+        // Hide any loading spinner from server
+        const loadingState = document.querySelector('.loading-state');
+        if (loadingState) {
+            loadingState.style.display = 'none';
+        }
+
+        // Check if we have server-rendered data
+        if (window.EPG_DATA && window.EPG_DATA.channels && window.EPG_DATA.channels.length > 0) {
+            console.log('Using server-rendered EPG data');
+            this.channels = window.EPG_DATA.channels;
+            this.renderChannels(this.channels);
+        } else {
+            // Load from API
+            console.log('Loading EPG data from API');
+            await this.loadChannelsFromAPI();
+        }
+
+        // Show the list view
+        const listView = document.getElementById('list-view');
+        if (listView) {
+            listView.style.display = 'block';
+        }
+    }
+
+    async loadChannelsFromAPI(page = 0) {
+        if (this.isLoading) return;
+
+        this.isLoading = true;
+        this.showLoadingIndicator();
+
+        try {
+            const now = new Date();
+            const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+
+            // Fetch channels with pagination
+            const response = await fetch('/api/epg/channels?page=' + page + '&limit=' + this.channelsPerPage);
+            const data = await response.json();
+
+            if (data.success && data.channels) {
+                // For each channel, fetch programs
+                const channelsWithPrograms = await Promise.all(
+                    data.channels.map(async (channel) => {
+                        try {
+                            const programsResponse = await fetch(
+                                `/api/channels/${channel.id}/programs?start=${now.toISOString()}&end=${tomorrow.toISOString()}`
+                            );
+                            const programs = await programsResponse.json();
+                            channel.programs = programs.slice(0, 10); // Limit to 10 programs
+                            return channel;
+                        } catch (err) {
+                            console.warn(`Failed to load programs for channel ${channel.id}:`, err);
+                            channel.programs = [];
+                            return channel;
+                        }
+                    })
+                );
+
+                if (page === 0) {
+                    this.channels = channelsWithPrograms;
+                } else {
+                    this.channels = [...this.channels, ...channelsWithPrograms];
+                }
+
+                this.hasMoreChannels = data.has_more || channelsWithPrograms.length === this.channelsPerPage;
+                this.renderChannels(channelsWithPrograms, page > 0);
+            }
+        } catch (error) {
+            console.error('Error loading EPG data:', error);
+            this.showError('Fehler beim Laden der EPG-Daten: ' + error.message);
+        } finally {
+            this.isLoading = false;
+            this.hideLoadingIndicator();
+        }
+    }
+
+    renderChannels(channels, append = false) {
+        const listView = document.getElementById('list-view');
+        if (!listView) return;
+
+        // Clear existing content if not appending
+        if (!append) {
+            listView.innerHTML = '';
+        }
+
+        // Remove any existing sentinel
+        const existingSentinel = document.getElementById('scroll-sentinel');
+        if (existingSentinel) {
+            existingSentinel.remove();
+        }
+
+        if (channels.length === 0 && !append) {
+            listView.innerHTML = `
+                <div class="empty-state">
+                    <p>Keine Kanäle gefunden</p>
+                    <p>Stellen Sie sicher, dass der WebEPG-Backend korrekt konfiguriert ist.</p>
+                </div>
+            `;
+            return;
+        }
+
+        // Render each channel
+        channels.forEach(channel => {
+            const channelCard = this.createChannelCard(channel);
+            listView.appendChild(channelCard);
+        });
+
+        // Add sentinel for infinite scroll
+        if (this.hasMoreChannels) {
+            const sentinel = document.createElement('div');
+            sentinel.id = 'scroll-sentinel';
+            sentinel.style.height = '1px';
+            listView.appendChild(sentinel);
+
+            // Observe the sentinel
+            if (this.scrollObserver) {
+                this.scrollObserver.observe(sentinel);
+            }
+        }
+
+        // Update live indicators
+        this.updateLiveIndicators();
+    }
+
+    createChannelCard(channel) {
+        const card = document.createElement('div');
+        card.className = 'channel-card';
+        card.setAttribute('data-channel-id', channel.id);
+
+        // Channel header
+        const header = document.createElement('div');
+        header.className = 'channel-header';
+        header.setAttribute('role', 'button');
+        header.setAttribute('tabindex', '0');
+
+        const channelInfo = document.createElement('div');
+        channelInfo.className = 'channel-info';
+
+        if (channel.icon_url) {
+            const icon = document.createElement('img');
+            icon.src = channel.icon_url;
+            icon.alt = channel.display_name;
+            icon.className = 'channel-icon';
+            icon.onerror = function() { this.style.display = 'none'; };
+            channelInfo.appendChild(icon);
+        }
+
+        const channelText = document.createElement('div');
+        channelText.className = 'channel-text';
+        channelText.innerHTML = `
+            <h3 class="channel-name">${this.escapeHtml(channel.display_name)}</h3>
+            <span class="channel-id">${this.escapeHtml(channel.name)}</span>
+        `;
+        channelInfo.appendChild(channelText);
+        header.appendChild(channelInfo);
+
+        const toggle = document.createElement('div');
+        toggle.className = 'channel-toggle';
+        toggle.innerHTML = '<span class="toggle-icon">▼</span>';
+        header.appendChild(toggle);
+
+        card.appendChild(header);
+
+        // Programs container
+        const programsDiv = document.createElement('div');
+        programsDiv.className = 'channel-programs';
+        programsDiv.id = `programs-${channel.id}`;
+        programsDiv.style.display = 'none';
+
+        if (channel.programs && channel.programs.length > 0) {
+            channel.programs.forEach(program => {
+                const programItem = this.createProgramItem(program);
+                programsDiv.appendChild(programItem);
+            });
+        } else {
+            programsDiv.innerHTML = '<div class="no-programs">Keine Programme in diesem Zeitraum</div>';
+        }
+
+        card.appendChild(programsDiv);
+
+        // Add click handler
+        header.addEventListener('click', () => {
+            this.toggleChannelDetails(channel.id);
+        });
+
+        return card;
+    }
+
+    createProgramItem(program) {
+        const item = document.createElement('div');
+        item.className = 'program-item';
+        item.setAttribute('data-start', program.start_time);
+        item.setAttribute('data-end', program.end_time);
+        if (program.id) {
+            item.setAttribute('data-program-id', program.id);
+        }
+
+        const programTime = document.createElement('div');
+        programTime.className = 'program-time';
+        programTime.innerHTML = `
+            <span class="start-time">${this.formatTime(program.start_time)}</span>
+            <span class="time-separator">—</span>
+            <span class="end-time">${this.formatTime(program.end_time)}</span>
+        `;
+        item.appendChild(programTime);
+
+        const programDetails = document.createElement('div');
+        programDetails.className = 'program-details';
+
+        let detailsHTML = `<h4 class="program-title">${this.escapeHtml(program.title)}</h4>`;
+
+        if (program.subtitle) {
+            detailsHTML += `<p class="program-subtitle">${this.escapeHtml(program.subtitle)}</p>`;
+        }
+
+        if (program.description) {
+            const truncated = program.description.length > 100
+                ? program.description.substring(0, 100) + '...'
+                : program.description;
+            detailsHTML += `<p class="program-description">${this.escapeHtml(truncated)}</p>`;
+        }
+
+        if (program.category) {
+            detailsHTML += `<span class="program-category">${this.escapeHtml(program.category)}</span>`;
+        }
+
+        if (program.stream) {
+            detailsHTML += `
+                <button class="btn-play" 
+                        data-stream-url="${this.escapeHtml(program.stream)}"
+                        data-title="${this.escapeHtml(program.title)}">
+                    ▶ Abspielen
+                </button>
+            `;
+        }
+
+        programDetails.innerHTML = detailsHTML;
+        item.appendChild(programDetails);
+
+        return item;
+    }
+
+    setupInfiniteScroll() {
+        this.scrollObserver = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting && this.hasMoreChannels && !this.isLoading) {
+                    console.log('Loading more channels...');
+                    this.currentPage++;
+                    this.loadChannelsFromAPI(this.currentPage);
+                }
+            });
+        }, {
+            root: null,
+            rootMargin: '100px',
+            threshold: 0.1
+        });
     }
 
     setupEventListeners() {
@@ -72,25 +340,13 @@ class EPGDisplayManager {
             });
         });
 
-        // Channel toggle functionality
-        document.addEventListener('click', (e) => {
-            const channelHeader = e.target.closest('.channel-header');
-            if (channelHeader) {
-                const channelId = channelHeader.closest('.channel-card').getAttribute('data-channel-id');
-                this.toggleChannelDetails(channelId);
-            }
-        });
-
         // Player controls
         const closePlayerBtn = document.getElementById('close-player-btn');
         if (closePlayerBtn) {
             closePlayerBtn.addEventListener('click', () => this.closePlayer());
         }
 
-        // Keyboard shortcuts
-        document.addEventListener('keydown', (e) => this.handleKeyboardShortcuts(e));
-
-        // Play buttons
+        // Play buttons (event delegation)
         document.addEventListener('click', (e) => {
             if (e.target.classList.contains('btn-play')) {
                 const streamUrl = e.target.getAttribute('data-stream-url');
@@ -100,21 +356,9 @@ class EPGDisplayManager {
                 }
             }
         });
-    }
 
-    initializeComponents() {
-        // Initialize view based on screen size
-        if (window.innerWidth < 768) {
-            this.toggleView('list'); // Force list view on mobile
-        } else {
-            this.toggleView(this.currentView);
-        }
-
-        // Check for URL parameters
-        this.handleUrlParameters();
-
-        // Update live indicators
-        this.updateLiveIndicators();
+        // Keyboard shortcuts
+        document.addEventListener('keydown', (e) => this.handleKeyboardShortcuts(e));
     }
 
     startBackgroundTasks() {
@@ -122,7 +366,6 @@ class EPGDisplayManager {
         this.liveIndicatorInterval = setInterval(() => this.updateLiveIndicators(), 60000);
     }
 
-    // View management
     toggleView(viewType) {
         this.currentView = viewType;
 
@@ -142,14 +385,12 @@ class EPGDisplayManager {
             if (listBtn) listBtn.classList.remove('active');
             if (gridBtn) gridBtn.classList.add('active');
 
-            // Initialize grid view if needed
             if (gridView && gridView.children.length === 0) {
                 this.initializeGridView();
             }
         }
     }
 
-    // Filter management
     toggleFilterPanel() {
         const panel = document.getElementById('filter-panel');
         if (panel) {
@@ -158,7 +399,6 @@ class EPGDisplayManager {
     }
 
     toggleCategory(category) {
-        // Update UI
         document.querySelectorAll('.filter-tag').forEach(tag => {
             tag.classList.remove('active');
         });
@@ -168,7 +408,6 @@ class EPGDisplayManager {
             activeTag.classList.add('active');
         }
 
-        // Update filter
         this.filters.category = category;
         this.applyFilters();
     }
@@ -197,7 +436,6 @@ class EPGDisplayManager {
                 const programTime = program.getAttribute('data-start');
                 let isVisible = programTitle.includes(searchTerm) || channelName.includes(searchTerm);
 
-                // Time filter logic
                 if (isVisible && timeFilter !== 'all') {
                     const programDate = new Date(programTime);
                     const now = new Date();
@@ -224,13 +462,11 @@ class EPGDisplayManager {
                     }
                 }
 
-                // Category filter
                 if (isVisible && this.filters.category !== 'all') {
                     const programCategory = program.querySelector('.program-category')?.textContent.toLowerCase() || '';
                     isVisible = programCategory === this.filters.category;
                 }
 
-                // Live filter
                 if (isVisible && this.filters.onlyLive) {
                     const isLive = program.classList.contains('live');
                     isVisible = isLive;
@@ -244,58 +480,29 @@ class EPGDisplayManager {
         });
     }
 
-    // Channel management
     toggleChannelDetails(channelId) {
         const programsDiv = document.getElementById(`programs-${channelId}`);
-        const toggleIcon = document.querySelector(`[data-channel-id="${channelId}"] .toggle-icon`);
+        const card = document.querySelector(`[data-channel-id="${channelId}"]`);
+        const toggleIcon = card?.querySelector('.toggle-icon');
 
         if (!programsDiv || !toggleIcon) return;
 
         if (programsDiv.style.display === 'none' || !programsDiv.style.display) {
             programsDiv.style.display = 'block';
             toggleIcon.textContent = '▲';
-            this.storageSet(`channel-${channelId}-expanded`, true);
         } else {
             programsDiv.style.display = 'none';
             toggleIcon.textContent = '▼';
-            this.storageSet(`channel-${channelId}-expanded`, false);
         }
     }
 
     updateLiveIndicators() {
         const now = new Date();
 
-        // Get configured timezone from template data
-        const templateData = document.getElementById('template-data');
-        const configuredTimezone = templateData?.getAttribute('data-timezone') || 'Europe/Berlin';
-
         document.querySelectorAll('.program-item').forEach(program => {
             const startTime = new Date(program.getAttribute('data-start'));
             const endTime = new Date(program.getAttribute('data-end'));
 
-            // Convert times to configured timezone for display
-            const startStr = startTime.toLocaleTimeString('de-DE', {
-                timeZone: configuredTimezone,
-                hour: '2-digit',
-                minute: '2-digit'
-            });
-            const endStr = endTime.toLocaleTimeString('de-DE', {
-                timeZone: configuredTimezone,
-                hour: '2-digit',
-                minute: '2-digit'
-            });
-
-            // Update displayed times
-            const startElement = program.querySelector('.start-time');
-            const endElement = program.querySelector('.end-time');
-            if (startElement && !startElement.textContent.includes(':')) {
-                startElement.textContent = startStr;
-            }
-            if (endElement && !endElement.textContent.includes(':')) {
-                endElement.textContent = endStr;
-            }
-
-            // Check if program is live (using browser's local time)
             if (startTime <= now && endTime >= now) {
                 program.classList.add('live', 'laufend');
             } else {
@@ -304,7 +511,6 @@ class EPGDisplayManager {
         });
     }
 
-    // Time navigation
     navigateTime(direction) {
         this.currentDate.setDate(this.currentDate.getDate() + direction);
 
@@ -315,21 +521,22 @@ class EPGDisplayManager {
         }
 
         window.showToast?.('Lade Programme für ' + this.currentDate.toLocaleDateString('de-DE'), 'info');
-        // In a real implementation, you would load new EPG data here
+
+        // Reset and reload for new date
+        this.currentPage = 0;
+        this.hasMoreChannels = true;
+        this.loadChannelsFromAPI(0);
     }
 
-    // Player functionality
     async playProgram(streamUrl, title) {
         if (!streamUrl) {
             window.showToast?.('Kein Stream verfügbar', 'warning');
             return;
         }
 
-        // Check if it's a DASH/HLS stream
         if (streamUrl.includes('.mpd') || streamUrl.includes('.m3u8')) {
             await this.initShakaPlayer(streamUrl, title);
         } else {
-            // Regular video stream
             this.playRegularVideo(streamUrl, title);
         }
     }
@@ -338,81 +545,42 @@ class EPGDisplayManager {
         const playerOverlay = document.getElementById('player-overlay');
         const video = document.getElementById('player-video');
         const playerTitle = document.getElementById('player-title');
-        const bitrateSelector = document.getElementById('bitrate-selector');
 
         if (!playerOverlay || !video) {
             window.showToast?.('Player-Elemente nicht gefunden', 'error');
             return;
         }
 
-        // Show player
         if (playerTitle) playerTitle.textContent = title;
         playerOverlay.classList.add('active');
 
-        // Check if Shaka Player is available
         if (typeof shaka === 'undefined') {
             window.showToast?.('Shaka Player nicht geladen', 'error');
             return;
         }
 
-        // Initialize player if not already done
         if (!this.player) {
             this.player = new shaka.Player(video);
-            this.isPlayerInitialized = true;
-
-            // Configure player
             this.player.configure({
                 streaming: {
                     bufferingGoal: 30,
                     rebufferingGoal: 2
                 }
             });
-
-            // Set up bitrate selector
-            if (bitrateSelector) {
-                bitrateSelector.addEventListener('change', () => {
-                    const value = bitrateSelector.value;
-                    if (value === 'auto') {
-                        this.player.configure({ abr: { enabled: true } });
-                    } else {
-                        this.player.configure({ abr: { enabled: false } });
-                        const tracks = this.player.getVariantTracks();
-                        const selected = tracks
-                            .filter(t => t.bandwidth <= parseInt(value))
-                            .sort((a, b) => b.height - a.height)[0];
-                        if (selected) {
-                            this.player.selectVariantTrack(selected, true);
-                        }
-                    }
-                });
-            }
         }
 
         try {
-            // Load the stream
             await this.player.load(streamUrl);
-
-            // Set initial volume and play
             video.volume = 0.1;
             video.muted = false;
-
             await video.play().catch(e => {
                 console.warn('Autoplay blocked:', e);
                 window.showToast?.('Klicken Sie auf Play, um den Stream zu starten', 'info');
             });
-
             window.showToast?.('Stream wird geladen...', 'success');
-
         } catch (error) {
             console.error('Error loading stream:', error);
             window.showToast?.(`Fehler beim Laden des Streams: ${error.message}`, 'error');
-
-            // Fallback to regular video if possible
-            if (streamUrl.includes('.mpd') || streamUrl.includes('.m3u8')) {
-                // Try direct video source
-                const directUrl = streamUrl.replace('.mpd', '.mp4').replace('.m3u8', '.mp4');
-                this.playRegularVideo(directUrl, title);
-            }
         }
     }
 
@@ -420,27 +588,18 @@ class EPGDisplayManager {
         const playerOverlay = document.getElementById('player-overlay');
         const video = document.getElementById('player-video');
         const playerTitle = document.getElementById('player-title');
-        const bitrateSelector = document.getElementById('bitrate-selector');
 
         if (!playerOverlay || !video) {
             window.showToast?.('Player-Elemente nicht gefunden', 'error');
             return;
         }
 
-        // Hide bitrate selector for regular videos
-        if (bitrateSelector) {
-            bitrateSelector.style.display = 'none';
-        }
-
-        // Show player
         if (playerTitle) playerTitle.textContent = title;
         playerOverlay.classList.add('active');
 
-        // Set video source and play
         video.src = streamUrl;
         video.volume = 0.1;
         video.muted = false;
-
         video.load();
         video.play().catch(e => {
             console.warn('Autoplay blocked:', e);
@@ -453,7 +612,6 @@ class EPGDisplayManager {
     closePlayer() {
         const playerOverlay = document.getElementById('player-overlay');
         const video = document.getElementById('player-video');
-        const bitrateSelector = document.getElementById('bitrate-selector');
 
         if (playerOverlay) {
             playerOverlay.classList.remove('active');
@@ -464,23 +622,15 @@ class EPGDisplayManager {
             video.src = '';
         }
 
-        if (bitrateSelector) {
-            bitrateSelector.style.display = 'block';
-        }
-
-        // Reset player if using Shaka
         if (this.player) {
             this.player.unload();
         }
     }
 
-    // Grid view (placeholder implementation)
     initializeGridView() {
         const grid = document.getElementById('channels-grid');
         if (!grid) return;
 
-        // This is a simplified implementation
-        // In a real app, you would generate a proper time-based grid
         grid.innerHTML = `
             <div class="grid-placeholder">
                 <p>Rasteransicht wird geladen...</p>
@@ -489,37 +639,7 @@ class EPGDisplayManager {
         `;
     }
 
-    // URL parameter handling
-    handleUrlParameters() {
-        const urlParams = new URLSearchParams(window.location.search);
-        const channelId = urlParams.get('channel');
-        const programId = urlParams.get('program');
-
-        if (channelId) {
-            // Open channel details
-            this.toggleChannelDetails(channelId);
-        }
-
-        if (programId) {
-            // Highlight program
-            this.highlightProgram(programId);
-        }
-    }
-
-    highlightProgram(programId) {
-        const programElement = document.querySelector(`[data-program-id="${programId}"]`);
-        if (programElement) {
-            programElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            programElement.style.backgroundColor = 'rgba(33, 150, 243, 0.1)';
-            setTimeout(() => {
-                programElement.style.backgroundColor = '';
-            }, 3000);
-        }
-    }
-
-    // Keyboard shortcuts
     handleKeyboardShortcuts(e) {
-        // Escape: Close player or filter panel
         if (e.key === 'Escape') {
             const playerOverlay = document.getElementById('player-overlay');
             if (playerOverlay && playerOverlay.classList.contains('active')) {
@@ -532,24 +652,21 @@ class EPGDisplayManager {
             }
         }
 
-        // F: Focus search
-        if (e.key === 'f' || e.key === 'F') {
+        if ((e.key === 'f' || e.key === 'F') && !e.ctrlKey) {
             const searchInput = document.getElementById('search-input');
-            if (searchInput) {
+            if (searchInput && document.activeElement !== searchInput) {
                 e.preventDefault();
                 searchInput.focus();
                 searchInput.select();
             }
         }
 
-        // V: Toggle view
         if (e.key === 'v' || e.key === 'V') {
             e.preventDefault();
             const newView = this.currentView === 'list' ? 'grid' : 'list';
             this.toggleView(newView);
         }
 
-        // Arrow keys for time navigation
         if (e.key === 'ArrowLeft') {
             const prevBtn = document.getElementById('time-prev-btn');
             if (prevBtn) prevBtn.click();
@@ -562,6 +679,25 @@ class EPGDisplayManager {
     }
 
     // Utility functions
+    formatTime(value) {
+        if (!value) return '';
+        try {
+            const date = new Date(value);
+            return date.toLocaleTimeString('de-DE', {
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        } catch (e) {
+            return value;
+        }
+    }
+
+    escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
     debounce(func, wait) {
         let timeout;
         return function executedFunction(...args) {
@@ -574,28 +710,54 @@ class EPGDisplayManager {
         };
     }
 
-    storageSet(key, value) {
-        try {
-            localStorage.setItem(key, JSON.stringify(value));
-        } catch (e) {
-            console.warn('LocalStorage set failed:', e);
+    showLoadingIndicator() {
+        const spinner = document.getElementById('loading-spinner');
+        if (spinner) spinner.style.display = 'flex';
+    }
+
+    hideLoadingIndicator() {
+        const spinner = document.getElementById('loading-spinner');
+        if (spinner) spinner.style.display = 'none';
+    }
+
+    showError(message) {
+        const listView = document.getElementById('list-view');
+        if (listView) {
+            listView.innerHTML = `
+                <div class="error-message" role="alert">
+                    <p>⚠️ ${this.escapeHtml(message)}</p>
+                    <button onclick="location.reload()">Erneut versuchen</button>
+                </div>
+            `;
+        }
+        window.showToast?.(message, 'error');
+    }
+
+    async refreshData() {
+        console.log('Refreshing EPG data...');
+
+        // Reset pagination
+        this.currentPage = 0;
+        this.hasMoreChannels = true;
+
+        // Clear existing channels
+        this.channels = [];
+
+        // Reload from API
+        await this.loadChannelsFromAPI(0);
+
+        if (window.showToast) {
+            window.showToast('EPG-Daten aktualisiert', 'success');
         }
     }
 
-    storageGet(key) {
-        try {
-            const value = localStorage.getItem(key);
-            return value ? JSON.parse(value) : null;
-        } catch (e) {
-            console.warn('LocalStorage get failed:', e);
-            return null;
-        }
-    }
-
-    // Cleanup
     destroy() {
         if (this.liveIndicatorInterval) {
             clearInterval(this.liveIndicatorInterval);
+        }
+
+        if (this.scrollObserver) {
+            this.scrollObserver.disconnect();
         }
 
         if (this.player) {
@@ -612,10 +774,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const epgDisplayManager = new EPGDisplayManager();
     epgDisplayManager.init();
 
-    // Make available globally if needed
     window.epgDisplayManager = epgDisplayManager;
 
-    // Cleanup on page unload
     window.addEventListener('beforeunload', () => {
         epgDisplayManager.destroy();
     });

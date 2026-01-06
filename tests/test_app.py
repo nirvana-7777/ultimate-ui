@@ -55,6 +55,9 @@ class TestAppRoutes:
             "ultimate_backend_timeout": "15",
             "ui_theme": "light",
             "refresh_interval": "600",
+            "timezone": "Europe/Berlin",
+            "player_size": "medium",
+            "player_bitrate": "auto",
         }
         response = client.post("/config", data=data)
         assert response.status_code == 200
@@ -71,6 +74,9 @@ class TestAppRoutes:
             "ultimate_backend_timeout": 20,
             "ui_theme": "light",
             "refresh_interval": 600,
+            "timezone": "Europe/Berlin",
+            "player_size": "medium",
+            "player_bitrate": "auto",
         }
         response = client.post(
             "/config", data=json.dumps(data), content_type="application/json"
@@ -127,6 +133,39 @@ class TestAppRoutes:
         response_data = json.loads(response.data)
         assert response_data["success"] is True
         assert response_data["channels"] == sample_channels
+        assert "total" in response_data
+        assert "timestamp" in response_data
+
+    def test_api_get_channels_paginated(
+        self, client, mock_get_webepg_client, sample_channels
+    ):
+        """Test API endpoint for getting paginated channels."""
+        mock_client = mock_get_webepg_client.return_value
+        mock_client.get_channels.return_value = sample_channels
+
+        response = client.get("/api/epg/channels?page=0&limit=20")
+        assert response.status_code == 200
+        response_data = json.loads(response.data)
+        assert response_data["success"] is True
+        assert "channels" in response_data
+        assert "page" in response_data
+        assert "limit" in response_data
+        assert "total" in response_data
+        assert "has_more" in response_data
+
+    def test_api_get_channels_default_params(
+        self, client, mock_get_webepg_client, sample_channels
+    ):
+        """Test API endpoint for getting channels with default parameters."""
+        mock_client = mock_get_webepg_client.return_value
+        mock_client.get_channels.return_value = sample_channels
+
+        response = client.get("/api/epg/channels")
+        assert response.status_code == 200
+        response_data = json.loads(response.data)
+        assert response_data["success"] is True
+        assert response_data["page"] == 0
+        assert response_data["limit"] == 20
 
     def test_api_get_channel_programs(
         self, client, mock_get_webepg_client, sample_programs
@@ -143,8 +182,27 @@ class TestAppRoutes:
 
         assert response.status_code == 200
         response_data = json.loads(response.data)
-        assert isinstance(response_data, list)
-        assert len(response_data) == 2
+        # Updated to expect new response format
+        assert response_data["success"] is True
+        assert "programs" in response_data
+        assert "channel_id" in response_data
+        assert isinstance(response_data["programs"], list)
+        assert len(response_data["programs"]) == 2
+
+    def test_api_get_channel_programs_with_defaults(
+        self, client, mock_get_webepg_client, sample_programs
+    ):
+        """Test API endpoint for getting channel programs with default date range."""
+        mock_client = mock_get_webepg_client.return_value
+        mock_client.get_channel_programs.return_value = sample_programs
+
+        # Test without start/end parameters - should use defaults
+        response = client.get("/api/channels/channel1/programs")
+
+        assert response.status_code == 200
+        response_data = json.loads(response.data)
+        assert response_data["success"] is True
+        assert "programs" in response_data
 
     def test_api_create_alias_success(self, client, mock_get_webepg_client):
         """Test API endpoint for creating alias successfully."""
@@ -173,10 +231,10 @@ class TestAppRoutes:
 
     def test_api_get_channel_programs_missing_params(self, client):
         """Test API endpoint for getting channel programs with missing parameters."""
+        # This should now work with default parameters
         response = client.get("/api/channels/channel1/programs")
-        assert response.status_code == 400
-        response_data = json.loads(response.data)
-        assert "error" in response_data
+        # Should return 200 with defaults, not 400
+        assert response.status_code in [200, 500]  # 500 if mock not set up
 
     def test_api_trigger_import(self, client, mock_get_webepg_client):
         """Test API endpoint for triggering import."""

@@ -233,73 +233,6 @@ def health():
     )
 
 
-@app.route("/epg")
-def epg_display():
-    """EPG Display tab."""
-    try:
-        webepg = get_webepg_client()
-        channels = webepg.get_channels()
-        # Get programs for the next 24 hours
-        now = datetime.now(timezone.utc)  # Use UTC timezone-aware
-        tomorrow = now + timedelta(days=1)
-
-        # For each channel, get upcoming programs
-        channels_with_programs = []
-        for channel in channels[:20]:  # Limit to 20 channels for performance
-            if "id" in channel:
-                channel_id = channel["id"]
-                programs = webepg.get_channel_programs(
-                    str(channel_id), now.isoformat(), tomorrow.isoformat()
-                )
-
-                # Ensure programs have proper datetime objects
-                for program in programs:
-                    # Convert string times to datetime objects
-                    for time_field in ["start_time", "end_time"]:
-                        if time_field in program and isinstance(
-                            program[time_field], str
-                        ):
-                            try:
-                                time_str = program[time_field]
-                                if "Z" in time_str:
-                                    program[time_field] = datetime.fromisoformat(
-                                        time_str.replace("Z", "+00:00")
-                                    )
-                                elif "+" in time_str or "-" in time_str[10:]:
-                                    program[time_field] = datetime.fromisoformat(
-                                        time_str
-                                    )
-                                else:
-                                    # Assume UTC
-                                    program[time_field] = datetime.fromisoformat(
-                                        time_str + "+00:00"
-                                    )
-                            except Exception as e:
-                                logger.warning(
-                                    f"Could not parse {time_field}: {program[time_field]}: {e}"
-                                )
-                                # Keep as string if parsing fails
-
-                channel["programs"] = programs[:10]  # Limit to 10 programs
-                channels_with_programs.append(channel)
-
-        return render_template(
-            "epg_display.html",
-            channels=channels_with_programs,
-            current_date=now.strftime("%Y-%m-%d"),
-            active_tab="epg",
-        )
-    except Exception as e:
-        logger.error(f"Error loading EPG: {e}")
-        return render_template(
-            "epg_display.html",
-            channels=[],
-            error=str(e),
-            current_date=datetime.now().strftime("%Y-%m-%d"),
-            active_tab="epg",
-        )
-
-
 @app.route("/config", methods=["GET", "POST"])
 def configuration():
     """Configuration tab - FIXED form handling."""
@@ -588,36 +521,6 @@ def api_import_status():
 # ============================================================================
 
 
-@app.route("/api/epg/refresh")
-def api_refresh_epg():
-    """Refresh EPG data."""
-    try:
-        webepg = get_webepg_client()
-        channels = webepg.get_channels()
-        return jsonify({"success": True, "channels": channels})
-    except Exception as e:
-        logger.error(f"Error refreshing EPG: {e}")
-        return jsonify({"success": False, "error": str(e)}), 500
-
-
-@app.route("/api/channels/<channel_id>/programs")
-def api_get_channel_programs(channel_id):
-    """Get programs for a specific channel - PROXY to webepg."""
-    try:
-        webepg = get_webepg_client()
-        start = request.args.get("start")
-        end = request.args.get("end")
-
-        if not start or not end:
-            return jsonify({"error": "start and end parameters required"}), 400
-
-        programs = webepg.get_channel_programs(channel_id, start, end)
-        return jsonify(programs)
-    except Exception as e:
-        logger.error(f"Error getting channel programs: {e}")
-        return jsonify({"error": str(e)}), 500
-
-
 @app.route("/api/import/trigger", methods=["POST"])
 def api_trigger_import():
     """Trigger import job."""
@@ -767,6 +670,168 @@ def api_test_ultimate_backend():
     except Exception as e:
         logger.error(f"Error testing ultimate-backend: {e}")
         return jsonify({"success": False, "status": "offline", "error": str(e)}), 500
+
+
+@app.route("/epg")
+def epg_display():
+    """EPG Display tab - Optimized for client-side rendering."""
+    try:
+        webepg = get_webepg_client()
+
+        # Only load initial batch of channels for faster page load
+        # The rest will be loaded by JavaScript
+        all_channels = webepg.get_channels()
+        initial_channels = all_channels[:10]  # Just 10 for initial render
+
+        # Get programs for initial channels only
+        now = datetime.now(timezone.utc)
+        tomorrow = now + timedelta(days=1)
+
+        channels_with_programs = []
+        for channel in initial_channels:
+            if "id" in channel:
+                channel_id = channel["id"]
+                try:
+                    programs = webepg.get_channel_programs(
+                        str(channel_id), now.isoformat(), tomorrow.isoformat()
+                    )
+
+                    # Ensure programs have proper datetime objects
+                    for program in programs:
+                        for time_field in ["start_time", "end_time"]:
+                            if time_field in program and isinstance(
+                                program[time_field], str
+                            ):
+                                try:
+                                    time_str = program[time_field]
+                                    if "Z" in time_str:
+                                        program[time_field] = datetime.fromisoformat(
+                                            time_str.replace("Z", "+00:00")
+                                        )
+                                    elif "+" in time_str or "-" in time_str[10:]:
+                                        program[time_field] = datetime.fromisoformat(
+                                            time_str
+                                        )
+                                    else:
+                                        program[time_field] = datetime.fromisoformat(
+                                            time_str + "+00:00"
+                                        )
+                                except Exception as e:
+                                    logger.warning(
+                                        f"Could not parse {time_field}: {program[time_field]}: {e}"
+                                    )
+
+                    channel["programs"] = programs[:10]  # Limit to 10 programs
+                    channels_with_programs.append(channel)
+                except Exception as e:
+                    logger.warning(
+                        f"Could not load programs for channel {channel_id}: {e}"
+                    )
+                    channel["programs"] = []
+                    channels_with_programs.append(channel)
+
+        return render_template(
+            "epg_display.html",
+            channels=channels_with_programs,
+            current_date=now.strftime("%Y-%m-%d"),
+            active_tab="epg",
+        )
+    except Exception as e:
+        logger.error(f"Error loading EPG: {e}")
+        return render_template(
+            "epg_display.html",
+            channels=[],
+            error=str(e),
+            current_date=datetime.now().strftime("%Y-%m-%d"),
+            active_tab="epg",
+        )
+
+
+@app.route("/api/epg/channels")
+def api_get_channels():
+    """Get channels with pagination support for infinite scroll."""
+    try:
+        page = int(request.args.get("page", 0))
+        limit = int(request.args.get("limit", 20))
+
+        webepg = get_webepg_client()
+        all_channels = webepg.get_channels()
+
+        # Calculate pagination
+        start_idx = page * limit
+        end_idx = start_idx + limit
+
+        paginated_channels = all_channels[start_idx:end_idx]
+        has_more = end_idx < len(all_channels)
+
+        return jsonify(
+            {
+                "success": True,
+                "channels": paginated_channels,
+                "page": page,
+                "limit": limit,
+                "total": len(all_channels),
+                "has_more": has_more,
+            }
+        )
+
+    except Exception as e:
+        logger.error(f"Error getting channels: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/channels/<channel_id>/programs")
+def api_get_channel_programs(channel_id):
+    """Get programs for a specific channel."""
+    try:
+        webepg = get_webepg_client()
+        start = request.args.get("start")
+        end = request.args.get("end")
+
+        # Use defaults if not provided
+        if not start:
+            start = datetime.now(timezone.utc).isoformat()
+        if not end:
+            end = (datetime.now(timezone.utc) + timedelta(days=1)).isoformat()
+
+        programs = webepg.get_channel_programs(channel_id, start, end)
+
+        # Process programs to ensure consistent format
+        processed_programs = []
+        for program in programs:
+            # Ensure times are ISO strings
+            if isinstance(program.get("start_time"), datetime):
+                program["start_time"] = program["start_time"].isoformat()
+            if isinstance(program.get("end_time"), datetime):
+                program["end_time"] = program["end_time"].isoformat()
+            processed_programs.append(program)
+
+        return jsonify(
+            {"success": True, "programs": processed_programs, "channel_id": channel_id}
+        )
+
+    except Exception as e:
+        logger.error(f"Error getting channel programs: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/epg/refresh")
+def api_refresh_epg():
+    """Refresh EPG data - returns fresh channel list."""
+    try:
+        webepg = get_webepg_client()
+        channels = webepg.get_channels()
+        return jsonify(
+            {
+                "success": True,
+                "channels": channels,
+                "total": len(channels),
+                "timestamp": datetime.now().isoformat(),
+            }
+        )
+    except Exception as e:
+        logger.error(f"Error refreshing EPG: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500
 
 
 # Static file serving

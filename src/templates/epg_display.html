@@ -55,14 +55,16 @@
     <!-- EPG Content -->
     <div class="epg-content" id="epg-content">
         {% if error %}
+        <!-- Error State -->
         <div class="error-message" role="alert">
             <p>⚠️ Fehler beim Laden der EPG-Daten: {{ error }}</p>
             <button onclick="location.reload()">Erneut versuchen</button>
         </div>
-        {% elif channels %}
-            {% if channels|length > 0 %}
-                <!-- List View -->
-                <div class="epg-list-view" id="list-view">
+        {% else %}
+            <!-- List View - Will be populated by JavaScript -->
+            <div class="epg-list-view" id="list-view" style="display: none;">
+                <!-- Initial server-rendered channels (optional - for faster initial load) -->
+                {% if channels and channels|length > 0 %}
                     {% for channel in channels %}
                     <div class="channel-card" data-channel-id="{{ channel.id }}">
                         <div class="channel-header" role="button" tabindex="0">
@@ -81,7 +83,10 @@
                             </div>
                         </div>
 
-                        <div class="channel-programs" id="programs-{{ channel.id }}" role="region" aria-label="Programme für {{ channel.display_name }}">
+                        <div class="channel-programs" id="programs-{{ channel.id }}"
+                             style="display: none;"
+                             role="region"
+                             aria-label="Programme für {{ channel.display_name }}">
                             {% if channel.programs %}
                                 {% for program in channel.programs %}
                                 <div class="program-item {% if program.is_live %}live{% endif %}"
@@ -90,7 +95,7 @@
                                      {% if program.id %}data-program-id="{{ program.id }}"{% endif %}>
                                     <div class="program-time">
                                         <span class="start-time">{{ program.start_time|format_time }}</span>
-                                        <span class="time-separator" aria-hidden="true">–</span>
+                                        <span class="time-separator" aria-hidden="true">—</span>
                                         <span class="end-time">{{ program.end_time|format_time }}</span>
                                     </div>
                                     <div class="program-details">
@@ -122,27 +127,29 @@
                         </div>
                     </div>
                     {% endfor %}
-                </div>
+                {% endif %}
+            </div>
 
-                <!-- Grid View (hidden by default) -->
-                <div class="epg-grid-view" id="grid-view" style="display: none;">
-                    <div class="time-slots">
-                        <!-- Time slots will be populated by JavaScript -->
-                    </div>
-                    <div class="channels-grid" id="channels-grid">
-                        <!-- Channels and programs grid will be populated by JavaScript -->
-                    </div>
+            <!-- Grid View (hidden by default) -->
+            <div class="epg-grid-view" id="grid-view" style="display: none;">
+                <div class="time-slots">
+                    <!-- Time slots will be populated by JavaScript -->
                 </div>
-            {% else %}
-                <div class="empty-state">
-                    <p>Keine Kanäle gefunden</p>
-                    <p>Stellen Sie sicher, dass der WebEPG-Backend korrekt konfiguriert ist.</p>
+                <div class="channels-grid" id="channels-grid">
+                    <!-- Channels and programs grid will be populated by JavaScript -->
                 </div>
-            {% endif %}
-        {% else %}
-            <div class="loading-state">
+            </div>
+
+            <!-- Loading State - Only shown initially or on errors -->
+            <div class="loading-state" style="display: {% if not channels or channels|length == 0 %}block{% else %}none{% endif %};">
                 <div class="spinner" role="status" aria-label="Lädt"></div>
                 <p>Lade EPG-Daten...</p>
+            </div>
+
+            <!-- Empty State - Hidden by default, shown by JS if no data -->
+            <div class="empty-state" id="empty-state" style="display: none;">
+                <p>Keine Kanäle gefunden</p>
+                <p>Stellen Sie sicher, dass der WebEPG-Backend korrekt konfiguriert ist.</p>
             </div>
         {% endif %}
     </div>
@@ -168,14 +175,21 @@
 
 <!-- Pass EPG data to JavaScript -->
 <script>
-    // Make EPG data available to JavaScript
+    // Make EPG data available to JavaScript for hybrid rendering
     window.EPG_DATA = {
         channels: {{ channels|tojson if channels else '[]' }},
         error: {{ error|tojson if error else 'null' }},
         currentDate: "{{ current_date|default('') }}"
     };
 
-    // Add custom filters to window for template use
+    // Template configuration
+    window.EPG_CONFIG = {
+        hasServerData: {{ 'true' if channels and channels|length > 0 else 'false' }},
+        timezone: "{{ config.ui.timezone if config and config.ui else 'Europe/Berlin' }}",
+        refreshInterval: {{ config.ui.refresh_interval if config and config.ui else 300 }}
+    };
+
+    // Add custom filters to window for consistency
     window.templateFilters = {
         formatTime: function(value) {
             if (!value) return '';
@@ -183,9 +197,28 @@
                 const date = new Date(value);
                 return date.toLocaleTimeString('de-DE', {
                     hour: '2-digit',
-                    minute: '2-digit'
+                    minute: '2-digit',
+                    timeZone: window.EPG_CONFIG.timezone
                 });
             } catch (e) {
+                console.warn('Error formatting time:', e);
+                return value;
+            }
+        },
+        formatDateTime: function(value) {
+            if (!value) return '';
+            try {
+                const date = new Date(value);
+                return date.toLocaleString('de-DE', {
+                    day: '2-digit',
+                    month: '2-digit',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    timeZone: window.EPG_CONFIG.timezone
+                });
+            } catch (e) {
+                console.warn('Error formatting datetime:', e);
                 return value;
             }
         },
@@ -194,11 +227,5 @@
             return text.substring(0, length) + '...';
         }
     };
-
-    // Apply template filters if using server-side rendering
-    {% if channels %}
-        // The template filters are applied server-side by Jinja2
-        // This JavaScript is just for consistency
-    {% endif %}
 </script>
 {% endblock %}

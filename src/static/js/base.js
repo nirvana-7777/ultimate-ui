@@ -1,6 +1,6 @@
 /**
  * Ultimate UI - Base Template JavaScript
- * Handles common functionality for all pages
+ * Handles common functionality for all pages - FIXED AUTO-REFRESH
  */
 
 class BaseTemplate {
@@ -22,7 +22,6 @@ class BaseTemplate {
         data.currentTime = dataElement.getAttribute('data-current-time') || '';
         data.theme = dataElement.getAttribute('data-theme') || 'dark';
 
-        // We're not passing config via JSON anymore
         data.config = {};
 
         return data;
@@ -129,52 +128,91 @@ class BaseTemplate {
     }
 
     refreshCurrentTab() {
-        if (window.showLoading) window.showLoading();
-
         const currentTab = this.data.activeTab || 'epg';
 
         switch(currentTab) {
             case 'epg':
-                window.location.reload();
+                // For EPG tab, use JavaScript refresh instead of page reload
+                if (window.epgDisplayManager && typeof window.epgDisplayManager.refreshData === 'function') {
+                    console.log('Refreshing EPG data via JavaScript...');
+                    window.epgDisplayManager.refreshData();
+                } else {
+                    // Fallback to page reload if manager not available
+                    console.log('EPG manager not available, reloading page...');
+                    window.location.reload();
+                }
                 break;
+
             case 'config':
                 // Config doesn't need refresh
-                if (window.hideLoading) window.hideLoading();
+                if (window.showToast) {
+                    window.showToast('Konfiguration ist bereits aktuell', 'info');
+                }
                 break;
+
             case 'mapping':
-                fetch('/api/mapping/providers')
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.success && window.showToast) {
-                            window.showToast('Mapping-Daten aktualisiert');
-                        }
-                        if (window.hideLoading) window.hideLoading();
-                    })
-                    .catch(() => {
-                        if (window.hideLoading) window.hideLoading();
-                    });
+                this.refreshMappingTab();
                 break;
+
             case 'monitoring':
-                fetch('/api/monitoring/status')
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.success && window.showToast) {
-                            window.showToast('Monitoring-Daten aktualisiert');
-                        }
-                        if (window.hideLoading) window.hideLoading();
-                    })
-                    .catch(() => {
-                        if (window.hideLoading) window.hideLoading();
-                    });
+                this.refreshMonitoringTab();
                 break;
+
             default:
-                if (window.hideLoading) window.hideLoading();
+                console.log('Unknown tab:', currentTab);
+        }
+    }
+
+    async refreshMappingTab() {
+        if (window.showLoading) window.showLoading();
+
+        try {
+            const response = await fetch('/api/mapping/providers');
+            const data = await response.json();
+
+            if (data.success && window.showToast) {
+                window.showToast('Mapping-Daten aktualisiert', 'success');
+            }
+        } catch (error) {
+            console.error('Error refreshing mapping:', error);
+            if (window.showToast) {
+                window.showToast('Fehler beim Aktualisieren', 'error');
+            }
+        } finally {
+            if (window.hideLoading) window.hideLoading();
+        }
+    }
+
+    async refreshMonitoringTab() {
+        if (window.showLoading) window.showLoading();
+
+        try {
+            const response = await fetch('/api/monitoring/status');
+            const data = await response.json();
+
+            if (data.success && window.showToast) {
+                window.showToast('Monitoring-Daten aktualisiert', 'success');
+            }
+
+            // If there's a monitoring manager, call its refresh method
+            if (window.monitoringManager && typeof window.monitoringManager.refresh === 'function') {
+                window.monitoringManager.refresh(data);
+            }
+        } catch (error) {
+            console.error('Error refreshing monitoring:', error);
+            if (window.showToast) {
+                window.showToast('Fehler beim Aktualisieren', 'error');
+            }
+        } finally {
+            if (window.hideLoading) window.hideLoading();
         }
     }
 
     setupAutoRefresh() {
+        // Clear any existing timer
         if (this.refreshTimer) {
             clearInterval(this.refreshTimer);
+            this.refreshTimer = null;
         }
 
         const currentTab = this.data.activeTab || 'epg';
@@ -182,7 +220,14 @@ class BaseTemplate {
 
         // Only auto-refresh EPG and Monitoring tabs
         if ((currentTab === 'epg' || currentTab === 'monitoring') && refreshInterval > 0) {
-            this.refreshTimer = setInterval(() => this.refreshCurrentTab(), refreshInterval * 1000);
+            console.log(`Setting up auto-refresh for ${currentTab} every ${refreshInterval} seconds`);
+
+            this.refreshTimer = setInterval(() => {
+                console.log(`Auto-refreshing ${currentTab}...`);
+                this.refreshCurrentTab();
+            }, refreshInterval * 1000);
+        } else {
+            console.log('Auto-refresh disabled for current tab:', currentTab);
         }
     }
 
@@ -202,8 +247,9 @@ class BaseTemplate {
     }
 
     handleKeyboardShortcuts(e) {
-        // Ctrl+R or F5: Refresh
-        if ((e.ctrlKey && e.key === 'r') || e.key === 'F5') {
+        // Ctrl+R or F5: Refresh (only if not in input field)
+        if (((e.ctrlKey && e.key === 'r') || e.key === 'F5') &&
+            !['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) {
             e.preventDefault();
             this.refreshCurrentTab();
         }
@@ -216,13 +262,21 @@ class BaseTemplate {
             }
         }
 
-        // Number keys 1-4: Switch tabs
-        if (e.key >= '1' && e.key <= '4') {
+        // Number keys 1-4: Switch tabs (only if not in input field)
+        if (e.key >= '1' && e.key <= '4' &&
+            !['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) {
             const tabIndex = parseInt(e.key, 10) - 1;
             const navItems = document.querySelectorAll('.nav-item');
             if (navItems[tabIndex]) {
                 navItems[tabIndex].click();
             }
+        }
+    }
+
+    cleanup() {
+        if (this.refreshTimer) {
+            clearInterval(this.refreshTimer);
+            this.refreshTimer = null;
         }
     }
 }
@@ -232,6 +286,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const baseTemplate = new BaseTemplate();
     baseTemplate.init();
 
-    // Make available globally if needed
+    // Make available globally
     window.baseTemplate = baseTemplate;
+
+    // Cleanup on page unload
+    window.addEventListener('beforeunload', () => {
+        baseTemplate.cleanup();
+    });
 });
