@@ -833,26 +833,34 @@ class KeyboardManager {
 
     static init() {
         document.addEventListener('keydown', (e) => {
+            // Skip if only modifier keys are pressed without a regular key
+            const isModifierOnly = (e.ctrlKey || e.metaKey || e.altKey || e.shiftKey) &&
+                                   !e.key ||
+                                   ['Control', 'Alt', 'Shift', 'Meta', 'OS'].includes(e.key);
+
+            if (isModifierOnly) return;
+
             // Build shortcut string
             const parts = [];
             if (e.ctrlKey || e.metaKey) parts.push('Ctrl');
             if (e.altKey) parts.push('Alt');
             if (e.shiftKey) parts.push('Shift');
-            parts.push(e.key.toUpperCase());
 
-            const shortcut = parts.join('+');
+            if (e.key) {
+                parts.push(e.key.toUpperCase());
 
-            // Check if shortcut is registered
-            const handler = this.shortcuts.get(shortcut.toLowerCase());
-            if (handler) {
-                if (handler.preventDefault) {
-                    e.preventDefault();
+                const shortcut = parts.join('+');
+                const handler = this.shortcuts.get(shortcut.toLowerCase());
+
+                if (handler) {
+                    if (handler.preventDefault) {
+                        e.preventDefault();
+                    }
+                    handler.callback(e);
                 }
-                handler.callback(e);
             }
         });
     }
-
     static getHelp() {
         const help = [];
         this.shortcuts.forEach((value, key) => {
