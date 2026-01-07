@@ -1,0 +1,306 @@
+// epg_core.js - Fixed with exact endpoints from original code
+class EPGCore {
+    constructor() {
+        this.config = {
+            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+            dateFormat: 'de-DE',
+            refreshInterval: 300,
+            itemsPerPage: 20 // Matching original channelsPerPage
+        };
+
+        this.channels = [];
+        this.currentEvents = new Map();
+        this.dailyPrograms = new Map();
+        this.cache = new Map();
+        this.isLoading = false;
+        this.currentDate = new Date();
+        this.hasMoreChannels = true;
+        this.currentPage = 0;
+    }
+
+    async fetchChannels(page = 0) {
+        try {
+            const cacheKey = `channels_${page}`;
+            const cached = this.cache.get(cacheKey);
+
+            if (cached) {
+                return cached;
+            }
+
+            // EXACT endpoint from original working code
+            const response = await fetch(
+                `/api/epg/channels?page=${page}&limit=${this.config.itemsPerPage}`
+            );
+
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+
+            const data = await response.json();
+
+            // EXACT response format from original code
+            if (!data.success || !Array.isArray(data.channels)) {
+                throw new Error('Invalid response format from channels endpoint');
+            }
+
+            const result = {
+                channels: data.channels,
+                hasMore: data.has_more || data.channels.length === this.config.itemsPerPage
+            };
+
+            this.cache.set(cacheKey, result);
+            return result;
+
+        } catch (error) {
+            console.error('Error fetching channels:', error);
+            throw new Error('Kanäle konnten nicht geladen werden: ' + error.message);
+        }
+    }
+
+    async fetchProgramsForChannel(channelId, startDate, endDate) {
+        try {
+            const cacheKey = `programs_${channelId}_${startDate.toISOString().split('T')[0]}`;
+            const cached = this.cache.get(cacheKey);
+
+            if (cached) {
+                return cached;
+            }
+
+            // EXACT endpoint from original working code
+            const response = await fetch(
+                `/api/channels/${channelId}/programs?start=${startDate.toISOString()}&end=${endDate.toISOString()}`
+            );
+
+            if (!response.ok) {
+                console.warn(`HTTP ${response.status} for channel ${channelId} programs`);
+                return [];
+            }
+
+            const data = await response.json();
+
+            // Handle both response formats from original code
+            let programs = [];
+
+            if (data.success && Array.isArray(data.programs)) {
+                programs = data.programs;
+            } else if (Array.isArray(data)) {
+                programs = data;
+            }
+
+            // Add channel info to each program
+            programs.forEach(program => {
+                program.channel_id = channelId;
+            });
+
+            // Limit to 10 programs like original code
+            programs = programs.slice(0, 10);
+
+            this.cache.set(cacheKey, programs);
+            return programs;
+
+        } catch (error) {
+            console.warn(`Error fetching programs for channel ${channelId}:`, error);
+            return [];
+        }
+    }
+
+    async loadDataForDate(date) {
+        this.isLoading = true;
+        this.cache.clear(); // Clear cache when date changes
+
+        try {
+            // Fetch channels with pagination
+            const { channels, hasMore } = await this.fetchChannels(0);
+            this.channels = channels;
+            this.hasMoreChannels = hasMore;
+            this.currentPage = 0;
+
+            // Fetch programs for all channels
+            const now = new Date();
+            const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+
+            // Process channels and fetch their programs
+            await this.processChannelsWithPrograms(channels, now, tomorrow);
+
+            return {
+                channels,
+                currentEvents: this.currentEvents,
+                dailyPrograms: this.dailyPrograms
+            };
+
+        } finally {
+            this.isLoading = false;
+        }
+    }
+
+    async processChannelsWithPrograms(channels, startDate, endDate) {
+        this.currentEvents.clear();
+        this.dailyPrograms.clear();
+
+        const now = new Date();
+
+        // Fetch programs for each channel in parallel
+        const programPromises = channels.map(async (channel) => {
+            try {
+                const programs = await this.fetchProgramsForChannel(
+                    channel.id,
+                    startDate,
+                    endDate
+                );
+
+                channel.programs = programs;
+
+                // Find current event
+                const currentProgram = programs.find(program => {
+                    const start = new Date(program.start_time);
+                    const end = new Date(program.end_time);
+                    return start <= now && end >= now;
+                });
+
+                if (currentProgram) {
+                    currentProgram.channel_name = channel.display_name || channel.name;
+                    currentProgram.channel_icon = channel.icon_url;
+                    this.currentEvents.set(channel.id, currentProgram);
+                }
+
+                // Store all programs for daily view
+                this.dailyPrograms.set(channel.id, programs);
+
+            } catch (error) {
+                console.warn(`Error processing channel ${channel.id}:`, error);
+                channel.programs = [];
+            }
+        });
+
+        await Promise.all(programPromises);
+    }
+
+    async loadMoreChannels() {
+        if (!this.hasMoreChannels || this.isLoading) {
+            return false;
+        }
+
+        this.isLoading = true;
+        this.currentPage++;
+
+        try {
+            const { channels, hasMore } = await this.fetchChannels(this.currentPage);
+
+            if (channels.length > 0) {
+                this.channels = [...this.channels, ...channels];
+                this.hasMoreChannels = hasMore;
+
+                // Fetch programs for new channels
+                const now = new Date();
+                const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+
+                await this.processChannelsWithPrograms(channels, now, tomorrow);
+            }
+
+            return channels.length > 0;
+
+        } finally {
+            this.isLoading = false;
+        }
+    }
+
+    // ... rest of the utility methods (formatDateTime, calculateProgress, etc.)
+    // Keep these exactly as before
+    formatDateTime(dateTime, format = 'datetime') {
+        const date = new Date(dateTime);
+        const options = {
+            timeZone: this.config.timezone,
+            hour12: false
+        };
+
+        switch (format) {
+            case 'date':
+                Object.assign(options, {
+                    weekday: 'long',
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                });
+                return date.toLocaleDateString(this.config.dateFormat, options);
+
+            case 'time':
+                Object.assign(options, {
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+                return date.toLocaleTimeString(this.config.dateFormat, options);
+
+            default:
+                Object.assign(options, {
+                    year: 'numeric',
+                    month: '2-digit',
+                    day: '2-digit',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+                return date.toLocaleString(this.config.dateFormat, options);
+        }
+    }
+
+    calculateProgress(startTime, endTime) {
+        const now = new Date();
+        const start = new Date(startTime);
+        const end = new Date(endTime);
+
+        if (now < start || now > end) return null;
+
+        const total = end - start;
+        const elapsed = now - start;
+        const percentage = (elapsed / total) * 100;
+
+        return {
+            percentage,
+            duration: Math.round((end - start) / 60000),
+            elapsed: Math.round(elapsed / 60000),
+            remaining: Math.round((end - now) / 60000)
+        };
+    }
+
+    calculateTimeRemaining(endTime) {
+        const now = new Date();
+        const end = new Date(endTime);
+        const diff = end - now;
+
+        if (diff <= 0) return 'Beendet';
+
+        const hours = Math.floor(diff / (1000 * 60 * 60));
+        const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+
+        if (hours > 0) {
+            return `Noch ${hours}h ${minutes}m`;
+        }
+        return `Noch ${minutes}m`;
+    }
+
+    getProgram(channelId, programId) {
+        const programs = this.dailyPrograms.get(channelId);
+        return programs?.find(p => p.id === programId);
+    }
+
+    getChannel(channelId) {
+        return this.channels.find(c => c.id === channelId);
+    }
+
+    navigateDate(days) {
+        this.currentDate.setDate(this.currentDate.getDate() + days);
+        this.cache.clear();
+        this.currentEvents.clear();
+        this.dailyPrograms.clear();
+    }
+
+    goToToday() {
+        this.currentDate = new Date();
+        this.cache.clear();
+        this.currentEvents.clear();
+        this.dailyPrograms.clear();
+    }
+
+    clearCache() {
+        this.cache.clear();
+    }
+}

@@ -75,17 +75,9 @@
 
 <!-- Template configuration -->
 <script>
-    // Pass configuration to JavaScript
-    window.EPG_CONFIG = {
-        timezone: "{{ config.ui.timezone if config and config.ui else 'Europe/Berlin' }}",
-        dateFormat: "de-DE",
-        refreshInterval: {{ config.ui.refresh_interval if config and config.ui else 300 }},
-        currentDate: "{{ current_date|default('') }}"
-    };
-
-    // Helper function for modal close
-    document.getElementById('modal-close-btn')?.addEventListener('click', () => {
-        document.getElementById('program-details-modal')?.classList.remove('active');
-    });
+document.addEventListener('DOMContentLoaded', () => {
+    window.epgManager = new EPGManager();
+    window.epgManager.initialize();
+});
 </script>
 {% endblock %}
