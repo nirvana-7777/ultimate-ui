@@ -1,4 +1,4 @@
-/* Ultimate UI - Main Stylesheet - Enhanced EPG */
+/* Ultimate UI - Main Stylesheet - Enhanced EPG Cards */
 
 /* CSS Variables for theming */
 :root {
@@ -348,7 +348,7 @@ body {
     background-color: var(--bg-primary);
 }
 
-/* Channel Now Playing Card */
+/* Channel Now Playing Card - ENHANCED */
 .channel-now-card {
     background-color: var(--bg-card);
     border-radius: var(--radius);
@@ -376,44 +376,106 @@ body {
 
 .channel-header-compact {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     gap: 16px;
     margin-bottom: 16px;
+    position: relative;
+}
+
+.channel-logo-section {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    flex-shrink: 0;
 }
 
 .channel-logo-container {
     position: relative;
-    width: 60px;
-    height: 60px;
+    width: 70px;
+    height: 70px;
     flex-shrink: 0;
+    border-radius: 14px;
+    background: linear-gradient(145deg, rgba(0, 0, 0, 0.4) 0%, rgba(0, 0, 0, 0.7) 100%);
+    padding: 10px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 
 .channel-logo {
     width: 100%;
     height: 100%;
     object-fit: contain;
-    border-radius: 12px;
-    padding: 8px;
-    background: linear-gradient(135deg, rgba(var(--accent-color-rgb), 0.1), rgba(var(--accent-hover-rgb), 0.1));
-    border: 1px solid var(--border-color);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    border-radius: 8px;
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
 }
 
 .channel-logo-fallback {
     width: 100%;
     height: 100%;
-    border-radius: 12px;
+    border-radius: 8px;
     display: flex;
     align-items: center;
     justify-content: center;
     font-weight: bold;
-    font-size: 20px;
+    font-size: 22px;
     color: white;
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
 }
 
+.btn-play-tile {
+    background: linear-gradient(135deg, var(--accent-color), var(--accent-hover));
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    box-shadow: 0 2px 8px rgba(33, 150, 243, 0.3);
+}
+
+.btn-play-tile:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(33, 150, 243, 0.4);
+}
+
 .channel-info-compact {
     flex: 1;
+    min-width: 0;
+}
+
+.event-preview-image {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 120px;
+    height: 90px;
+    border-radius: 8px;
+    object-fit: cover;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    border: 2px solid var(--border-color);
+}
+
+.event-preview-fallback {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 120px;
+    height: 90px;
+    border-radius: 8px;
+    background: linear-gradient(135deg, var(--bg-tertiary), var(--border-color));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-muted);
+    font-size: 11px;
+    text-align: center;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    border: 2px solid var(--border-color);
 }
 
 .channel-name-compact {
@@ -579,12 +641,12 @@ body {
 }
 
 .program-card.live {
-    background-color: rgba(var(--live-color-rgb), 0.05);
+    background-color: rgba(255, 59, 48, 0.05);
     border-left: 4px solid var(--live-color);
 }
 
 .program-card.upcoming {
-    background-color: rgba(var(--upcoming-color-rgb), 0.05);
+    background-color: rgba(52, 199, 89, 0.05);
 }
 
 .program-image {
@@ -632,12 +694,12 @@ body {
 }
 
 .time-badge.live {
-    background-color: rgba(var(--live-color-rgb), 0.1);
+    background-color: rgba(255, 59, 48, 0.1);
     color: var(--live-color);
 }
 
 .time-badge.upcoming {
-    background-color: rgba(var(--upcoming-color-rgb), 0.1);
+    background-color: rgba(52, 199, 89, 0.1);
     color: var(--upcoming-color);
 }
 
@@ -701,7 +763,7 @@ body {
 }
 
 .program-duration {
-    background-color: rgba(var(--accent-color-rgb), 0.1);
+    background-color: rgba(33, 150, 243, 0.1);
     color: var(--accent-color);
     padding: 4px 10px;
     border-radius: 12px;
@@ -709,7 +771,7 @@ body {
 }
 
 .program-rating {
-    background-color: rgba(var(--warning-color-rgb), 0.1);
+    background-color: rgba(255, 152, 0, 0.1);
     color: var(--warning-color);
     padding: 4px 10px;
     border-radius: 12px;
@@ -888,7 +950,7 @@ body {
 
 .btn-play:hover {
     transform: translateY(-2px);
-    box-shadow: 0 8px 20px rgba(var(--accent-color-rgb), 0.3);
+    box-shadow: 0 8px 20px rgba(33, 150, 243, 0.3);
 }
 
 .btn-reminder {
@@ -998,7 +1060,7 @@ body {
     font-size: 14px;
     font-weight: 600;
     margin-bottom: 4px;
-    white-space: nowrap;
+white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
 }
@@ -1206,7 +1268,7 @@ body {
 
 /* Episode badge styling */
 .program-episode {
-    background-color: rgba(var(--accent-color-rgb), 0.1);
+    background-color: rgba(33, 150, 243, 0.1);
     color: var(--accent-color);
     padding: 4px 10px;
     border-radius: 12px;

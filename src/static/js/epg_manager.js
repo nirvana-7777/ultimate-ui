@@ -1,4 +1,4 @@
-// epg_manager.js - Fixed with proper cleanup and state management
+// EPG Manager - Main Controller with Enhanced Play Button Support
 class EPGManager {
     constructor() {
         this.core = new EPGCore();
@@ -47,7 +47,7 @@ class EPGManager {
         // Update time every minute
         this.timeUpdateInterval = setInterval(() => this.updateTimeDisplays(), 60000);
 
-        // FIX: Update progress bars more frequently (every 30 seconds)
+        // Update progress bars more frequently (every 30 seconds)
         this.progressUpdateInterval = setInterval(() => this.updateProgressBars(), 30000);
 
         this.initialized = true;
@@ -193,6 +193,18 @@ class EPGManager {
     handleClick(e) {
         // Date navigation is handled by button listeners
 
+        // Play button on tile
+        if (e.target.closest('.btn-play-tile')) {
+            e.stopPropagation();
+            const button = e.target.closest('.btn-play-tile');
+            const channelId = button.dataset.channelId;
+            const programId = button.dataset.programId;
+            if (channelId && programId) {
+                this.playProgram(channelId, programId);
+            }
+            return;
+        }
+
         // Expand toggle on current events
         if (e.target.closest('.expand-toggle')) {
             const channelId = e.target.closest('.channel-now-card')?.dataset.channelId;
@@ -281,7 +293,7 @@ class EPGManager {
         this.core.navigateDate(days);
         this.ui.clearExpandedChannels();
 
-        // FIX: Reset pagination when changing dates
+        // Reset pagination when changing dates
         this.core.currentPage = 0;
         this.core.hasMoreChannels = true;
 
@@ -292,7 +304,7 @@ class EPGManager {
         this.core.goToToday();
         this.ui.clearExpandedChannels();
 
-        // FIX: Reset pagination
+        // Reset pagination
         this.core.currentPage = 0;
         this.core.hasMoreChannels = true;
 
@@ -394,7 +406,7 @@ class EPGManager {
         }, intervalSeconds * 1000);
     }
 
-    // FIX: Proper cleanup of all resources
+    // Proper cleanup of all resources
     destroy() {
         console.log('Cleaning up EPGManager...');
 
@@ -443,6 +455,12 @@ class EPGManager {
 
         this.initialized = false;
         console.log('EPGManager cleanup complete');
+    }
+
+    // Added method for refresh compatibility
+    async refreshData() {
+        console.log('Refreshing EPG data...');
+        await this.loadData();
     }
 }
 

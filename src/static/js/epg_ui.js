@@ -1,4 +1,4 @@
-// epg_ui.js - UI rendering and DOM manipulation - FIXED
+// EPG UI - DOM Rendering and Manipulation - Enhanced
 class EPGUI {
     constructor(core) {
         this.core = core;
@@ -37,11 +37,14 @@ class EPGUI {
             div.classList.add(program.is_live ? 'live' : 'upcoming');
         }
 
-        // Channel header with logo
+        // Channel header with logo section and info
         const header = document.createElement('div');
         header.className = 'channel-header-compact';
 
-        // Logo
+        // Logo section (logo + play button)
+        const logoSection = document.createElement('div');
+        logoSection.className = 'channel-logo-section';
+
         const logoContainer = document.createElement('div');
         logoContainer.className = 'channel-logo-container';
 
@@ -58,7 +61,19 @@ class EPGUI {
             this.addLogoFallback(logoContainer, channel.display_name);
         }
 
-        header.appendChild(logoContainer);
+        logoSection.appendChild(logoContainer);
+
+        // Play button underneath logo
+        if (program && (program.stream_url || program.stream)) {
+            const playBtn = document.createElement('button');
+            playBtn.className = 'btn-play-tile';
+            playBtn.innerHTML = '<span>▶</span> Play';
+            playBtn.dataset.channelId = channel.id;
+            playBtn.dataset.programId = program.id;
+            logoSection.appendChild(playBtn);
+        }
+
+        header.appendChild(logoSection);
 
         // Channel info
         const info = document.createElement('div');
@@ -80,6 +95,31 @@ class EPGUI {
         }
 
         header.appendChild(info);
+
+        // Preview image in top-right corner
+        if (program) {
+            const imageUrl = program.image_url || program.icon_url;
+            if (imageUrl) {
+                const previewImg = document.createElement('img');
+                previewImg.className = 'event-preview-image';
+                previewImg.src = imageUrl;
+                previewImg.alt = program.title;
+                previewImg.loading = 'lazy';
+                previewImg.onerror = () => {
+                    const fallback = document.createElement('div');
+                    fallback.className = 'event-preview-fallback';
+                    fallback.textContent = 'Kein Bild';
+                    previewImg.replaceWith(fallback);
+                };
+                header.appendChild(previewImg);
+            } else {
+                const fallback = document.createElement('div');
+                fallback.className = 'event-preview-fallback';
+                fallback.textContent = 'Kein Bild';
+                header.appendChild(fallback);
+            }
+        }
+
         div.appendChild(header);
 
         // Expand button
@@ -496,7 +536,7 @@ class EPGUI {
             closeBtn.addEventListener('click', () => this.closeProgramDetails());
         }
 
-        // FIX: Play button now dispatches event with correct data structure
+        // Play button now dispatches event with correct data structure
         const playBtn = content.querySelector('.btn-play');
         if (playBtn) {
             playBtn.addEventListener('click', () => {
@@ -554,7 +594,6 @@ class EPGUI {
         }
     }
 
-    // FIX: Update both progress bars AND percentage text
     updateProgressBars(core) {
         document.querySelectorAll('.channel-now-card').forEach(card => {
             const channelId = card.dataset.channelId;
