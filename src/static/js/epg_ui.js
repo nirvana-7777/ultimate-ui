@@ -1,4 +1,4 @@
-// EPG UI - DOM Rendering and Manipulation - Enhanced
+// EPG UI - DOM Rendering and Manipulation - Fixed Duration Display
 class EPGUI {
     constructor(core) {
         this.core = core;
@@ -195,6 +195,7 @@ class EPGUI {
         timeRemaining.textContent = program.time_remaining;
         progressInfo.appendChild(timeRemaining);
 
+        // FIXED: Use "min" instead of "m"
         const duration = document.createElement('span');
         duration.textContent = `${program.progress.duration} min`;
         progressInfo.appendChild(duration);
@@ -350,6 +351,7 @@ class EPGUI {
             metaItems.push(`<span class="program-category">${this.escapeHtml(program.category)}</span>`);
         }
 
+        // FIXED: Use "min" instead of "m"
         if (program.duration) {
             metaItems.push(`<span class="program-duration">${program.duration} min</span>`);
         }

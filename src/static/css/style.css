@@ -1,4 +1,4 @@
-/* Ultimate UI - Main Stylesheet - Enhanced EPG Cards */
+/* Ultimate UI - Main Stylesheet - Fixed Layout Issues */
 
 /* CSS Variables for theming */
 :root {
@@ -169,7 +169,7 @@ body {
     margin-top: 64px;
 }
 
-/* Sidebar */
+/* Sidebar - FIXED alignment */
 .sidebar {
     width: 280px;
     background-color: var(--bg-secondary);
@@ -180,6 +180,7 @@ body {
     height: calc(100vh - 64px);
     overflow-y: auto;
     z-index: 900;
+    top: 64px;
 }
 
 .nav-items {
@@ -262,13 +263,12 @@ body {
     opacity: 0.9;
 }
 
-/* Main content */
+/* Main content - FIXED width */
 .content {
     flex: 1;
     margin-left: 280px;
     padding: 0;
-    max-width: calc(1600px - 280px);
-    margin-right: auto;
+    width: calc(100% - 280px);
     overflow-y: auto;
 }
 
@@ -279,10 +279,10 @@ body {
     padding: 0;
 }
 
-/* Sticky Date Navigation */
+/* Sticky Date Navigation - FIXED alignment */
 .date-navigation {
     position: sticky;
-    top: 64px;
+    top: 0;
     z-index: 800;
     background-color: var(--bg-secondary);
     border-bottom: 1px solid var(--border-color);
@@ -339,16 +339,16 @@ body {
     text-align: center;
 }
 
-/* Current Events Grid */
+/* Current Events Grid - FIXED for wider cards */
 .current-events-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
-    gap: 20px;
+    grid-template-columns: repeat(auto-fill, minmax(450px, 1fr));
+    gap: 24px;
     padding: 32px;
     background-color: var(--bg-primary);
 }
 
-/* Channel Now Playing Card - ENHANCED */
+/* Channel Now Playing Card - ENHANCED with fixed layout */
 .channel-now-card {
     background-color: var(--bg-card);
     border-radius: var(--radius);
@@ -358,6 +358,9 @@ body {
     cursor: pointer;
     position: relative;
     overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    min-height: 240px;
 }
 
 .channel-now-card:hover {
@@ -378,8 +381,9 @@ body {
     display: flex;
     align-items: flex-start;
     gap: 16px;
-    margin-bottom: 16px;
+    margin-bottom: 12px;
     position: relative;
+    flex-shrink: 0;
 }
 
 .channel-logo-section {
@@ -446,6 +450,7 @@ body {
 .channel-info-compact {
     flex: 1;
     min-width: 0;
+    padding-right: 130px;
 }
 
 .event-preview-image {
@@ -487,6 +492,9 @@ body {
 
 .current-event {
     margin-top: 12px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
 }
 
 .event-title {
@@ -510,11 +518,13 @@ body {
     justify-content: space-between;
     font-size: 13px;
     color: var(--text-muted);
-    margin-bottom: 12px;
+    margin-bottom: auto;
 }
 
+/* FIXED: Progress bar always at bottom */
 .event-progress {
-    margin-top: 12px;
+    margin-top: auto;
+    padding-top: 12px;
 }
 
 .progress-bar {
@@ -551,7 +561,7 @@ body {
 /* Expand/Collapse Toggle */
 .expand-toggle {
     position: absolute;
-    top: 20px;
+    bottom: 20px;
     right: 20px;
     background: none;
     border: none;
@@ -560,6 +570,7 @@ body {
     padding: 4px;
     border-radius: 4px;
     transition: all 0.2s;
+    z-index: 10;
 }
 
 .expand-toggle:hover {
@@ -1060,7 +1071,7 @@ body {
     font-size: 14px;
     font-weight: 600;
     margin-bottom: 4px;
-white-space: nowrap;
+    white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
 }
@@ -1139,7 +1150,7 @@ white-space: nowrap;
 /* Mobile Responsive */
 @media (max-width: 1200px) {
     .current-events-grid {
-        grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+        grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
         padding: 24px;
     }
 
@@ -1155,6 +1166,7 @@ white-space: nowrap;
 
     .content {
         margin-left: 0;
+        width: 100%;
     }
 
     .date-navigation {
