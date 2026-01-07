@@ -303,6 +303,32 @@ class EPGUI {
             timeBadge = '<span class="time-badge upcoming">DEMNÄCHST</span>';
         }
 
+        // Build meta info from all available fields
+        const metaItems = [];
+
+        if (program.category) {
+            metaItems.push(`<span class="program-category">${this.escapeHtml(program.category)}</span>`);
+        }
+
+        if (program.duration) {
+            metaItems.push(`<span class="program-duration">${program.duration} min</span>`);
+        }
+
+        if (program.rating) {
+            metaItems.push(`<span class="program-rating">${this.escapeHtml(program.rating)}</span>`);
+        }
+
+        if (program.episode_num) {
+            const epNum = program.episode_num.replace(/\./g, '').trim();
+            if (epNum) {
+                metaItems.push(`<span class="program-episode">Episode ${epNum}</span>`);
+            }
+        }
+
+        const metaHTML = metaItems.length > 0 ?
+            `<div class="program-meta">${metaItems.join('')}</div>` : '';
+
+        // Description with expand/collapse
         let descriptionHTML = '';
         if (program.description) {
             descriptionHTML = `
@@ -311,25 +337,10 @@ class EPGUI {
             `;
         }
 
-        let metaHTML = '';
-        const metaItems = [];
-
-        if (program.category) {
-            metaItems.push(`<span class="program-category">${this.escapeHtml(program.category)}</span>`);
-        }
-        if (program.duration) {
-            metaItems.push(`<span class="program-duration">${program.duration} min</span>`);
-        }
-        if (program.rating) {
-            metaItems.push(`<span class="program-rating">${this.escapeHtml(program.rating)}</span>`);
-        }
-
-        if (metaItems.length > 0) {
-            metaHTML = `<div class="program-meta">${metaItems.join('')}</div>`;
-        }
-
+        // Play button (check both stream and stream_url)
+        const streamUrl = program.stream_url || program.stream;
         let playButton = '';
-        if (program.stream_url) {
+        if (streamUrl) {
             playButton = '<button class="btn-play">▶ Abspielen</button>';
         }
 
@@ -343,6 +354,127 @@ class EPGUI {
             ${descriptionHTML}
             ${metaHTML}
             ${playButton}
+        `;
+    }
+
+    // Update modal to show all available information
+    createProgramDetailsModalHTML(program) {
+        const imageUrl = program.icon_url || program.image_url || '';
+
+        // Build details grid from all available fields
+        const detailItems = [];
+
+        detailItems.push(`
+            <div class="detail-item">
+                <span class="detail-label">Sendezeit</span>
+                <span class="detail-value">${program.start_time_local} - ${program.end_time_local}</span>
+            </div>
+        `);
+
+        if (program.date_local) {
+            detailItems.push(`
+                <div class="detail-item">
+                    <span class="detail-label">Datum</span>
+                    <span class="detail-value">${program.date_local}</span>
+                </div>
+            `);
+        }
+
+        if (program.category) {
+            detailItems.push(`
+                <div class="detail-item">
+                    <span class="detail-label">Kategorie</span>
+                    <span class="detail-value">${this.escapeHtml(program.category)}</span>
+                </div>
+            `);
+        }
+
+        if (program.rating) {
+            detailItems.push(`
+                <div class="detail-item">
+                    <span class="detail-label">Altersfreigabe</span>
+                    <span class="detail-value">${this.escapeHtml(program.rating)}</span>
+                </div>
+            `);
+        }
+
+        if (program.episode_num) {
+            const epNum = program.episode_num.replace(/\./g, '').trim();
+            if (epNum) {
+                detailItems.push(`
+                    <div class="detail-item">
+                        <span class="detail-label">Episode</span>
+                        <span class="detail-value">${epNum}</span>
+                    </div>
+                `);
+            }
+        }
+
+        if (program.directors) {
+            detailItems.push(`
+                <div class="detail-item">
+                    <span class="detail-label">Regie</span>
+                    <span class="detail-value">${this.escapeHtml(program.directors)}</span>
+                </div>
+            `);
+        }
+
+        if (program.actors) {
+            // Truncate long actor lists
+            const actors = program.actors.length > 100 ?
+                program.actors.substring(0, 100) + '...' :
+                program.actors;
+            detailItems.push(`
+                <div class="detail-item">
+                    <span class="detail-label">Besetzung</span>
+                    <span class="detail-value">${this.escapeHtml(actors)}</span>
+                </div>
+            `);
+        }
+
+        const detailsGrid = detailItems.length > 0 ?
+            `<div class="modal-program-details">${detailItems.join('')}</div>` : '';
+
+        // Check for stream URL (both field names)
+        const streamUrl = program.stream_url || program.stream;
+
+        return `
+            <div class="modal-program-header">
+                ${imageUrl ? 
+                    `<img src="${imageUrl}" alt="${program.title}" class="modal-program-image" 
+                         onerror="this.onerror=null; this.style.display='none'; this.parentNode.innerHTML='<div class=\\'modal-program-image\\' style=\\'background: linear-gradient(135deg, var(--bg-tertiary), var(--border-color)); display: flex; align-items: center; justify-content: center; color: var(--text-muted);\\'>Kein Bild</div>';">` :
+                    `<div class="modal-program-image" style="background: linear-gradient(135deg, var(--bg-tertiary), var(--border-color)); display: flex; align-items: center; justify-content: center; color: var(--text-muted);">Kein Bild</div>`
+                }
+                <div class="modal-program-info">
+                    <h3 class="modal-program-title">${this.escapeHtml(program.title)}</h3>
+                    ${program.subtitle ? `<div class="modal-program-subtitle">${this.escapeHtml(program.subtitle)}</div>` : ''}
+                    
+                    <div class="modal-program-meta">
+                        ${program.category ? `<span class="program-category">${this.escapeHtml(program.category)}</span>` : ''}
+                        ${program.duration ? `<span class="program-duration">${program.duration} min</span>` : ''}
+                        ${program.rating ? `<span class="program-rating">${this.escapeHtml(program.rating)}</span>` : ''}
+                        ${program.episode_num ? `<span class="program-episode">Episode ${program.episode_num.replace(/\./g, '').trim()}</span>` : ''}
+                    </div>
+                </div>
+            </div>
+            
+            <div class="modal-program-description">
+                ${program.description ? `<p>${this.escapeHtml(program.description)}</p>` : ''}
+            </div>
+            
+            ${detailsGrid}
+            
+            <div class="modal-actions">
+                ${streamUrl ? `
+                <button class="btn-play">
+                    <span>▶</span>
+                    Jetzt abspielen
+                </button>` : ''}
+                <button class="btn-reminder">
+                    <span>⏰</span>
+                    Erinnerung setzen
+                </button>
+            </div>
         `;
     }
 
@@ -375,66 +507,6 @@ class EPGUI {
                 }));
             });
         }
-    }
-
-    createProgramDetailsModalHTML(program) {
-        // Similar to previous implementation but using this.core for formatting
-        return `
-            <div class="modal-program-header">
-                ${program.image_url ? 
-                    `<img src="${program.image_url}" alt="${program.title}" class="modal-program-image">` :
-                    `<div class="modal-program-image" style="background: linear-gradient(135deg, var(--bg-tertiary), var(--border-color)); display: flex; align-items: center; justify-content: center; color: var(--text-muted);">Kein Bild</div>`
-                }
-                <div class="modal-program-info">
-                    <h3 class="modal-program-title">${this.escapeHtml(program.title)}</h3>
-                    ${program.subtitle ? `<div class="modal-program-subtitle">${this.escapeHtml(program.subtitle)}</div>` : ''}
-                    
-                    <div class="modal-program-meta">
-                        ${program.category ? `<span class="program-category">${this.escapeHtml(program.category)}</span>` : ''}
-                        ${program.duration ? `<span class="program-duration">${program.duration} min</span>` : ''}
-                        ${program.rating ? `<span class="program-rating">${this.escapeHtml(program.rating)}</span>` : ''}
-                    </div>
-                </div>
-            </div>
-            
-            <div class="modal-program-description">
-                ${program.description ? `<p>${this.escapeHtml(program.description)}</p>` : ''}
-            </div>
-            
-            <div class="modal-program-details">
-                <div class="detail-item">
-                    <span class="detail-label">Sendezeit</span>
-                    <span class="detail-value">${program.start_time_local} - ${program.end_time_local}</span>
-                </div>
-                ${program.date_local ? `
-                <div class="detail-item">
-                    <span class="detail-label">Datum</span>
-                    <span class="detail-value">${program.date_local}</span>
-                </div>` : ''}
-                ${program.genre ? `
-                <div class="detail-item">
-                    <span class="detail-label">Genre</span>
-                    <span class="detail-value">${this.escapeHtml(program.genre)}</span>
-                </div>` : ''}
-                ${program.production_year ? `
-                <div class="detail-item">
-                    <span class="detail-label">Produktionsjahr</span>
-                    <span class="detail-value">${program.production_year}</span>
-                </div>` : ''}
-            </div>
-            
-            <div class="modal-actions">
-                ${program.stream_url ? `
-                <button class="btn-play">
-                    <span>▶</span>
-                    Jetzt abspielen
-                </button>` : ''}
-                <button class="btn-reminder">
-                    <span>⏰</span>
-                    Erinnerung setzen
-                </button>
-            </div>
-        `;
     }
 
     updateDateDisplay(date) {
@@ -470,6 +542,31 @@ class EPGUI {
                 programsList.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
             }
         }
+    }
+
+    // Add this method to EPGUI class in epg_ui.js
+    updateProgressBars(core) {
+        // Update progress bars for current events
+        document.querySelectorAll('.channel-now-card').forEach(card => {
+            const channelId = card.dataset.channelId;
+            const program = core.currentEvents.get(channelId);
+
+            if (program && program.progress) {
+                const progressFill = card.querySelector('.progress-fill');
+                const timeRemaining = card.querySelector('.time-remaining');
+
+                if (progressFill) {
+                    const progress = core.calculateProgress(program.start_time, program.end_time);
+                    if (progress) {
+                        progressFill.style.width = `${progress.percentage}%`;
+                    }
+                }
+
+                if (timeRemaining) {
+                    timeRemaining.textContent = core.calculateTimeRemaining(program.end_time);
+                }
+            }
+        });
     }
 
     clearExpandedChannels() {

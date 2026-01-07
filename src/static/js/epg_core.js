@@ -57,6 +57,13 @@ class EPGCore {
         }
     }
 
+    calculateDuration(startTime, endTime) {
+        const start = new Date(startTime);
+        const end = new Date(endTime);
+        const diff = end - start;
+        return Math.round(diff / (1000 * 60)); // Convert to minutes
+    }
+
     async fetchProgramsForChannel(channelId, startDate, endDate) {
         try {
             const cacheKey = `programs_${channelId}_${startDate.toISOString().split('T')[0]}`;
@@ -90,6 +97,16 @@ class EPGCore {
             // Add channel info to each program
             programs.forEach(program => {
                 program.channel_id = channelId;
+
+                // Map fields to consistent names
+                program.image_url = program.icon_url; // API uses icon_url for program images
+                program.stream_url = program.stream; // API might use stream instead of stream_url
+
+                // Add other mappings if needed
+                program.duration = program.duration || this.calculateDuration(
+                    program.start_time,
+                    program.end_time
+                );
             });
 
             // Limit to 10 programs like original code

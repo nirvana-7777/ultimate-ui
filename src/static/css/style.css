@@ -1203,3 +1203,31 @@ body {
 .font-bold {
     font-weight: 700;
 }
+
+/* Episode badge styling */
+.program-episode {
+    background-color: rgba(var(--accent-color-rgb), 0.1);
+    color: var(--accent-color);
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+/* Add to modal program meta */
+.modal-program-meta .program-episode {
+    background-color: rgba(156, 39, 176, 0.1);
+    color: #9c27b0;
+}
+
+/* Ensure program meta items wrap properly */
+.program-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 12px;
+}
+
+.program-meta > * {
+    margin: 0;
+}
