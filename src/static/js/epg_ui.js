@@ -1,4 +1,4 @@
-// epg_ui.js - UI rendering and DOM manipulation
+// epg_ui.js - UI rendering and DOM manipulation - FIXED
 class EPGUI {
     constructor(core) {
         this.core = core;
@@ -357,7 +357,6 @@ class EPGUI {
         `;
     }
 
-    // Update modal to show all available information
     createProgramDetailsModalHTML(program) {
         const imageUrl = program.icon_url || program.image_url || '';
 
@@ -441,7 +440,7 @@ class EPGUI {
         return `
             <div class="modal-program-header">
                 ${imageUrl ? 
-                    `<img src="${imageUrl}" alt="${program.title}" class="modal-program-image" 
+                    `<img src="${imageUrl}" alt="${this.escapeHtml(program.title)}" class="modal-program-image" 
                          onerror="this.onerror=null; this.style.display='none'; this.parentNode.innerHTML='<div class=\\'modal-program-image\\' style=\\'background: linear-gradient(135deg, var(--bg-tertiary), var(--border-color)); display: flex; align-items: center; justify-content: center; color: var(--text-muted);\\'>Kein Bild</div>';">` :
                     `<div class="modal-program-image" style="background: linear-gradient(135deg, var(--bg-tertiary), var(--border-color)); display: flex; align-items: center; justify-content: center; color: var(--text-muted);">Kein Bild</div>`
                 }
@@ -466,7 +465,7 @@ class EPGUI {
             
             <div class="modal-actions">
                 ${streamUrl ? `
-                <button class="btn-play">
+                <button class="btn-play" data-channel-id="${program.channel_id}" data-program-id="${program.id}">
                     <span>▶</span>
                     Jetzt abspielen
                 </button>` : ''}
@@ -497,16 +496,27 @@ class EPGUI {
             closeBtn.addEventListener('click', () => this.closeProgramDetails());
         }
 
+        // FIX: Play button now dispatches event with correct data structure
         const playBtn = content.querySelector('.btn-play');
         if (playBtn) {
             playBtn.addEventListener('click', () => {
-                // This will be handled by the manager
+                const channelId = playBtn.dataset.channelId;
+                const programId = playBtn.dataset.programId;
+
                 this.closeProgramDetails();
+
                 document.dispatchEvent(new CustomEvent('play-program', {
-                    detail: { program }
+                    detail: { channelId, programId }
                 }));
             });
         }
+
+        // Close modal on backdrop click
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                this.closeProgramDetails();
+            }
+        });
     }
 
     updateDateDisplay(date) {
@@ -544,21 +554,26 @@ class EPGUI {
         }
     }
 
-    // Add this method to EPGUI class in epg_ui.js
+    // FIX: Update both progress bars AND percentage text
     updateProgressBars(core) {
-        // Update progress bars for current events
         document.querySelectorAll('.channel-now-card').forEach(card => {
             const channelId = card.dataset.channelId;
             const program = core.currentEvents.get(channelId);
 
             if (program && program.progress) {
                 const progressFill = card.querySelector('.progress-fill');
+                const progressPercent = card.querySelector('.progress-percent');
                 const timeRemaining = card.querySelector('.time-remaining');
 
                 if (progressFill) {
                     const progress = core.calculateProgress(program.start_time, program.end_time);
                     if (progress) {
                         progressFill.style.width = `${progress.percentage}%`;
+
+                        // Update percentage text
+                        if (progressPercent) {
+                            progressPercent.textContent = `${Math.round(progress.percentage)}%`;
+                        }
                     }
                 }
 
@@ -597,14 +612,23 @@ class EPGUI {
     }
 
     showError(message) {
-        const container = document.querySelector('.epg-content');
+        const container = document.querySelector('.epg-container');
         if (container) {
-            container.innerHTML = `
-                <div class="error-message">
-                    <p>⚠️ ${this.escapeHtml(message)}</p>
-                    <button onclick="location.reload()">Erneut versuchen</button>
-                </div>
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'error-message';
+            errorDiv.innerHTML = `
+                <p>⚠️ ${this.escapeHtml(message)}</p>
+                <button onclick="location.reload()">Erneut versuchen</button>
             `;
+            errorDiv.style.cssText = `
+                text-align: center;
+                padding: 40px 20px;
+                background-color: var(--bg-card);
+                border-radius: var(--radius);
+                border: 1px solid var(--error-color);
+                margin: 32px;
+            `;
+            container.appendChild(errorDiv);
         }
 
         if (window.showToast) {
@@ -613,6 +637,7 @@ class EPGUI {
     }
 
     addLogoFallback(container, channelName) {
+        container.innerHTML = '';
         const fallback = document.createElement('div');
         fallback.className = 'channel-logo-fallback';
         fallback.textContent = channelName.substring(0, 2).toUpperCase();

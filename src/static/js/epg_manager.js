@@ -1,4 +1,4 @@
-// epg_manager.js - Fixed to match original data flow
+// epg_manager.js - Fixed with proper cleanup and state management
 class EPGManager {
     constructor() {
         this.core = new EPGCore();
@@ -8,6 +8,12 @@ class EPGManager {
 
         // For infinite scroll
         this.scrollObserver = null;
+        this.scrollSentinel = null;
+
+        // Intervals
+        this.refreshInterval = null;
+        this.timeUpdateInterval = null;
+        this.progressUpdateInterval = null;
 
         // Bind methods
         this.handleClick = this.handleClick.bind(this);
@@ -41,7 +47,11 @@ class EPGManager {
         // Update time every minute
         this.timeUpdateInterval = setInterval(() => this.updateTimeDisplays(), 60000);
 
+        // FIX: Update progress bars more frequently (every 30 seconds)
+        this.progressUpdateInterval = setInterval(() => this.updateProgressBars(), 30000);
+
         this.initialized = true;
+        console.log('EPGManager initialized successfully');
     }
 
     loadConfiguration() {
@@ -53,7 +63,7 @@ class EPGManager {
             if (timezone) {
                 this.core.config.timezone = timezone;
             }
-            if (refreshInterval) {
+            if (refreshInterval && !isNaN(refreshInterval)) {
                 this.core.config.refreshInterval = refreshInterval;
             }
         }
@@ -68,7 +78,8 @@ class EPGManager {
 
         // Custom event for playing programs
         document.addEventListener('play-program', (e) => {
-            this.playProgram(e.detail.channelId, e.detail.programId);
+            const { channelId, programId } = e.detail;
+            this.playProgram(channelId, programId);
         });
     }
 
@@ -117,13 +128,14 @@ class EPGManager {
         });
 
         // Add sentinel element
-        const sentinel = document.createElement('div');
-        sentinel.id = 'scroll-sentinel';
-        sentinel.style.height = '1px';
-        document.querySelector('.daily-programs')?.appendChild(sentinel);
+        const dailyPrograms = document.querySelector('.daily-programs');
+        if (dailyPrograms) {
+            this.scrollSentinel = document.createElement('div');
+            this.scrollSentinel.id = 'scroll-sentinel';
+            this.scrollSentinel.style.height = '1px';
+            dailyPrograms.appendChild(this.scrollSentinel);
 
-        if (sentinel) {
-            this.scrollObserver.observe(sentinel);
+            this.scrollObserver.observe(this.scrollSentinel);
         }
     }
 
@@ -137,6 +149,8 @@ class EPGManager {
             this.ui.renderDailyPrograms(data.channels, data.dailyPrograms);
             this.ui.updateDateDisplay(this.core.currentDate);
 
+            console.log(`Loaded ${data.channels.length} channels`);
+
         } catch (error) {
             console.error('Error loading data:', error);
             this.ui.showError(error.message);
@@ -146,17 +160,12 @@ class EPGManager {
     }
 
     async loadMoreChannels() {
+        console.log('Loading more channels...');
+
         const success = await this.core.loadMoreChannels();
 
         if (success) {
-            // Update UI with new channels
-            const data = {
-                channels: this.core.channels,
-                currentEvents: this.core.currentEvents,
-                dailyPrograms: this.core.dailyPrograms
-            };
-
-            // Only render new daily programs (append)
+            // Only render new channels (append)
             const container = document.querySelector('.daily-programs');
             if (container) {
                 const newChannels = this.core.channels.slice(-this.core.config.itemsPerPage);
@@ -164,20 +173,25 @@ class EPGManager {
                     const programs = this.core.dailyPrograms.get(channel.id);
                     if (programs && programs.length > 0) {
                         const channelCard = this.ui.createChannelDailyCard(channel, programs);
-                        container.appendChild(channelCard);
+
+                        // Insert before sentinel
+                        if (this.scrollSentinel) {
+                            container.insertBefore(channelCard, this.scrollSentinel);
+                        } else {
+                            container.appendChild(channelCard);
+                        }
                     }
                 });
+
+                console.log(`Loaded ${newChannels.length} more channels`);
             }
+        } else {
+            console.log('No more channels to load');
         }
     }
 
     handleClick(e) {
-        // Date navigation
-        if (e.target.closest('#date-prev-btn') ||
-            e.target.closest('#date-next-btn') ||
-            e.target.closest('#date-today-btn')) {
-            return; // Handled by button listeners
-        }
+        // Date navigation is handled by button listeners
 
         // Expand toggle on current events
         if (e.target.closest('.expand-toggle')) {
@@ -220,18 +234,22 @@ class EPGManager {
 
         // Expand description
         if (e.target.closest('.expand-description')) {
-            const description = e.target.closest('.program-description');
+            const description = e.target.closest('.program-details')?.querySelector('.program-description');
             if (description) {
+                const isExpanded = description.classList.contains('expanded');
                 description.classList.toggle('expanded');
-                e.target.textContent = description.classList.contains('expanded')
-                    ? 'Weniger anzeigen'
-                    : 'Mehr anzeigen';
+                e.target.textContent = isExpanded ? 'Mehr anzeigen' : 'Weniger anzeigen';
             }
             return;
         }
     }
 
     handleKeyboard(e) {
+        // Skip if user is typing in an input field
+        if (['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) {
+            return;
+        }
+
         // Global keyboard shortcuts
         if (e.key === 'Escape') {
             this.ui.closeProgramDetails();
@@ -240,16 +258,19 @@ class EPGManager {
             }
         }
 
+        // Alt+Left: Previous day
         if (e.key === 'ArrowLeft' && e.altKey) {
             e.preventDefault();
             this.navigateDate(-1);
         }
 
+        // Alt+Right: Next day
         if (e.key === 'ArrowRight' && e.altKey) {
             e.preventDefault();
             this.navigateDate(1);
         }
 
+        // Alt+T: Today
         if (e.key === 't' && e.altKey) {
             e.preventDefault();
             this.goToToday();
@@ -259,18 +280,37 @@ class EPGManager {
     navigateDate(days) {
         this.core.navigateDate(days);
         this.ui.clearExpandedChannels();
+
+        // FIX: Reset pagination when changing dates
+        this.core.currentPage = 0;
+        this.core.hasMoreChannels = true;
+
         this.loadData();
     }
 
     goToToday() {
         this.core.goToToday();
         this.ui.clearExpandedChannels();
+
+        // FIX: Reset pagination
+        this.core.currentPage = 0;
+        this.core.hasMoreChannels = true;
+
         this.loadData();
     }
 
     async playProgram(channelId, programId) {
         const program = this.core.getProgram(channelId, programId);
-        if (!program?.stream_url) {
+        if (!program) {
+            console.error('Program not found:', channelId, programId);
+            if (window.showToast) {
+                window.showToast('Programm nicht gefunden', 'error');
+            }
+            return;
+        }
+
+        const streamUrl = program.stream_url || program.stream;
+        if (!streamUrl) {
             if (window.showToast) {
                 window.showToast('Kein Stream für dieses Programm verfügbar', 'warning');
             }
@@ -283,7 +323,7 @@ class EPGManager {
         }
 
         if (this.player) {
-            await this.player.play(program.stream_url, {
+            await this.player.play(streamUrl, {
                 title: program.title,
                 subtitle: program.subtitle
             });
@@ -293,17 +333,30 @@ class EPGManager {
     async initializePlayer() {
         if (!window.EPGPlayer) {
             console.warn('EPGPlayer not available');
+            if (window.showToast) {
+                window.showToast('Player nicht verfügbar', 'error');
+            }
             return;
         }
 
-        this.player = new window.EPGPlayer();
-        await this.player.initialize();
+        try {
+            this.player = new window.EPGPlayer();
+            await this.player.initialize();
+            console.log('Player initialized');
+        } catch (error) {
+            console.error('Error initializing player:', error);
+            if (window.showToast) {
+                window.showToast('Fehler beim Initialisieren des Players', 'error');
+            }
+        }
     }
 
     showProgramDetails(channelId, programId) {
         const program = this.core.getProgram(channelId, programId);
         if (program) {
             this.ui.showProgramDetails(program);
+        } else {
+            console.error('Program not found:', channelId, programId);
         }
     }
 
@@ -315,40 +368,81 @@ class EPGManager {
             timeElement.textContent = this.core.formatDateTime(now, 'datetime');
         }
 
-        // Update progress bars for current events
+        // Update progress bars
+        this.updateProgressBars();
+    }
+
+    updateProgressBars() {
         this.ui.updateProgressBars(this.core);
     }
 
     startAutoRefresh() {
-        this.refreshInterval = setInterval(() => {
-            if (!this.core.isLoading) {
-                this.loadData();
-            }
-        }, this.core.config.refreshInterval * 1000);
-    }
-
-    destroy() {
-        // Cleanup
-        document.removeEventListener('click', this.handleClick);
-        document.removeEventListener('keydown', this.handleKeyboard);
-
-        if (this.scrollObserver) {
-            this.scrollObserver.disconnect();
-        }
-
+        // Clear existing interval
         if (this.refreshInterval) {
             clearInterval(this.refreshInterval);
         }
 
+        const intervalSeconds = this.core.config.refreshInterval;
+
+        console.log(`Starting auto-refresh every ${intervalSeconds} seconds`);
+
+        this.refreshInterval = setInterval(() => {
+            if (!this.core.isLoading) {
+                console.log('Auto-refreshing data...');
+                this.loadData();
+            }
+        }, intervalSeconds * 1000);
+    }
+
+    // FIX: Proper cleanup of all resources
+    destroy() {
+        console.log('Cleaning up EPGManager...');
+
+        // Remove event listeners
+        document.removeEventListener('click', this.handleClick);
+        document.removeEventListener('keydown', this.handleKeyboard);
+
+        // Cleanup scroll observer
+        if (this.scrollObserver) {
+            this.scrollObserver.disconnect();
+            this.scrollObserver = null;
+        }
+
+        // Remove sentinel element
+        if (this.scrollSentinel && this.scrollSentinel.parentNode) {
+            this.scrollSentinel.parentNode.removeChild(this.scrollSentinel);
+            this.scrollSentinel = null;
+        }
+
+        // Clear intervals
+        if (this.refreshInterval) {
+            clearInterval(this.refreshInterval);
+            this.refreshInterval = null;
+        }
+
         if (this.timeUpdateInterval) {
             clearInterval(this.timeUpdateInterval);
+            this.timeUpdateInterval = null;
         }
 
+        if (this.progressUpdateInterval) {
+            clearInterval(this.progressUpdateInterval);
+            this.progressUpdateInterval = null;
+        }
+
+        // Cleanup player
         if (this.player) {
             this.player.destroy();
+            this.player = null;
         }
 
+        // Clear core data
+        this.core.clearCache();
+        this.core.currentEvents.clear();
+        this.core.dailyPrograms.clear();
+
         this.initialized = false;
+        console.log('EPGManager cleanup complete');
     }
 }
 

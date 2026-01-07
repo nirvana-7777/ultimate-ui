@@ -1,11 +1,11 @@
-// epg_core.js - Fixed with exact endpoints from original code
+// epg_core.js - Fixed with proper time formatting
 class EPGCore {
     constructor() {
         this.config = {
             timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
             dateFormat: 'de-DE',
             refreshInterval: 300,
-            itemsPerPage: 20 // Matching original channelsPerPage
+            itemsPerPage: 20
         };
 
         this.channels = [];
@@ -27,7 +27,6 @@ class EPGCore {
                 return cached;
             }
 
-            // EXACT endpoint from original working code
             const response = await fetch(
                 `/api/epg/channels?page=${page}&limit=${this.config.itemsPerPage}`
             );
@@ -38,7 +37,6 @@ class EPGCore {
 
             const data = await response.json();
 
-            // EXACT response format from original code
             if (!data.success || !Array.isArray(data.channels)) {
                 throw new Error('Invalid response format from channels endpoint');
             }
@@ -61,7 +59,7 @@ class EPGCore {
         const start = new Date(startTime);
         const end = new Date(endTime);
         const diff = end - start;
-        return Math.round(diff / (1000 * 60)); // Convert to minutes
+        return Math.round(diff / (1000 * 60));
     }
 
     async fetchProgramsForChannel(channelId, startDate, endDate) {
@@ -73,7 +71,6 @@ class EPGCore {
                 return cached;
             }
 
-            // EXACT endpoint from original working code
             const response = await fetch(
                 `/api/channels/${channelId}/programs?start=${startDate.toISOString()}&end=${endDate.toISOString()}`
             );
@@ -85,7 +82,6 @@ class EPGCore {
 
             const data = await response.json();
 
-            // Handle both response formats from original code
             let programs = [];
 
             if (data.success && Array.isArray(data.programs)) {
@@ -94,22 +90,34 @@ class EPGCore {
                 programs = data;
             }
 
-            // Add channel info to each program
+            // Process and enrich each program
             programs.forEach(program => {
                 program.channel_id = channelId;
-
-                // Map fields to consistent names
-                program.image_url = program.icon_url; // API uses icon_url for program images
-                program.stream_url = program.stream; // API might use stream instead of stream_url
-
-                // Add other mappings if needed
+                program.image_url = program.icon_url;
+                program.stream_url = program.stream;
                 program.duration = program.duration || this.calculateDuration(
                     program.start_time,
                     program.end_time
                 );
+
+                // **FIX: Add formatted time fields**
+                program.start_time_local = this.formatDateTime(program.start_time, 'time');
+                program.end_time_local = this.formatDateTime(program.end_time, 'time');
+                program.date_local = this.formatDateTime(program.start_time, 'date');
+
+                // Calculate progress if program is currently airing
+                const now = new Date();
+                const start = new Date(program.start_time);
+                const end = new Date(program.end_time);
+
+                program.is_live = start <= now && end >= now;
+
+                if (program.is_live) {
+                    program.progress = this.calculateProgress(program.start_time, program.end_time);
+                    program.time_remaining = this.calculateTimeRemaining(program.end_time);
+                }
             });
 
-            // Limit to 10 programs like original code
             programs = programs.slice(0, 10);
 
             this.cache.set(cacheKey, programs);
@@ -123,20 +131,17 @@ class EPGCore {
 
     async loadDataForDate(date) {
         this.isLoading = true;
-        this.cache.clear(); // Clear cache when date changes
+        this.cache.clear();
 
         try {
-            // Fetch channels with pagination
             const { channels, hasMore } = await this.fetchChannels(0);
             this.channels = channels;
             this.hasMoreChannels = hasMore;
             this.currentPage = 0;
 
-            // Fetch programs for all channels
             const now = new Date();
             const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
 
-            // Process channels and fetch their programs
             await this.processChannelsWithPrograms(channels, now, tomorrow);
 
             return {
@@ -156,7 +161,6 @@ class EPGCore {
 
         const now = new Date();
 
-        // Fetch programs for each channel in parallel
         const programPromises = channels.map(async (channel) => {
             try {
                 const programs = await this.fetchProgramsForChannel(
@@ -175,12 +179,14 @@ class EPGCore {
                 });
 
                 if (currentProgram) {
+                    // Add channel info to current program
                     currentProgram.channel_name = channel.display_name || channel.name;
                     currentProgram.channel_icon = channel.icon_url;
+
+                    // Times are already formatted in fetchProgramsForChannel
                     this.currentEvents.set(channel.id, currentProgram);
                 }
 
-                // Store all programs for daily view
                 this.dailyPrograms.set(channel.id, programs);
 
             } catch (error) {
@@ -207,7 +213,6 @@ class EPGCore {
                 this.channels = [...this.channels, ...channels];
                 this.hasMoreChannels = hasMore;
 
-                // Fetch programs for new channels
                 const now = new Date();
                 const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
 
@@ -221,8 +226,6 @@ class EPGCore {
         }
     }
 
-    // ... rest of the utility methods (formatDateTime, calculateProgress, etc.)
-    // Keep these exactly as before
     formatDateTime(dateTime, format = 'datetime') {
         const date = new Date(dateTime);
         const options = {
