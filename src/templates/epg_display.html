@@ -2,230 +2,90 @@
 
 {% block content %}
 <div class="epg-container">
-    <!-- EPG Header -->
-    <div class="epg-header">
+    <!-- Sticky Date Navigation -->
+    <div class="date-navigation">
         <h2>EPG Programmübersicht</h2>
-        <div class="epg-controls">
-            <div class="time-navigation">
-                <button class="btn-time-prev" id="time-prev-btn" aria-label="Vorheriger Tag">←</button>
-                <span class="current-time-range" id="time-range">Heute</span>
-                <button class="btn-time-next" id="time-next-btn" aria-label="Nächster Tag">→</button>
-            </div>
-            <div class="view-controls">
-                <button class="btn-view-toggle active" id="list-view-btn">Liste</button>
-                <button class="btn-view-toggle" id="grid-view-btn">Raster</button>
-            </div>
-            <button class="btn-filter" id="filter-btn">🔍 Filter</button>
+        <div class="date-controls">
+            <button class="btn-date" id="date-prev-btn" aria-label="Vorheriger Tag">
+                <span>←</span> Vorheriger Tag
+            </button>
+            <span class="date-display" id="date-display">{{ current_date|default('Heute') }}</span>
+            <button class="btn-date" id="date-next-btn" aria-label="Nächster Tag">
+                Nächster Tag <span>→</span>
+            </button>
+            <button class="btn-date active" id="date-today-btn" aria-label="Heute">
+                Heute
+            </button>
         </div>
     </div>
 
-    <!-- Filter Panel -->
-    <div class="filter-panel" id="filter-panel">
-        <div class="filter-header">
-            <h3>Filter</h3>
-            <button class="btn-close" id="close-filter-btn" aria-label="Filter schließen">×</button>
-        </div>
-        <div class="filter-content">
-            <input type="text" id="search-input" placeholder="Suche nach Sendung oder Sender..."
-                   class="filter-input" aria-label="Suche">
-
-            <div class="filter-group">
-                <label>Kategorien:</label>
-                <div class="filter-tags" role="group" aria-label="Kategorien">
-                    <span class="filter-tag active" data-category="all" role="button" tabindex="0">Alle</span>
-                    <span class="filter-tag" data-category="sport" role="button" tabindex="0">Sport</span>
-                    <span class="filter-tag" data-category="news" role="button" tabindex="0">Nachrichten</span>
-                    <span class="filter-tag" data-category="movie" role="button" tabindex="0">Filme</span>
-                    <span class="filter-tag" data-category="series" role="button" tabindex="0">Serien</span>
-                </div>
-            </div>
-
-            <div class="filter-group">
-                <label for="time-filter">Zeitraum:</label>
-                <select id="time-filter" class="filter-select">
-                    <option value="now">Jetzt laufend</option>
-                    <option value="today" selected>Heute</option>
-                    <option value="tomorrow">Morgen</option>
-                    <option value="week">Diese Woche</option>
-                </select>
-            </div>
-        </div>
+    <!-- Current Events Grid -->
+    <div class="current-events-grid" id="current-events-grid">
+        <!-- Will be populated by JavaScript -->
     </div>
 
-    <!-- EPG Content -->
-    <div class="epg-content" id="epg-content">
-        {% if error %}
-        <!-- Error State -->
-        <div class="error-message" role="alert">
-            <p>⚠️ Fehler beim Laden der EPG-Daten: {{ error }}</p>
-            <button onclick="location.reload()">Erneut versuchen</button>
+    <!-- Daily Programs -->
+    <div class="daily-programs">
+        <div class="daily-programs-header">
+            <h3>Tagesprogramm</h3>
+            <small class="text-muted">Klicken Sie auf einen Sender, um das Programm anzuzeigen</small>
         </div>
-        {% else %}
-            <!-- List View - Will be populated by JavaScript -->
-            <div class="epg-list-view" id="list-view" style="display: none;">
-                <!-- Initial server-rendered channels (optional - for faster initial load) -->
-                {% if channels and channels|length > 0 %}
-                    {% for channel in channels %}
-                    <div class="channel-card" data-channel-id="{{ channel.id }}">
-                        <div class="channel-header" role="button" tabindex="0">
-                            <div class="channel-info">
-                                {% if channel.icon_url %}
-                                <img src="{{ channel.icon_url }}" alt="{{ channel.display_name }}"
-                                     class="channel-icon" onerror="this.style.display='none'">
-                                {% endif %}
-                                <div class="channel-text">
-                                    <h3 class="channel-name">{{ channel.display_name }}</h3>
-                                    <span class="channel-id">{{ channel.name }}</span>
-                                </div>
-                            </div>
-                            <div class="channel-toggle">
-                                <span class="toggle-icon" aria-hidden="true">▼</span>
-                            </div>
-                        </div>
-
-                        <div class="channel-programs" id="programs-{{ channel.id }}"
-                             style="display: none;"
-                             role="region"
-                             aria-label="Programme für {{ channel.display_name }}">
-                            {% if channel.programs %}
-                                {% for program in channel.programs %}
-                                <div class="program-item {% if program.is_live %}live{% endif %}"
-                                     data-start="{{ program.start_time }}"
-                                     data-end="{{ program.end_time }}"
-                                     {% if program.id %}data-program-id="{{ program.id }}"{% endif %}>
-                                    <div class="program-time">
-                                        <span class="start-time">{{ program.start_time|format_time }}</span>
-                                        <span class="time-separator" aria-hidden="true">—</span>
-                                        <span class="end-time">{{ program.end_time|format_time }}</span>
-                                    </div>
-                                    <div class="program-details">
-                                        <h4 class="program-title">{{ program.title }}</h4>
-                                        {% if program.subtitle %}
-                                        <p class="program-subtitle">{{ program.subtitle }}</p>
-                                        {% endif %}
-                                        {% if program.description %}
-                                        <p class="program-description">{{ program.description|truncate(100) }}</p>
-                                        {% endif %}
-                                        {% if program.category %}
-                                        <span class="program-category">{{ program.category }}</span>
-                                        {% endif %}
-                                        {% if program.stream %}
-                                        <button class="btn-play"
-                                                data-stream-url="{{ program.stream }}"
-                                                data-title="{{ program.title }}">
-                                            ▶ Abspielen
-                                        </button>
-                                        {% endif %}
-                                    </div>
-                                </div>
-                                {% endfor %}
-                            {% else %}
-                                <div class="no-programs">
-                                    Keine Programme in diesem Zeitraum
-                                </div>
-                            {% endif %}
-                        </div>
-                    </div>
-                    {% endfor %}
-                {% endif %}
-            </div>
-
-            <!-- Grid View (hidden by default) -->
-            <div class="epg-grid-view" id="grid-view" style="display: none;">
-                <div class="time-slots">
-                    <!-- Time slots will be populated by JavaScript -->
-                </div>
-                <div class="channels-grid" id="channels-grid">
-                    <!-- Channels and programs grid will be populated by JavaScript -->
-                </div>
-            </div>
-
-            <!-- Loading State - Only shown initially or on errors -->
-            <div class="loading-state" style="display: {% if not channels or channels|length == 0 %}block{% else %}none{% endif %};">
-                <div class="spinner" role="status" aria-label="Lädt"></div>
-                <p>Lade EPG-Daten...</p>
-            </div>
-
-            <!-- Empty State - Hidden by default, shown by JS if no data -->
-            <div class="empty-state" id="empty-state" style="display: none;">
-                <p>Keine Kanäle gefunden</p>
-                <p>Stellen Sie sicher, dass der WebEPG-Backend korrekt konfiguriert ist.</p>
-            </div>
-        {% endif %}
+        <!-- Will be populated by JavaScript -->
     </div>
 
-    <!-- Player Overlay -->
-    <div class="player-overlay" id="player-overlay" role="dialog" aria-modal="true" aria-labelledby="player-title">
-        <div class="player-header">
-            <h3 id="player-title"></h3>
-            <button class="btn-close-player" id="close-player-btn" aria-label="Player schließen">×</button>
+    <!-- Loading Spinner -->
+    <div class="loading-spinner" id="loading-spinner" style="display: none;">
+        <div class="spinner"></div>
+        <span>Lädt EPG-Daten...</span>
+    </div>
+</div>
+
+<!-- Program Details Modal -->
+<div class="program-details-modal" id="program-details-modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Programmdetails</h3>
+            <button class="modal-close" id="modal-close-btn" aria-label="Schließen">×</button>
         </div>
-        <div class="player-content">
-            <video id="player-video" controls aria-label="Video Player"></video>
-            <select id="bitrate-selector" class="bitrate-selector" aria-label="Bitrate auswählen">
-                <option value="auto">Automatisch</option>
-                <option value="1000000">Bis 1 Mbit</option>
-                <option value="3000000">Bis 3 Mbit</option>
-                <option value="6000000">Bis 6 Mbit</option>
-                <option value="10000000">Bis 10 Mbit</option>
-            </select>
+        <div class="modal-body">
+            <div class="modal-body-content" id="modal-program-content">
+                <!-- Will be populated by JavaScript -->
+            </div>
         </div>
     </div>
 </div>
 
-<!-- Pass EPG data to JavaScript -->
+<!-- Floating Video Player -->
+<div class="floating-player" id="floating-player">
+    <div class="player-header">
+        <h4 id="player-title"></h4>
+        <div class="player-controls">
+            <button class="player-minimize" id="player-minimize" aria-label="Minimieren">−</button>
+            <button class="player-close" id="player-close" aria-label="Schließen">×</button>
+        </div>
+    </div>
+    <div class="player-content">
+        <video id="floating-video" controls playsinline></video>
+    </div>
+    <div class="player-info">
+        <div class="player-info-title" id="player-title-text"></div>
+        <div class="player-info-subtitle" id="player-subtitle"></div>
+    </div>
+</div>
+
+<!-- Template configuration -->
 <script>
-    // Make EPG data available to JavaScript for hybrid rendering
-    window.EPG_DATA = {
-        channels: {{ channels|tojson if channels else '[]' }},
-        error: {{ error|tojson if error else 'null' }},
+    // Pass configuration to JavaScript
+    window.EPG_CONFIG = {
+        timezone: "{{ config.ui.timezone if config and config.ui else 'Europe/Berlin' }}",
+        dateFormat: "de-DE",
+        refreshInterval: {{ config.ui.refresh_interval if config and config.ui else 300 }},
         currentDate: "{{ current_date|default('') }}"
     };
 
-    // Template configuration
-    window.EPG_CONFIG = {
-        hasServerData: {{ 'true' if channels and channels|length > 0 else 'false' }},
-        timezone: "{{ config.ui.timezone if config and config.ui else 'Europe/Berlin' }}",
-        refreshInterval: {{ config.ui.refresh_interval if config and config.ui else 300 }}
-    };
-
-    // Add custom filters to window for consistency
-    window.templateFilters = {
-        formatTime: function(value) {
-            if (!value) return '';
-            try {
-                const date = new Date(value);
-                return date.toLocaleTimeString('de-DE', {
-                    hour: '2-digit',
-                    minute: '2-digit',
-                    timeZone: window.EPG_CONFIG.timezone
-                });
-            } catch (e) {
-                console.warn('Error formatting time:', e);
-                return value;
-            }
-        },
-        formatDateTime: function(value) {
-            if (!value) return '';
-            try {
-                const date = new Date(value);
-                return date.toLocaleString('de-DE', {
-                    day: '2-digit',
-                    month: '2-digit',
-                    year: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit',
-                    timeZone: window.EPG_CONFIG.timezone
-                });
-            } catch (e) {
-                console.warn('Error formatting datetime:', e);
-                return value;
-            }
-        },
-        truncate: function(text, length) {
-            if (!text || text.length <= length) return text;
-            return text.substring(0, length) + '...';
-        }
-    };
+    // Helper function for modal close
+    document.getElementById('modal-close-btn')?.addEventListener('click', () => {
+        document.getElementById('program-details-modal')?.classList.remove('active');
+    });
 </script>
 {% endblock %}
