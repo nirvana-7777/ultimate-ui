@@ -555,7 +555,8 @@ body {
 }
 
 .time-remaining {
-    font-family: monospace;
+    font-family: inherit;
+    font-size: 12px;
 }
 
 /* Expand/Collapse Toggle */
