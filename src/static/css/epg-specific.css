@@ -187,23 +187,24 @@
     text-overflow: ellipsis;
 }
 
-/* FIXED: Event time ABOVE description */
+/* FIXED: Event time ABOVE description (not margin-top: auto) */
 .event-time {
     display: flex;
     align-items: center;
     justify-content: space-between;
     font-size: 13px;
     color: var(--text-muted);
-    margin-bottom: 8px;
-    margin-top: auto; /* Push to bottom of content area */
+    margin-top: 4px; /* Space from subtitle/description */
+    margin-bottom: 8px; /* Space to description */
+    order: 3; /* Force order: title -> subtitle -> time -> description */
 }
 
-/* FIXED: Broader description almost as wide as progress bar */
+/* FIXED: Broader description - same width as before */
 .event-description {
     font-size: 13px;
     color: var(--text-secondary);
     line-height: 1.5;
-    margin-top: 4px;
+    margin-top: 0; /* No margin top since time is above */
     margin-bottom: 8px;
     display: -webkit-box;
     -webkit-line-clamp: 2; /* Show 2 lines max */
@@ -211,7 +212,8 @@
     overflow: hidden;
     text-overflow: ellipsis;
     max-height: 39px; /* 2 lines * 1.5 line-height * 13px */
-    width: calc(100% - 130px); /* Almost as wide as progress bar */
+    width: 100%; /* Full width like before */
+    order: 4; /* After time */
 }
 
 .event-description.expanded {
@@ -230,6 +232,7 @@
     text-decoration: underline;
     transition: all 0.2s;
     align-self: flex-start;
+    order: 5; /* After description */
 }
 
 .expand-description-link:hover {
