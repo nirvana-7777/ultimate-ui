@@ -1,0 +1,65 @@
+/* Ultimate UI - Utility Classes */
+
+.hidden {
+    display: none !important;
+}
+
+.flex {
+    display: flex;
+}
+
+.items-center {
+    align-items: center;
+}
+
+.justify-between {
+    justify-content: space-between;
+}
+
+.gap-2 {
+    gap: 8px;
+}
+
+.gap-4 {
+    gap: 16px;
+}
+
+.mb-4 {
+    margin-bottom: 16px;
+}
+
+.mb-8 {
+    margin-bottom: 32px;
+}
+
+.p-4 {
+    padding: 16px;
+}
+
+.p-6 {
+    padding: 24px;
+}
+
+.rounded {
+    border-radius: var(--radius);
+}
+
+.shadow {
+    box-shadow: var(--shadow);
+}
+
+.text-sm {
+    font-size: 14px;
+}
+
+.text-lg {
+    font-size: 18px;
+}
+
+.font-semibold {
+    font-weight: 600;
+}
+
+.font-bold {
+    font-weight: 700;
+}

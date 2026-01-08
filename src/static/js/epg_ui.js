@@ -1,4 +1,4 @@
-// EPG UI - DOM Rendering and Manipulation - Fixed Duration Display
+// EPG UI - Improved with restructured cards and infinite scroll
 class EPGUI {
     constructor(core) {
         this.core = core;
@@ -37,11 +37,11 @@ class EPGUI {
             div.classList.add(program.is_live ? 'live' : 'upcoming');
         }
 
-        // Channel header with logo section and info
+        // IMPROVED: Restructured layout
         const header = document.createElement('div');
         header.className = 'channel-header-compact';
 
-        // Logo section (logo + play button)
+        // Logo section (logo + name + play button)
         const logoSection = document.createElement('div');
         logoSection.className = 'channel-logo-section';
 
@@ -63,7 +63,13 @@ class EPGUI {
 
         logoSection.appendChild(logoContainer);
 
-        // Play button underneath logo
+        // IMPROVED: Channel name now under logo with smaller font
+        const name = document.createElement('div');
+        name.className = 'channel-name-compact';
+        name.textContent = channel.display_name;
+        logoSection.appendChild(name);
+
+        // Play button underneath name
         if (program && (program.stream_url || program.stream)) {
             const playBtn = document.createElement('button');
             playBtn.className = 'btn-play-tile';
@@ -75,16 +81,11 @@ class EPGUI {
 
         header.appendChild(logoSection);
 
-        // Channel info
+        // Event info - now takes main space
         const info = document.createElement('div');
         info.className = 'channel-info-compact';
 
-        const name = document.createElement('div');
-        name.className = 'channel-name-compact';
-        name.textContent = channel.display_name;
-        info.appendChild(name);
-
-        // Current program
+        // Current program - title now on top with larger font
         if (program) {
             info.appendChild(this.createEventInfo(program));
         } else {
@@ -122,6 +123,11 @@ class EPGUI {
 
         div.appendChild(header);
 
+        // IMPROVED: Progress bar with fixed positioning
+        if (program && program.progress) {
+            div.appendChild(this.createProgressBar(program));
+        }
+
         // Expand button
         const expandBtn = document.createElement('button');
         expandBtn.className = 'expand-toggle';
@@ -136,7 +142,7 @@ class EPGUI {
         const container = document.createElement('div');
         container.className = 'current-event';
 
-        // Title
+        // IMPROVED: Title now larger (was 16px, now 18px from CSS)
         const title = document.createElement('div');
         title.className = 'event-title';
         title.textContent = program.title;
@@ -150,7 +156,7 @@ class EPGUI {
             container.appendChild(subtitle);
         }
 
-        // Time
+        // Time - REMOVED percentage display
         const timeInfo = document.createElement('div');
         timeInfo.className = 'event-time';
 
@@ -158,19 +164,7 @@ class EPGUI {
         timeRange.textContent = `${program.start_time_local} - ${program.end_time_local}`;
         timeInfo.appendChild(timeRange);
 
-        if (program.progress) {
-            const progressText = document.createElement('span');
-            progressText.className = 'progress-percent';
-            progressText.textContent = `${Math.round(program.progress.percentage)}%`;
-            timeInfo.appendChild(progressText);
-        }
-
         container.appendChild(timeInfo);
-
-        // Progress bar
-        if (program.progress) {
-            container.appendChild(this.createProgressBar(program));
-        }
 
         return container;
     }
@@ -190,15 +184,17 @@ class EPGUI {
         const progressInfo = document.createElement('div');
         progressInfo.className = 'progress-info';
 
+        // IMPROVED: Show duration on left (kept from original)
+        const duration = document.createElement('span');
+        duration.className = 'progress-duration';
+        duration.textContent = `${program.progress.duration} min`;
+        progressInfo.appendChild(duration);
+
+        // IMPROVED: Time remaining on right (moved from left)
         const timeRemaining = document.createElement('span');
         timeRemaining.className = 'time-remaining';
         timeRemaining.textContent = program.time_remaining;
         progressInfo.appendChild(timeRemaining);
-
-        // FIXED: Use "min" instead of "m"
-        const duration = document.createElement('span');
-        duration.textContent = `${program.progress.duration} min`;
-        progressInfo.appendChild(duration);
 
         container.appendChild(progressBar);
         container.appendChild(progressInfo);
@@ -266,6 +262,7 @@ class EPGUI {
 
         const name = document.createElement('div');
         name.className = 'channel-name-compact';
+        name.style.fontSize = '16px'; // Restore normal size for daily view
         name.textContent = channel.display_name;
         header.appendChild(name);
 
@@ -351,7 +348,6 @@ class EPGUI {
             metaItems.push(`<span class="program-category">${this.escapeHtml(program.category)}</span>`);
         }
 
-        // FIXED: Use "min" instead of "m"
         if (program.duration) {
             metaItems.push(`<span class="program-duration">${program.duration} min</span>`);
         }
@@ -603,18 +599,12 @@ class EPGUI {
 
             if (program && program.progress) {
                 const progressFill = card.querySelector('.progress-fill');
-                const progressPercent = card.querySelector('.progress-percent');
                 const timeRemaining = card.querySelector('.time-remaining');
 
                 if (progressFill) {
                     const progress = core.calculateProgress(program.start_time, program.end_time);
                     if (progress) {
                         progressFill.style.width = `${progress.percentage}%`;
-
-                        // Update percentage text
-                        if (progressPercent) {
-                            progressPercent.textContent = `${Math.round(progress.percentage)}%`;
-                        }
                     }
                 }
 

@@ -1,0 +1,66 @@
+/* Ultimate UI - Responsive */
+
+@media (max-width: 1200px) {
+    .current-events-grid {
+        grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+        padding: 24px;
+    }
+
+    .floating-player {
+        width: 350px;
+    }
+}
+
+@media (max-width: 768px) {
+    .sidebar {
+        left: -280px;
+    }
+
+    .content {
+        margin-left: 0;
+        width: 100%;
+    }
+
+    .date-navigation {
+        flex-direction: column;
+        gap: 12px;
+        padding: 16px;
+    }
+
+    .current-events-grid {
+        grid-template-columns: 1fr;
+        padding: 16px;
+    }
+
+    .channel-daily-card {
+        margin-bottom: 16px;
+    }
+
+    .program-card {
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .program-image,
+    .program-image-fallback {
+        width: 100%;
+        height: 180px;
+    }
+
+    .modal-program-header {
+        flex-direction: column;
+    }
+
+    .modal-program-image {
+        width: 100%;
+        height: 200px;
+    }
+
+    .floating-player {
+        bottom: 0;
+        right: 0;
+        left: 0;
+        width: 100%;
+        border-radius: var(--radius) var(--radius) 0 0;
+    }
+}
