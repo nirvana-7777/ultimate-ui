@@ -2,17 +2,10 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="26a67a20-b618-41a8-9b0d-40ca26281999" name="Changes" comment="Fix EPG Loading">
-      <change afterPath="$PROJECT_DIR$/.idea/inspectionProfiles/profiles_settings.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/modules.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/ultimate-ui.iml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/vcs.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/requirements.txt" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/static/css/style.css" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/static/js/epg_display.js" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/src/static/js/epg_manager.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/static/js/epg_manager.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/static/js/epg_ui.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/static/js/epg_ui.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/templates/base.html" beforeDir="false" afterPath="$PROJECT_DIR$/src/templates/base.html" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -76,15 +69,7 @@
       <workItem from="1767444292659" duration="23157000" />
       <workItem from="1767706586008" duration="864000" />
       <workItem from="1767777768031" duration="297000" />
-      <workItem from="1767791792133" duration="9045000" />
-    </task>
-    <task id="LOCAL-00028" summary="Initial">
-      <option name="closed" value="true" />
-      <created>1767260929156</created>
-      <option name="number" value="00028" />
-      <option name="presentableId" value="LOCAL-00028" />
-      <option name="project" value="LOCAL" />
-      <updated>1767260929156</updated>
+      <workItem from="1767791792133" duration="10921000" />
     </task>
     <task id="LOCAL-00029" summary="Initial">
       <option name="closed" value="true" />
@@ -470,7 +455,15 @@
       <option name="project" value="LOCAL" />
       <updated>1767821307777</updated>
     </task>
-    <option name="localTasksCounter" value="77" />
+    <task id="LOCAL-00077" summary="Fix EPG Loading">
+      <option name="closed" value="true" />
+      <created>1767864417324</created>
+      <option name="number" value="00077" />
+      <option name="presentableId" value="LOCAL-00077" />
+      <option name="project" value="LOCAL" />
+      <updated>1767864417324</updated>
+    </task>
+    <option name="localTasksCounter" value="78" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">

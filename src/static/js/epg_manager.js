@@ -124,13 +124,14 @@ class EPGManager {
                 if (entry.isIntersecting &&
                     this.core.hasMoreChannels &&
                     !this.core.isLoading) {
+                    console.log('Current events sentinel triggered!');
                     this.loadMoreCurrentEvents();
                 }
             });
         }, {
             root: null,
-            rootMargin: '200px', // Start loading earlier
-            threshold: 0.1
+            rootMargin: '400px', // Start loading even earlier
+            threshold: 0
         });
 
         // Add sentinel element to current events grid
@@ -138,11 +139,11 @@ class EPGManager {
         if (currentEventsGrid) {
             this.currentEventsSentinel = document.createElement('div');
             this.currentEventsSentinel.id = 'current-events-sentinel';
-            this.currentEventsSentinel.style.height = '1px';
-            this.currentEventsSentinel.style.gridColumn = '1 / -1'; // Span all columns
+            this.currentEventsSentinel.style.cssText = 'height: 20px; grid-column: 1 / -1; background: transparent;';
             currentEventsGrid.appendChild(this.currentEventsSentinel);
 
             this.currentEventsScrollObserver.observe(this.currentEventsSentinel);
+            console.log('Current events sentinel added and observed');
         }
 
         // Setup intersection observer for daily programs
@@ -151,13 +152,14 @@ class EPGManager {
                 if (entry.isIntersecting &&
                     this.core.hasMoreChannels &&
                     !this.core.isLoading) {
+                    console.log('Daily programs sentinel triggered!');
                     this.loadMoreDailyPrograms();
                 }
             });
         }, {
             root: null,
-            rootMargin: '200px',
-            threshold: 0.1
+            rootMargin: '400px',
+            threshold: 0
         });
 
         // Add sentinel element to daily programs
@@ -165,10 +167,11 @@ class EPGManager {
         if (dailyPrograms) {
             this.dailyScrollSentinel = document.createElement('div');
             this.dailyScrollSentinel.id = 'daily-scroll-sentinel';
-            this.dailyScrollSentinel.style.height = '1px';
+            this.dailyScrollSentinel.style.cssText = 'height: 20px; background: transparent;';
             dailyPrograms.appendChild(this.dailyScrollSentinel);
 
             this.dailyScrollObserver.observe(this.dailyScrollSentinel);
+            console.log('Daily programs sentinel added and observed');
         }
 
         console.log('Infinite scroll setup complete for both sections');
@@ -195,32 +198,45 @@ class EPGManager {
     }
 
     async loadMoreCurrentEvents() {
-        console.log('Loading more current events...');
+        console.log('Loading more current events... hasMore:', this.core.hasMoreChannels, 'isLoading:', this.core.isLoading);
 
+        if (!this.core.hasMoreChannels || this.core.isLoading) {
+            console.log('Cannot load more - hasMore:', this.core.hasMoreChannels, 'isLoading:', this.core.isLoading);
+            return;
+        }
+
+        const beforeCount = this.core.channels.length;
         const success = await this.core.loadMoreChannels();
 
         if (success) {
+            const afterCount = this.core.channels.length;
+            const newCount = afterCount - beforeCount;
+            console.log(`Loaded ${newCount} new channels (${beforeCount} -> ${afterCount})`);
+
             // Get the new channels (last chunk)
-            const newChannels = this.core.channels.slice(-this.core.config.itemsPerPage);
+            const newChannels = this.core.channels.slice(beforeCount);
 
             // Append to current events grid
             const container = document.getElementById('current-events-grid');
             if (container && this.currentEventsSentinel) {
+                let addedCount = 0;
                 newChannels.forEach(channel => {
                     const program = this.core.currentEvents.get(channel.id);
                     const card = this.ui.createCurrentEventCard(channel, program);
 
                     // Insert before sentinel
                     container.insertBefore(card, this.currentEventsSentinel);
+                    addedCount++;
                 });
 
-                console.log(`Added ${newChannels.length} more cards to current events`);
+                console.log(`Added ${addedCount} cards to current events grid`);
             }
         } else {
             console.log('No more channels to load for current events');
             // Remove observer if no more data
             if (this.currentEventsScrollObserver && this.currentEventsSentinel) {
                 this.currentEventsScrollObserver.unobserve(this.currentEventsSentinel);
+                console.log('Stopped observing current events sentinel');
             }
         }
     }

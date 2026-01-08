@@ -166,6 +166,14 @@ class EPGUI {
 
         container.appendChild(timeInfo);
 
+        // NEW: Description (2-3 lines)
+        if (program.description) {
+            const description = document.createElement('div');
+            description.className = 'event-description';
+            description.textContent = program.description;
+            container.appendChild(description);
+        }
+
         return container;
     }
 
@@ -184,17 +192,13 @@ class EPGUI {
         const progressInfo = document.createElement('div');
         progressInfo.className = 'progress-info';
 
-        // IMPROVED: Show duration on left (kept from original)
-        const duration = document.createElement('span');
-        duration.className = 'progress-duration';
-        duration.textContent = `${program.progress.duration} min`;
-        progressInfo.appendChild(duration);
-
-        // IMPROVED: Time remaining on right (moved from left)
+        // FIXED: Only remaining time on left (e.g. "Noch 10 min")
         const timeRemaining = document.createElement('span');
         timeRemaining.className = 'time-remaining';
         timeRemaining.textContent = program.time_remaining;
         progressInfo.appendChild(timeRemaining);
+
+        // Duration removed - not shown
 
         container.appendChild(progressBar);
         container.appendChild(progressInfo);
