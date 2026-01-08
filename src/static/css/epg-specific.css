@@ -12,8 +12,8 @@
     overflow: hidden;
     display: flex;
     flex-direction: column;
-    min-height: 300px; /* Increased for description */
-    padding-bottom: 75px; /* More space for description + progress bar */
+    min-height: 260px;
+    padding-bottom: 60px; /* Space for fixed progress bar */
 }
 
 .channel-now-card:hover {
@@ -22,13 +22,11 @@
     border-color: var(--accent-color);
 }
 
-/* FIXED: Changed from red to subtle grey shadow */
-.channel-now-card.live {
-    border-left: 4px solid var(--live-color);
-}
-
+/* Remove any left border color or shadow */
+.channel-now-card.live,
 .channel-now-card.upcoming {
-    border-left: 4px solid var(--upcoming-color);
+    border-left: 1px solid var(--border-color);
+    box-shadow: none;
 }
 
 /* IMPROVED: Restructured header for better layout */
@@ -120,7 +118,7 @@
     padding-right: 130px;
     display: flex;
     flex-direction: column;
-    margin-bottom: 60px; /* More space for description */
+    margin-bottom: 50px; /* Ensure text doesn't overlap with progress bar */
 }
 
 .event-preview-image {

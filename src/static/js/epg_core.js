@@ -1,11 +1,11 @@
-// epg_core.js - Fixed with proper time formatting
+// epg_core.js - Fixed with "m" format for time remaining
 class EPGCore {
     constructor() {
         this.config = {
             timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
             dateFormat: 'de-DE',
             refreshInterval: 300,
-            itemsPerPage: 20
+            itemsPerPage: 50
         };
 
         this.channels = [];
@@ -100,7 +100,6 @@ class EPGCore {
                     program.end_time
                 );
 
-                // **FIX: Add formatted time fields**
                 program.start_time_local = this.formatDateTime(program.start_time, 'time');
                 program.end_time_local = this.formatDateTime(program.end_time, 'time');
                 program.date_local = this.formatDateTime(program.start_time, 'date');
@@ -179,11 +178,9 @@ class EPGCore {
                 });
 
                 if (currentProgram) {
-                    // Add channel info to current program
                     currentProgram.channel_name = channel.display_name || channel.name;
                     currentProgram.channel_icon = channel.icon_url;
 
-                    // Times are already formatted in fetchProgramsForChannel
                     this.currentEvents.set(channel.id, currentProgram);
                 }
 
@@ -291,10 +288,11 @@ class EPGCore {
         const hours = Math.floor(diff / (1000 * 60 * 60));
         const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
 
+        // FIXED: Use "m" instead of "min"
         if (hours > 0) {
-            return `Noch ${hours}h ${minutes}m`;
+            return `noch ${hours}h ${minutes} min`;
         }
-        return `Noch ${minutes}m`;
+        return `noch ${minutes} min`;
     }
 
     getProgram(channelId, programId) {

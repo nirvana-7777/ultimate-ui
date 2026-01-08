@@ -192,13 +192,17 @@ class EPGUI {
         const progressInfo = document.createElement('div');
         progressInfo.className = 'progress-info';
 
-        // FIXED: Only remaining time on left (e.g. "Noch 10 min")
-        const timeRemaining = document.createElement('span');
-        timeRemaining.className = 'time-remaining';
-        timeRemaining.textContent = program.time_remaining;
-        progressInfo.appendChild(timeRemaining);
+        // Empty left side
+        const leftSpacer = document.createElement('span');
+        progressInfo.appendChild(leftSpacer);
 
-        // Duration removed - not shown
+        // FIXED: Remaining time on right with same styling as duration had (e.g. "noch 10 m")
+        const timeRemaining = document.createElement('span');
+        timeRemaining.className = 'progress-duration'; // Use duration class for styling
+        // Extract minutes from time_remaining (e.g., "Noch 10m" or "Noch 1h 30m")
+        const remainingText = program.time_remaining.toLowerCase().replace('noch ', 'noch ').replace('min', 'm').replace('h ', 'h ');
+        timeRemaining.textContent = remainingText;
+        progressInfo.appendChild(timeRemaining);
 
         container.appendChild(progressBar);
         container.appendChild(progressInfo);
