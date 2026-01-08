@@ -288,11 +288,11 @@ class EPGCore {
         const hours = Math.floor(diff / (1000 * 60 * 60));
         const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
 
-        // FIXED: Use "m" instead of "min"
+        // This should return "noch X min" or "noch Xh Y min"
         if (hours > 0) {
             return `noch ${hours}h ${minutes} min`;
         }
-        return `noch ${minutes} min`;
+        return `noch ${minutes} min`;  // This gives "noch 10 min"
     }
 
     getProgram(channelId, programId) {

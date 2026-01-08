@@ -156,7 +156,7 @@ class EPGUI {
             container.appendChild(subtitle);
         }
 
-        // NEW: Description preview (2-3 lines max) with "weiterlesen" link
+        // NEW: Description preview (2 lines max) with "weiterlesen" link
         if (program.description) {
             const description = document.createElement('div');
             description.className = 'event-description';
@@ -164,7 +164,7 @@ class EPGUI {
             container.appendChild(description);
 
             // Add "weiterlesen" link if description is long
-            if (program.description.length > 120) {
+            if (program.description.length > 80) {
                 const expandLink = document.createElement('button');
                 expandLink.className = 'expand-description-link';
                 expandLink.textContent = 'weiterlesen';
@@ -178,6 +178,18 @@ class EPGUI {
             }
         }
 
+        // FIXED: Time is now above description
+        const timeInfo = document.createElement('div');
+        timeInfo.className = 'event-time';
+
+        const timeRange = document.createElement('span');
+        timeRange.textContent = `${program.start_time_local} - ${program.end_time_local}`;
+        timeInfo.appendChild(timeRange);
+
+        container.appendChild(timeInfo);
+
+        return container;
+    }
         // Time - REMOVED percentage display
         const timeInfo = document.createElement('div');
         timeInfo.className = 'event-time';
@@ -206,16 +218,11 @@ class EPGUI {
         const progressInfo = document.createElement('div');
         progressInfo.className = 'progress-info';
 
-        // Empty left side
-        const leftSpacer = document.createElement('span');
-        progressInfo.appendChild(leftSpacer);
-
-        // FIXED: Remaining time on right with same styling as duration had (e.g. "noch 10 m")
+        // FIXED: Show only remaining time (centered) - keep "min" not "m"
         const timeRemaining = document.createElement('span');
-        timeRemaining.className = 'progress-duration'; // Use duration class for styling
-        // Extract minutes from time_remaining (e.g., "Noch 10m" or "Noch 1h 30m")
-        const remainingText = program.time_remaining.toLowerCase().replace('noch ', 'noch ').replace('min', 'm').replace('h ', 'h ');
-        timeRemaining.textContent = remainingText;
+        timeRemaining.className = 'time-remaining';
+        // Use the time_remaining from core which already has "noch X min" format
+        timeRemaining.textContent = program.time_remaining;
         progressInfo.appendChild(timeRemaining);
 
         container.appendChild(progressBar);
