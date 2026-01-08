@@ -190,18 +190,6 @@ class EPGUI {
 
         return container;
     }
-        // Time - REMOVED percentage display
-        const timeInfo = document.createElement('div');
-        timeInfo.className = 'event-time';
-
-        const timeRange = document.createElement('span');
-        timeRange.textContent = `${program.start_time_local} - ${program.end_time_local}`;
-        timeInfo.appendChild(timeRange);
-
-        container.appendChild(timeInfo);
-
-        return container;
-    }
 
     createProgressBar(program) {
         const container = document.createElement('div');
