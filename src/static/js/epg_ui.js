@@ -156,6 +156,28 @@ class EPGUI {
             container.appendChild(subtitle);
         }
 
+        // NEW: Description preview (2-3 lines max) with "weiterlesen" link
+        if (program.description) {
+            const description = document.createElement('div');
+            description.className = 'event-description';
+            description.textContent = program.description;
+            container.appendChild(description);
+
+            // Add "weiterlesen" link if description is long
+            if (program.description.length > 120) {
+                const expandLink = document.createElement('button');
+                expandLink.className = 'expand-description-link';
+                expandLink.textContent = 'weiterlesen';
+                expandLink.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const isExpanded = description.classList.contains('expanded');
+                    description.classList.toggle('expanded');
+                    expandLink.textContent = isExpanded ? 'weiterlesen' : 'weniger';
+                });
+                container.appendChild(expandLink);
+            }
+        }
+
         // Time - REMOVED percentage display
         const timeInfo = document.createElement('div');
         timeInfo.className = 'event-time';
@@ -165,14 +187,6 @@ class EPGUI {
         timeInfo.appendChild(timeRange);
 
         container.appendChild(timeInfo);
-
-        // NEW: Description (2-3 lines)
-        if (program.description) {
-            const description = document.createElement('div');
-            description.className = 'event-description';
-            description.textContent = program.description;
-            container.appendChild(description);
-        }
 
         return container;
     }

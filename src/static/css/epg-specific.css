@@ -111,14 +111,14 @@
     box-shadow: 0 4px 12px rgba(33, 150, 243, 0.4);
 }
 
-/* IMPROVED: Event info now takes main space */
+/* FIXED: Event info with better spacing */
 .channel-info-compact {
     flex: 1;
     min-width: 0;
     padding-right: 130px;
     display: flex;
     flex-direction: column;
-    margin-bottom: 50px; /* Ensure text doesn't overlap with progress bar */
+    margin-bottom: 50px; /* More space for description + progress bar */
 }
 
 .event-preview-image {
@@ -155,6 +155,7 @@
     flex: 1;
     display: flex;
     flex-direction: column;
+    min-height: 150px; /* Ensure minimum space for content */
 }
 
 /* IMPROVED: Event title now has larger font (was channel name size) */
@@ -173,23 +174,64 @@
     font-style: italic;
 }
 
+/* NEW: Event description preview with "weiterlesen" link */
+.event-description {
+    font-size: 13px;
+    color: var(--text-secondary);
+    line-height: 1.5;
+    margin-top: 8px;
+    margin-bottom: 12px;
+    display: -webkit-box;
+    -webkit-line-clamp: 3; /* Show 3 lines max */
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-height: 58.5px; /* 3 lines * 1.5 line-height * 13px */
+}
+
+.event-description.expanded {
+    -webkit-line-clamp: unset;
+    max-height: none;
+}
+
+.expand-description-link {
+    color: var(--accent-color);
+    background: none;
+    border: none;
+    font-size: 12px;
+    cursor: pointer;
+    padding: 2px 6px;
+    margin-top: 4px;
+    text-decoration: underline;
+    transition: all 0.2s;
+    align-self: flex-start;
+}
+
+.expand-description-link:hover {
+    color: var(--accent-hover);
+    background-color: var(--bg-tertiary);
+    border-radius: 4px;
+}
+
 .event-time {
     display: flex;
     align-items: center;
     justify-content: space-between;
     font-size: 13px;
     color: var(--text-muted);
+    margin-top: auto; /* Push to bottom of current-event */
     margin-bottom: 8px;
 }
 
-/* FIXED: Progress bar now has fixed positioning */
+/* FIXED: Progress bar positioning - ensure it doesn't overlap content */
 .event-progress {
-    margin-top: auto;
     padding-top: 12px;
     position: absolute;
     bottom: 20px;
     left: 20px;
     right: 20px;
+    background-color: var(--bg-card); /* Ensure background matches card */
+    z-index: 1;
 }
 
 .progress-bar {
@@ -245,7 +287,7 @@
     padding: 4px;
     border-radius: 4px;
     transition: all 0.2s;
-    z-index: 10;
+    z-index: 2; /* Above progress bar */
 }
 
 .expand-toggle:hover {
