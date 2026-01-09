@@ -345,7 +345,7 @@ class EPGCore {
      * - Trailing dot required if no part info
      *
      * Examples:
-     * - "0.12." = Episode 13 (season 0, episode 12)
+     * - "0.12." = Episode 13 (season 1, episode 12)
      * - "1.4." = Season 2, Episode 5 (season 1, episode 4)
      * - "2.15.0/2" = Season 3, Episode 16, Part 1 of 2
      * - "1.3.1/3" = Season 2, Episode 4, Part 2 of 3
@@ -380,15 +380,16 @@ class EPGCore {
 
         // Check for special episodes (season 0 in xmltv_ns)
         if (season === 0) {
-            // Specials - just show episode number
+            // Season 0 is actually Season 1 in display (0-based to 1-based)
+            let result = `S01E${displayEpisode.toString().padStart(2, '0')}`;
+
             if (parts.length >= 3 && parts[2]) {
-                // Has part info
                 const partInfo = this.parsePartInfo(parts[2]);
                 if (partInfo) {
-                    return `Episode ${displayEpisode} (Part ${partInfo.current}/${partInfo.total})`;
+                    result += ` (Part ${partInfo.current}/${partInfo.total})`;
                 }
             }
-            return `Episode ${displayEpisode}`;
+            return result;
         }
 
         // Regular season episode
