@@ -1,4 +1,4 @@
-// EPG Manager - With Infinite Scroll and Inline Daily Programs
+// EPG Manager - With Infinite Scroll for Current Events
 class EPGManager {
     constructor() {
         this.core = new EPGCore();
@@ -54,7 +54,7 @@ class EPGManager {
         this.progressUpdateInterval = setInterval(() => this.updateProgressBars(), 30000);
 
         this.initialized = true;
-        console.log('EPGManager initialized successfully with 50-item chunks and inline programs');
+        console.log('EPGManager initialized successfully with 50-item chunks');
     }
 
     loadConfiguration() {
@@ -153,7 +153,6 @@ class EPGManager {
             const data = await this.core.loadDataForDate(this.core.currentDate);
 
             this.ui.renderCurrentEvents(data.channels, data.currentEvents);
-            // Daily programs are now inline, no separate rendering needed
             this.ui.updateDateDisplay(this.core.currentDate);
 
             console.log(`Loaded ${data.channels.length} channels (page 0, chunk size: 50)`);
@@ -223,13 +222,21 @@ class EPGManager {
             return;
         }
 
-        // Expand toggle on current events
-        if (e.target.closest('.expand-toggle')) {
+        // Expand button on current event card
+        if (e.target.closest('.expand-daily-btn')) {
             e.stopPropagation();
-            const channelId = e.target.closest('.channel-now-card')?.dataset.channelId;
+            const button = e.target.closest('.expand-daily-btn');
+            const channelId = button.dataset.channelId;
             if (channelId) {
-                this.ui.toggleChannelExpansion(channelId);
+                this.ui.showDailyPrograms(channelId);
             }
+            return;
+        }
+
+        // Close daily programs button
+        if (e.target.closest('.close-daily-programs')) {
+            e.preventDefault();
+            this.ui.closeDailyPrograms();
             return;
         }
 
@@ -275,6 +282,7 @@ class EPGManager {
         // Global keyboard shortcuts
         if (e.key === 'Escape') {
             this.ui.closeProgramDetails();
+            this.ui.closeDailyPrograms();
             if (this.player) {
                 this.player.stop();
             }
@@ -301,7 +309,9 @@ class EPGManager {
 
     navigateDate(days) {
         this.core.navigateDate(days);
-        this.ui.clearExpandedChannels();
+
+        // Close daily programs when changing date
+        this.ui.closeDailyPrograms();
 
         // Reset pagination when changing dates
         this.core.currentPage = 0;
@@ -319,7 +329,9 @@ class EPGManager {
 
     goToToday() {
         this.core.goToToday();
-        this.ui.clearExpandedChannels();
+
+        // Close daily programs when going to today
+        this.ui.closeDailyPrograms();
 
         // Reset pagination
         this.core.currentPage = 0;

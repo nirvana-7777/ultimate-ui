@@ -1,4 +1,4 @@
-// EPG UI - Improved with inline daily programs
+// EPG UI - With separate daily programs section
 class EPGUI {
     constructor(core) {
         this.core = core;
@@ -128,22 +128,11 @@ class EPGUI {
             div.appendChild(this.createProgressBar(program));
         }
 
-        // NEW: Add inline daily programs section (hidden by default)
-        const inlineDailyPrograms = document.createElement('div');
-        inlineDailyPrograms.className = 'inline-daily-programs';
-        inlineDailyPrograms.innerHTML = '<h4>Tagesprogramm</h4>';
-
-        const programsList = document.createElement('div');
-        programsList.className = 'programs-list';
-        inlineDailyPrograms.appendChild(programsList);
-
-        div.appendChild(inlineDailyPrograms);
-
-        // Expand button
+        // ADD: Expand button to show daily programs
         const expandBtn = document.createElement('button');
-        expandBtn.className = 'expand-toggle';
-        expandBtn.innerHTML = '▼';
-        expandBtn.title = 'Tagesprogramm anzeigen';
+        expandBtn.className = 'expand-daily-btn';
+        expandBtn.innerHTML = '▼ Tagesprogramm anzeigen';
+        expandBtn.dataset.channelId = channel.id;
         div.appendChild(expandBtn);
 
         return div;
@@ -177,7 +166,7 @@ class EPGUI {
 
         container.appendChild(timeInfo);
 
-        // NEW: Description preview (3 lines max) with "weiterlesen" link
+        // NEW: Description preview (2 lines max) with "weiterlesen" link
         if (program.description) {
             const description = document.createElement('div');
             description.className = 'event-description';
@@ -229,18 +218,84 @@ class EPGUI {
         return container;
     }
 
-    renderDailyPrograms(channels, dailyPrograms) {
-        // Removed - daily programs are now inline within each card
-        // This method is kept for compatibility but does nothing
+    // NEW: Show daily programs for a specific channel
+    showDailyPrograms(channelId) {
+        const channel = this.core.getChannel(channelId);
+        const programs = this.core.dailyPrograms.get(channelId);
+
+        if (!channel || !programs || programs.length === 0) {
+            if (window.showToast) {
+                window.showToast('Kein Tagesprogramm verfügbar', 'warning');
+            }
+            return;
+        }
+
+        const container = document.getElementById('daily-programs-container');
+        const content = document.getElementById('daily-programs-content');
+
+        if (!container || !content) return;
+
+        // Clear previous content
+        content.innerHTML = '';
+
+        // Create channel header
+        const channelCard = document.createElement('div');
+        channelCard.className = 'channel-daily-expanded';
+
+        const header = document.createElement('div');
+        header.className = 'channel-daily-header-expanded';
+
+        // Logo
+        const logoContainer = document.createElement('div');
+        logoContainer.className = 'channel-logo-container';
+        if (channel.icon_url) {
+            const logo = document.createElement('img');
+            logo.className = 'channel-logo';
+            logo.src = channel.icon_url;
+            logo.alt = channel.display_name;
+            logo.onerror = () => {
+                this.addLogoFallback(logoContainer, channel.display_name);
+            };
+            logoContainer.appendChild(logo);
+        } else {
+            this.addLogoFallback(logoContainer, channel.display_name);
+        }
+        header.appendChild(logoContainer);
+
+        // Channel name
+        const name = document.createElement('div');
+        name.className = 'channel-daily-name';
+        name.textContent = channel.display_name;
+        header.appendChild(name);
+
+        channelCard.appendChild(header);
+
+        // Add all programs
+        programs.forEach(program => {
+            const programElement = this.createDailyProgramCardExpanded(channel, program);
+            channelCard.appendChild(programElement);
+        });
+
+        content.appendChild(channelCard);
+
+        // Show the section
+        container.style.display = 'block';
+        container.classList.add('active');
+
+        // Scroll to the daily programs section
+        setTimeout(() => {
+            container.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 100);
     }
 
-    createProgramCard(channel, program) {
+    // NEW: Create expanded program cards with more details
+    createDailyProgramCardExpanded(channel, program) {
         const now = new Date();
         const startTime = new Date(program.start_time);
         const endTime = new Date(program.end_time);
 
         const div = document.createElement('div');
-        div.className = 'program-card';
+        div.className = 'daily-program-card-expanded';
         div.dataset.programId = program.id;
         div.dataset.channelId = channel.id;
 
@@ -250,33 +305,40 @@ class EPGUI {
             div.classList.add('upcoming');
         }
 
-        // Image
+        // Big image
         const imageContainer = document.createElement('div');
-        if (program.image_url) {
+        if (program.image_url || program.icon_url) {
             const img = document.createElement('img');
-            img.className = 'program-image';
-            img.src = program.image_url;
+            img.className = 'daily-program-image-expanded';
+            img.src = program.image_url || program.icon_url;
             img.alt = program.title;
             img.loading = 'lazy';
+            img.onerror = () => {
+                const fallback = document.createElement('div');
+                fallback.className = 'daily-program-image-fallback';
+                fallback.textContent = 'Kein Bild';
+                imageContainer.innerHTML = '';
+                imageContainer.appendChild(fallback);
+            };
             imageContainer.appendChild(img);
         } else {
             const fallback = document.createElement('div');
-            fallback.className = 'program-image-fallback';
+            fallback.className = 'daily-program-image-fallback';
             fallback.textContent = 'Kein Bild';
             imageContainer.appendChild(fallback);
         }
         div.appendChild(imageContainer);
 
-        // Details
+        // Full details
         const details = document.createElement('div');
-        details.className = 'program-details';
-        details.innerHTML = this.createProgramDetailsHTML(program);
+        details.className = 'daily-program-details-expanded';
+        details.innerHTML = this.createDailyProgramDetailsExpandedHTML(program);
         div.appendChild(details);
 
         return div;
     }
 
-    createProgramDetailsHTML(program) {
+    createDailyProgramDetailsExpandedHTML(program) {
         const now = new Date();
         const startTime = new Date(program.start_time);
 
@@ -287,45 +349,44 @@ class EPGUI {
             timeBadge = '<span class="time-badge upcoming">DEMNÄCHST</span>';
         }
 
-        // Build meta info from all available fields
+        // All available info
         const metaItems = [];
-
         if (program.category) {
             metaItems.push(`<span class="program-category">${this.escapeHtml(program.category)}</span>`);
         }
-
         if (program.duration) {
             metaItems.push(`<span class="program-duration">${program.duration} min</span>`);
         }
-
         if (program.rating) {
             metaItems.push(`<span class="program-rating">${this.escapeHtml(program.rating)}</span>`);
         }
-
         if (program.episode_num) {
             const epNum = program.episode_num.replace(/\./g, '').trim();
             if (epNum) {
                 metaItems.push(`<span class="program-episode">Episode ${epNum}</span>`);
             }
         }
-
-        const metaHTML = metaItems.length > 0 ?
-            `<div class="program-meta">${metaItems.join('')}</div>` : '';
-
-        // Description with expand/collapse
-        let descriptionHTML = '';
-        if (program.description) {
-            descriptionHTML = `
-                <div class="program-description">${this.escapeHtml(program.description)}</div>
-                <button class="expand-description">Mehr anzeigen</button>
-            `;
+        if (program.directors) {
+            metaItems.push(`<span class="program-directors">Regie: ${this.escapeHtml(program.directors)}</span>`);
+        }
+        if (program.actors) {
+            const actors = program.actors.length > 100 ?
+                program.actors.substring(0, 100) + '...' : program.actors;
+            metaItems.push(`<span class="program-actors">Darsteller: ${this.escapeHtml(actors)}</span>`);
         }
 
-        // Play button (check both stream and stream_url)
+        const metaHTML = metaItems.length > 0 ?
+            `<div class="daily-program-meta-expanded">${metaItems.join('')}</div>` : '';
+
+        // FULL description (no truncation)
+        const descriptionHTML = program.description ?
+            `<div class="daily-program-description-expanded">${this.escapeHtml(program.description)}</div>` : '';
+
+        // Play button if available
         const streamUrl = program.stream_url || program.stream;
         let playButton = '';
         if (streamUrl) {
-            playButton = '<button class="btn-play">▶ Abspielen</button>';
+            playButton = `<button class="btn-play" data-channel-id="${program.channel_id}" data-program-id="${program.id}">▶ Jetzt abspielen</button>`;
         }
 
         return `
@@ -333,12 +394,101 @@ class EPGUI {
                 ${timeBadge}
                 <span>${program.start_time_local} - ${program.end_time_local}</span>
             </div>
-            <div class="program-main-title">${this.escapeHtml(program.title)}</div>
+            <div class="daily-program-title-expanded">${this.escapeHtml(program.title)}</div>
             ${program.subtitle ? `<div class="program-subtitle">${this.escapeHtml(program.subtitle)}</div>` : ''}
             ${descriptionHTML}
             ${metaHTML}
             ${playButton}
         `;
+    }
+
+    // NEW: Close daily programs
+    closeDailyPrograms() {
+        const container = document.getElementById('daily-programs-container');
+        if (container) {
+            container.style.display = 'none';
+            container.classList.remove('active');
+        }
+    }
+
+    updateDateDisplay(date) {
+        const displayElement = document.getElementById('date-display');
+        const todayBtn = document.getElementById('date-today-btn');
+
+        if (displayElement) {
+            displayElement.textContent = this.core.formatDateTime(date, 'date');
+        }
+
+        if (todayBtn) {
+            const today = new Date();
+            const isToday = date.toDateString() === today.toDateString();
+            todayBtn.classList.toggle('active', isToday);
+        }
+    }
+
+    updateProgressBars(core) {
+        document.querySelectorAll('.channel-now-card').forEach(card => {
+            const channelId = card.dataset.channelId;
+            const program = core.currentEvents.get(channelId);
+
+            if (program && program.progress) {
+                const progressFill = card.querySelector('.progress-fill');
+                const timeRemaining = card.querySelector('.time-remaining');
+
+                if (progressFill) {
+                    const progress = core.calculateProgress(program.start_time, program.end_time);
+                    if (progress) {
+                        progressFill.style.width = `${progress.percentage}%`;
+                    }
+                }
+
+                if (timeRemaining) {
+                    timeRemaining.textContent = core.calculateTimeRemaining(program.end_time);
+                }
+            }
+        });
+    }
+
+    showProgramDetails(program) {
+        // Close existing modal
+        this.closeProgramDetails();
+
+        const modal = document.getElementById('program-details-modal');
+        const content = document.getElementById('modal-program-content');
+
+        if (!modal || !content) return;
+
+        content.innerHTML = this.createProgramDetailsModalHTML(program);
+        modal.classList.add('active');
+        this.currentModal = modal;
+
+        // Add event listeners
+        const closeBtn = modal.querySelector('.modal-close');
+        if (closeBtn) {
+            closeBtn.addEventListener('click', () => this.closeProgramDetails());
+        }
+
+        // Play button now dispatches event with correct data structure
+        const playBtn = content.querySelector('.btn-play');
+        if (playBtn) {
+            playBtn.addEventListener('click', () => {
+                const channelId = playBtn.dataset.channelId;
+                const programId = playBtn.dataset.programId;
+
+                this.closeProgramDetails();
+
+                document.dispatchEvent(new CustomEvent('play-program', {
+                    detail: { channelId, programId }
+                }));
+            });
+        }
+
+        // Close modal on backdrop click
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                this.closeProgramDetails();
+            }
+        });
     }
 
     createProgramDetailsModalHTML(program) {
@@ -459,140 +609,6 @@ class EPGUI {
                 </button>
             </div>
         `;
-    }
-
-    showProgramDetails(program) {
-        // Close existing modal
-        this.closeProgramDetails();
-
-        const modal = document.getElementById('program-details-modal');
-        const content = document.getElementById('modal-program-content');
-
-        if (!modal || !content) return;
-
-        content.innerHTML = this.createProgramDetailsModalHTML(program);
-        modal.classList.add('active');
-        this.currentModal = modal;
-
-        // Add event listeners
-        const closeBtn = modal.querySelector('.modal-close');
-        if (closeBtn) {
-            closeBtn.addEventListener('click', () => this.closeProgramDetails());
-        }
-
-        // Play button now dispatches event with correct data structure
-        const playBtn = content.querySelector('.btn-play');
-        if (playBtn) {
-            playBtn.addEventListener('click', () => {
-                const channelId = playBtn.dataset.channelId;
-                const programId = playBtn.dataset.programId;
-
-                this.closeProgramDetails();
-
-                document.dispatchEvent(new CustomEvent('play-program', {
-                    detail: { channelId, programId }
-                }));
-            });
-        }
-
-        // Close modal on backdrop click
-        modal.addEventListener('click', (e) => {
-            if (e.target === modal) {
-                this.closeProgramDetails();
-            }
-        });
-    }
-
-    updateDateDisplay(date) {
-        const displayElement = document.getElementById('date-display');
-        const todayBtn = document.getElementById('date-today-btn');
-
-        if (displayElement) {
-            displayElement.textContent = this.core.formatDateTime(date, 'date');
-        }
-
-        if (todayBtn) {
-            const today = new Date();
-            const isToday = date.toDateString() === today.toDateString();
-            todayBtn.classList.toggle('active', isToday);
-        }
-    }
-
-    toggleChannelExpansion(channelId) {
-        const card = document.querySelector(`.channel-now-card[data-channel-id="${channelId}"]`);
-        if (!card) return;
-
-        const isExpanded = card.classList.contains('expanded');
-        const toggleIcon = card.querySelector('.expand-toggle');
-        const programsList = card.querySelector('.inline-daily-programs .programs-list');
-
-        if (isExpanded) {
-            // Collapse
-            card.classList.remove('expanded');
-            if (toggleIcon) toggleIcon.innerHTML = '▼';
-            this.expandedChannels.delete(channelId);
-        } else {
-            // Expand
-            card.classList.add('expanded');
-            if (toggleIcon) toggleIcon.innerHTML = '▲';
-            this.expandedChannels.add(channelId);
-
-            // Load programs if not already loaded
-            if (programsList && programsList.children.length === 0) {
-                const programs = this.core.dailyPrograms.get(channelId);
-                const channel = this.core.getChannel(channelId);
-
-                if (programs && channel) {
-                    programs.forEach(program => {
-                        const programElement = this.createProgramCard(channel, program);
-                        programsList.appendChild(programElement);
-                    });
-                }
-            }
-
-            // Scroll into view
-            setTimeout(() => {
-                card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-            }, 100);
-        }
-    }
-
-    updateProgressBars(core) {
-        document.querySelectorAll('.channel-now-card').forEach(card => {
-            const channelId = card.dataset.channelId;
-            const program = core.currentEvents.get(channelId);
-
-            if (program && program.progress) {
-                const progressFill = card.querySelector('.progress-fill');
-                const timeRemaining = card.querySelector('.time-remaining');
-
-                if (progressFill) {
-                    const progress = core.calculateProgress(program.start_time, program.end_time);
-                    if (progress) {
-                        progressFill.style.width = `${progress.percentage}%`;
-                    }
-                }
-
-                if (timeRemaining) {
-                    timeRemaining.textContent = core.calculateTimeRemaining(program.end_time);
-                }
-            }
-        });
-    }
-
-    clearExpandedChannels() {
-        this.expandedChannels.forEach(channelId => {
-            const card = document.querySelector(`.channel-now-card[data-channel-id="${channelId}"]`);
-            const toggleIcon = card?.querySelector('.expand-toggle');
-
-            if (card) {
-                card.classList.remove('expanded');
-            }
-            if (toggleIcon) {
-                toggleIcon.innerHTML = '▼';
-            }
-        });
-        this.expandedChannels.clear();
     }
 
     closeProgramDetails() {

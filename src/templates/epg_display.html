@@ -24,13 +24,15 @@
         <!-- Will be populated by JavaScript -->
     </div>
 
-    <!-- Daily Programs -->
-    <div class="daily-programs">
+    <!-- Daily Programs Section - Hidden by default -->
+    <div class="daily-programs" id="daily-programs-container" style="display: none;">
         <div class="daily-programs-header">
             <h3>Tagesprogramm</h3>
-            <small class="text-muted">Klicken Sie auf einen Sender, um das Programm anzuzeigen</small>
+            <button class="close-daily-programs" id="close-daily-btn" aria-label="Schließen">× Schließen</button>
         </div>
-        <!-- Will be populated by JavaScript -->
+        <div id="daily-programs-content">
+            <!-- Will be populated when a channel is clicked -->
+        </div>
     </div>
 
     <!-- Loading Spinner -->
