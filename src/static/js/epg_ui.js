@@ -131,7 +131,7 @@ class EPGUI {
         // ADD: Expand button to show daily programs
         const expandBtn = document.createElement('button');
         expandBtn.className = 'expand-daily-btn';
-        expandBtn.innerHTML = '▼ Tagesprogramm anzeigen';
+        expandBtn.innerHTML = '▼ Vorschau anzeigen';
         expandBtn.dataset.channelId = channel.id;
         div.appendChild(expandBtn);
 

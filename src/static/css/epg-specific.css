@@ -267,7 +267,7 @@
     border-color: var(--accent-color);
 }
 
-/* FIXED: Progress bar higher up */
+/* FIXED: Progress bar higher up with time on left */
 .event-progress {
     padding-top: 8px;
     position: absolute;
@@ -276,6 +276,17 @@
     right: 20px;
     background-color: var(--bg-card);
     z-index: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.time-remaining-left {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    align-self: flex-start;
+    line-height: 1.5;
 }
 
 .progress-bar {
@@ -283,7 +294,6 @@
     background-color: var(--bg-tertiary);
     border-radius: 3px;
     overflow: hidden;
-    margin-bottom: 6px;
     width: calc(100% - 40px);
 }
 
@@ -292,24 +302,6 @@
     background: linear-gradient(90deg, var(--accent-color), var(--accent-hover));
     border-radius: 3px;
     transition: width 0.3s ease;
-}
-
-/* FIXED: Progress info with only remaining time (center aligned) */
-.progress-info {
-    display: flex;
-    justify-content: center;
-    font-size: 12px;
-    color: var(--text-muted);
-    width: calc(100% - 40px);
-    margin-top: 2px;
-}
-
-/* Remaining time centered */
-.time-remaining {
-    font-family: inherit;
-    font-size: 12px;
-    font-weight: 500;
-    color: var(--text-muted);
 }
 
 /* Daily Programs Section (hidden by default) */
@@ -359,6 +351,42 @@
     background: var(--error-color);
     color: white;
     border-color: var(--error-color);
+}
+
+/* FSK Rating Badges */
+.fsk-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 700;
+    color: white;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+}
+
+.fsk-badge.fsk-0 {
+    background: linear-gradient(135deg, #4CAF50, #66BB6A);
+}
+
+.fsk-badge.fsk-6 {
+    background: linear-gradient(135deg, #FFC107, #FFD54F);
+    color: #333;
+}
+
+.fsk-badge.fsk-12 {
+    background: linear-gradient(135deg, #2196F3, #42A5F5);
+}
+
+.fsk-badge.fsk-16 {
+    background: linear-gradient(135deg, #FF9800, #FFB74D);
+}
+
+.fsk-badge.fsk-18 {
+    background: linear-gradient(135deg, #F44336, #EF5350);
 }
 
 /* Channel Daily Card in expanded view */
