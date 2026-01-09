@@ -350,11 +350,8 @@ class EPGUI {
         if (program.rating) {
             metaItems.push(`<span class="program-rating">${this.escapeHtml(program.rating)}</span>`);
         }
-        if (program.episode_num) {
-            const epNum = program.episode_num.replace(/\./g, '').trim();
-            if (epNum) {
-                metaItems.push(`<span class="program-episode">Episode ${epNum}</span>`);
-            }
+        if (program.episode_formatted) {
+            metaItems.push(`<span class="program-episode">${program.episode_formatted}</span>`);
         }
         if (program.directors) {
             metaItems.push(`<span class="program-directors">Regie: ${this.escapeHtml(program.directors)}</span>`);
@@ -521,16 +518,13 @@ class EPGUI {
             `);
         }
 
-        if (program.episode_num) {
-            const epNum = program.episode_num.replace(/\./g, '').trim();
-            if (epNum) {
-                detailItems.push(`
-                    <div class="detail-item">
-                        <span class="detail-label">Episode</span>
-                        <span class="detail-value">${epNum}</span>
-                    </div>
-                `);
-            }
+        if (program.episode_formatted) {
+            detailItems.push(`
+                <div class="detail-item">
+                    <span class="detail-label">Episode</span>
+                    <span class="detail-value">${program.episode_formatted}</span>
+                </div>
+            `);
         }
 
         if (program.directors) {
@@ -576,7 +570,7 @@ class EPGUI {
                         ${program.category ? `<span class="program-category">${this.escapeHtml(program.category)}</span>` : ''}
                         ${program.duration ? `<span class="program-duration">${program.duration} min</span>` : ''}
                         ${program.rating ? `<span class="program-rating">${this.escapeHtml(program.rating)}</span>` : ''}
-                        ${program.episode_num ? `<span class="program-episode">Episode ${program.episode_num.replace(/\./g, '').trim()}</span>` : ''}
+                        ${program.episode_formatted ? `<span class="program-episode">${program.episode_formatted}</span>` : ''}
                     </div>
                 </div>
             </div>

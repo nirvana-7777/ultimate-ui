@@ -104,6 +104,9 @@ class EPGCore {
                 program.end_time_local = this.formatDateTime(program.end_time, 'time');
                 program.date_local = this.formatDateTime(program.start_time, 'date');
 
+                program.episode_formatted = this.parseXmltvNsEpisode(program.episode_num);
+
+
                 // Calculate progress if program is currently airing
                 const now = new Date();
                 const start = new Date(program.start_time);
@@ -329,5 +332,101 @@ class EPGCore {
         endDate.setHours(23, 59, 59, 999);
 
         return await this.fetchProgramsForChannel(channelId, startDate, endDate);
+    }
+
+    // Add this method to the EPGCore class (around line 400-450, before the closing brace)
+    /**
+     * Parse xmltv_ns format episode numbers
+     * Format: season.episode.part/total-parts
+     * - All numbers are 0-based (0 = first season/episode/part)
+     * - season 0 = specials/no season
+     * - episode 0 = first episode
+     * - part 0 = first part
+     * - Trailing dot required if no part info
+     *
+     * Examples:
+     * - "0.12." = Episode 13 (season 0, episode 12)
+     * - "1.4." = Season 2, Episode 5 (season 1, episode 4)
+     * - "2.15.0/2" = Season 3, Episode 16, Part 1 of 2
+     * - "1.3.1/3" = Season 2, Episode 4, Part 2 of 3
+     */
+    parseXmltvNsEpisode(episodeNum) {
+        if (!episodeNum || typeof episodeNum !== 'string') {
+            return null;
+        }
+
+        // Remove trailing dot if present
+        episodeNum = episodeNum.trim();
+        episodeNum = episodeNum.replace(/\.$/, '');
+
+        const parts = episodeNum.split('.');
+
+        // Must have at least season and episode
+        if (parts.length < 2 || parts[0] === '' || parts[1] === '') {
+            return null;
+        }
+
+        const season = parseInt(parts[0], 10);
+        const episode = parseInt(parts[1], 10);
+
+        // Validate numbers
+        if (isNaN(season) || isNaN(episode) || season < 0 || episode < 0) {
+            return null;
+        }
+
+        // Convert from 0-based to 1-based for display
+        const displaySeason = season + 1;
+        const displayEpisode = episode + 1;
+
+        // Check for special episodes (season 0 in xmltv_ns)
+        if (season === 0) {
+            // Specials - just show episode number
+            if (parts.length >= 3 && parts[2]) {
+                // Has part info
+                const partInfo = this.parsePartInfo(parts[2]);
+                if (partInfo) {
+                    return `Episode ${displayEpisode} (Part ${partInfo.current}/${partInfo.total})`;
+                }
+            }
+            return `Episode ${displayEpisode}`;
+        }
+
+        // Regular season episode
+        let result = `S${displaySeason.toString().padStart(2, '0')}E${displayEpisode.toString().padStart(2, '0')}`;
+
+        // Add part information if available
+        if (parts.length >= 3 && parts[2]) {
+            const partInfo = this.parsePartInfo(parts[2]);
+            if (partInfo) {
+                result += ` (Part ${partInfo.current}/${partInfo.total})`;
+            }
+        }
+
+        return result;
+    }
+
+    /**
+     * Parse part information (e.g., "0/2", "1/3")
+     * Returns object with current and total (1-based)
+     */
+    parsePartInfo(partString) {
+        if (!partString) return null;
+
+        const partParts = partString.split('/');
+        if (partParts.length !== 2) return null;
+
+        const partCurrent = parseInt(partParts[0], 10);
+        const partTotal = parseInt(partParts[1], 10);
+
+        if (isNaN(partCurrent) || isNaN(partTotal) ||
+            partCurrent < 0 || partTotal < 1 || partCurrent >= partTotal) {
+            return null;
+        }
+
+        // Convert from 0-based to 1-based
+        return {
+            current: partCurrent + 1,
+            total: partTotal
+        };
     }
 }
