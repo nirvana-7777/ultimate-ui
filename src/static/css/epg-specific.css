@@ -319,10 +319,16 @@
     padding-top: 32px;
     border-top: 2px solid var(--border-color);
     animation: fadeIn 0.3s ease;
+    transition: opacity 0.3s ease, transform 0.3s ease;
 }
 
 .daily-programs.active {
     display: block;
+}
+
+.daily-programs.hiding {
+    opacity: 0;
+    transform: translateY(20px);
 }
 
 .daily-programs-header {
@@ -459,6 +465,33 @@
     flex-wrap: wrap;
     gap: 12px;
     margin-top: 16px;
+}
+
+/* Animations for showing/hiding current events grid */
+.current-events-grid {
+    transition: opacity 0.3s ease, transform 0.3s ease;
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.current-events-grid.hiding {
+    opacity: 0;
+    transform: translateY(-20px);
+}
+
+.current-events-grid.showing {
+    animation: slideInFromTop 0.3s ease forwards;
+}
+
+@keyframes slideInFromTop {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 /* Animation for fade in */

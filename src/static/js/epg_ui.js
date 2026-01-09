@@ -1,4 +1,4 @@
-// EPG UI - With separate daily programs section
+// EPG UI - With separate daily programs section and animations
 class EPGUI {
     constructor(core) {
         this.core = core;
@@ -218,12 +218,21 @@ class EPGUI {
         return container;
     }
 
-    // UPDATED: Show daily programs using data from manager
+    // UPDATED: Show daily programs using data from manager with animation
     showDailyPrograms(channel, programs) {
         const container = document.getElementById('daily-programs-container');
         const content = document.getElementById('daily-programs-content');
+        const currentEventsGrid = document.getElementById('current-events-grid');
 
         if (!container || !content) return;
+
+        // Hide current events with animation
+        if (currentEventsGrid) {
+            currentEventsGrid.classList.add('hiding');
+            setTimeout(() => {
+                currentEventsGrid.style.display = 'none';
+            }, 300); // Match CSS transition time
+        }
 
         // Clear previous content
         content.innerHTML = '';
@@ -389,12 +398,29 @@ class EPGUI {
         `;
     }
 
-    // NEW: Close daily programs
+    // NEW: Close daily programs and restore current events with animation
     closeDailyPrograms() {
         const container = document.getElementById('daily-programs-container');
+        const currentEventsGrid = document.getElementById('current-events-grid');
+
         if (container) {
-            container.style.display = 'none';
-            container.classList.remove('active');
+            container.classList.add('hiding');
+            setTimeout(() => {
+                container.style.display = 'none';
+                container.classList.remove('active', 'hiding');
+            }, 300);
+        }
+
+        // Show current events with animation
+        if (currentEventsGrid) {
+            currentEventsGrid.style.display = 'grid';
+            // Trigger reflow
+            void currentEventsGrid.offsetWidth;
+            currentEventsGrid.classList.remove('hiding');
+            currentEventsGrid.classList.add('showing');
+            setTimeout(() => {
+                currentEventsGrid.classList.remove('showing');
+            }, 300);
         }
     }
 
