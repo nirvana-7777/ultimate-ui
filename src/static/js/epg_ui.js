@@ -218,18 +218,8 @@ class EPGUI {
         return container;
     }
 
-    // NEW: Show daily programs for a specific channel
-    showDailyPrograms(channelId) {
-        const channel = this.core.getChannel(channelId);
-        const programs = this.core.dailyProgramsData ? this.core.dailyProgramsData.get(channelId) : null;
-
-        if (!channel || !programs || programs.length === 0) {
-            if (window.showToast) {
-                window.showToast('Kein Tagesprogramm verfügbar', 'warning');
-            }
-            return;
-        }
-
+    // UPDATED: Show daily programs using data from manager
+    showDailyPrograms(channel, programs) {
         const container = document.getElementById('daily-programs-container');
         const content = document.getElementById('daily-programs-content');
 

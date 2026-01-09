@@ -5,6 +5,7 @@ class EPGManager {
         this.ui = new EPGUI(this.core);
         this.player = null;
         this.initialized = false;
+        this.dailyProgramsData = new Map(); // Store daily programs data
 
         // Scroll observer for current events only
         this.currentEventsScrollObserver = null;
@@ -115,7 +116,7 @@ class EPGManager {
     }
 
     setupInfiniteScroll() {
-        // Setup intersection observer for current events grid only
+        // Setup intersection observer for current events grid
         this.currentEventsScrollObserver = new IntersectionObserver((entries) => {
             entries.forEach(entry => {
                 if (entry.isIntersecting &&
@@ -127,16 +128,21 @@ class EPGManager {
             });
         }, {
             root: null,
-            rootMargin: '400px', // Start loading even earlier
+            rootMargin: '400px',
             threshold: 0
         });
 
         // Add sentinel element to current events grid
         const currentEventsGrid = document.getElementById('current-events-grid');
         if (currentEventsGrid) {
+            // Remove old sentinel if exists
+            if (this.currentEventsSentinel && this.currentEventsSentinel.parentNode) {
+                this.currentEventsSentinel.parentNode.removeChild(this.currentEventsSentinel);
+            }
+
             this.currentEventsSentinel = document.createElement('div');
             this.currentEventsSentinel.id = 'current-events-sentinel';
-            this.currentEventsSentinel.style.cssText = 'height: 20px; grid-column: 1 / -1; background: transparent;';
+            this.currentEventsSentinel.style.cssText = 'height: 1px; width: 100%; background: transparent;';
             currentEventsGrid.appendChild(this.currentEventsSentinel);
 
             this.currentEventsScrollObserver.observe(this.currentEventsSentinel);
@@ -152,7 +158,15 @@ class EPGManager {
         try {
             const data = await this.core.loadDataForDate(this.core.currentDate);
 
-            this.core.dailyProgramsData = data.dailyPrograms;
+            // Store daily programs data
+            if (data.dailyPrograms && data.dailyPrograms instanceof Map) {
+                // Clear existing data
+                this.dailyProgramsData.clear();
+                // Add all new data
+                data.dailyPrograms.forEach((value, key) => {
+                    this.dailyProgramsData.set(key, value);
+                });
+            }
 
             this.ui.renderCurrentEvents(data.channels, data.currentEvents);
             this.ui.updateDateDisplay(this.core.currentDate);
@@ -186,18 +200,28 @@ class EPGManager {
             // Get the new channels (last chunk)
             const newChannels = this.core.channels.slice(beforeCount);
 
+            // Load daily programs for new channels
+            await this.loadDailyProgramsForNewChannels(newChannels);
+
             // Append to current events grid
             const container = document.getElementById('current-events-grid');
             if (container && this.currentEventsSentinel) {
+                // Temporarily remove sentinel
+                const sentinel = this.currentEventsSentinel;
+                if (sentinel.parentNode === container) {
+                    sentinel.remove();
+                }
+
                 let addedCount = 0;
                 newChannels.forEach(channel => {
                     const program = this.core.currentEvents.get(channel.id);
                     const card = this.ui.createCurrentEventCard(channel, program);
-
-                    // Insert before sentinel
-                    container.insertBefore(card, this.currentEventsSentinel);
+                    container.appendChild(card);
                     addedCount++;
                 });
+
+                // Re-add sentinel at the end
+                container.appendChild(sentinel);
 
                 console.log(`Added ${addedCount} cards to current events grid`);
             }
@@ -208,6 +232,23 @@ class EPGManager {
                 this.currentEventsScrollObserver.unobserve(this.currentEventsSentinel);
                 console.log('Stopped observing current events sentinel');
             }
+        }
+    }
+
+    async loadDailyProgramsForNewChannels(newChannels) {
+        if (!newChannels || newChannels.length === 0) return;
+
+        try {
+            // Load daily programs for each new channel
+            for (const channel of newChannels) {
+                const dailyPrograms = await this.core.loadDailyProgramsForChannel(channel.id, this.core.currentDate);
+                if (dailyPrograms && dailyPrograms.length > 0) {
+                    this.dailyProgramsData.set(channel.id, dailyPrograms);
+                }
+            }
+            console.log(`Loaded daily programs for ${newChannels.length} new channels`);
+        } catch (error) {
+            console.warn('Error loading daily programs for new channels:', error);
         }
     }
 
@@ -230,7 +271,7 @@ class EPGManager {
             const button = e.target.closest('.expand-daily-btn');
             const channelId = button.dataset.channelId;
             if (channelId) {
-                this.ui.showDailyPrograms(channelId);
+                this.showDailyPrograms(channelId);
             }
             return;
         }
@@ -242,21 +283,21 @@ class EPGManager {
             return;
         }
 
-        // Play button
-        if (e.target.closest('.btn-play')) {
+        // Play button in daily programs
+        if (e.target.closest('.btn-play') && e.target.closest('.daily-program-card-expanded')) {
             e.stopPropagation();
-            const programElement = e.target.closest('[data-program-id]');
-            if (programElement) {
-                const programId = programElement.dataset.programId;
-                const channelId = programElement.dataset.channelId;
+            const button = e.target.closest('.btn-play');
+            const channelId = button.dataset.channelId;
+            const programId = button.dataset.programId;
+            if (channelId && programId) {
                 this.playProgram(channelId, programId);
             }
             return;
         }
 
-        // Program card click (for details)
-        if (e.target.closest('.program-card') && !e.target.closest('.btn-play')) {
-            const programElement = e.target.closest('.program-card');
+        // Program card click (for details) in daily programs
+        if (e.target.closest('.daily-program-card-expanded') && !e.target.closest('.btn-play')) {
+            const programElement = e.target.closest('.daily-program-card-expanded');
             const programId = programElement.dataset.programId;
             const channelId = programElement.dataset.channelId;
             this.showProgramDetails(channelId, programId);
@@ -315,6 +356,9 @@ class EPGManager {
         // Close daily programs when changing date
         this.ui.closeDailyPrograms();
 
+        // Clear daily programs data
+        this.dailyProgramsData.clear();
+
         // Reset pagination when changing dates
         this.core.currentPage = 0;
         this.core.hasMoreChannels = true;
@@ -334,6 +378,9 @@ class EPGManager {
 
         // Close daily programs when going to today
         this.ui.closeDailyPrograms();
+
+        // Clear daily programs data
+        this.dailyProgramsData.clear();
 
         // Reset pagination
         this.core.currentPage = 0;
@@ -422,6 +469,20 @@ class EPGManager {
         }
     }
 
+    showDailyPrograms(channelId) {
+        const channel = this.core.getChannel(channelId);
+        const programs = this.dailyProgramsData.get(channelId);
+
+        if (!channel || !programs || programs.length === 0) {
+            if (window.showToast) {
+                window.showToast('Kein Tagesprogramm verfügbar', 'warning');
+            }
+            return;
+        }
+
+        this.ui.showDailyPrograms(channel, programs);
+    }
+
     updateTimeDisplays() {
         // Update current time in sidebar
         const timeElement = document.getElementById('current-time');
@@ -492,7 +553,7 @@ class EPGManager {
         // Clear core data
         this.core.clearCache();
         this.core.currentEvents.clear();
-        this.core.dailyPrograms.clear();
+        this.dailyProgramsData.clear();
 
         this.initialized = false;
         console.log('EPGManager cleanup complete');
