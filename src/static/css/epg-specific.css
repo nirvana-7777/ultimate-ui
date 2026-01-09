@@ -283,7 +283,7 @@
 
 .time-remaining-left {
     font-size: 13px;
-    font-weight: 500;
+    font-weight: 400;
     color: var(--text-secondary);
     align-self: flex-start;
     line-height: 1.5;
@@ -355,38 +355,39 @@
 
 /* FSK Rating Badges */
 .fsk-badge {
-    display: inline-flex;
+    display: inline-flex !important;
     align-items: center;
     justify-content: center;
     padding: 4px 10px;
     border-radius: 6px;
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 700;
-    color: white;
+    color: white !important;
     text-transform: uppercase;
     letter-spacing: 0.5px;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+    border: none;
 }
 
 .fsk-badge.fsk-0 {
-    background: linear-gradient(135deg, #4CAF50, #66BB6A);
+    background: linear-gradient(135deg, #4CAF50, #66BB6A) !important;
 }
 
 .fsk-badge.fsk-6 {
-    background: linear-gradient(135deg, #FFC107, #FFD54F);
-    color: #333;
+    background: linear-gradient(135deg, #FFC107, #FFD54F) !important;
+    color: #333 !important;
 }
 
 .fsk-badge.fsk-12 {
-    background: linear-gradient(135deg, #2196F3, #42A5F5);
+    background: linear-gradient(135deg, #2196F3, #42A5F5) !important;
 }
 
 .fsk-badge.fsk-16 {
-    background: linear-gradient(135deg, #FF9800, #FFB74D);
+    background: linear-gradient(135deg, #FF9800, #FFB74D) !important;
 }
 
 .fsk-badge.fsk-18 {
-    background: linear-gradient(135deg, #F44336, #EF5350);
+    background: linear-gradient(135deg, #F44336, #EF5350) !important;
 }
 
 /* Channel Daily Card in expanded view */
