@@ -221,7 +221,7 @@ class EPGUI {
     // NEW: Show daily programs for a specific channel
     showDailyPrograms(channelId) {
         const channel = this.core.getChannel(channelId);
-        const programs = this.core.dailyPrograms.get(channelId);
+        const programs = this.core.dailyProgramsData ? this.core.dailyProgramsData.get(channelId) : null;
 
         if (!channel || !programs || programs.length === 0) {
             if (window.showToast) {

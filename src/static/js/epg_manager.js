@@ -152,6 +152,8 @@ class EPGManager {
         try {
             const data = await this.core.loadDataForDate(this.core.currentDate);
 
+            this.core.dailyProgramsData = data.dailyPrograms;
+
             this.ui.renderCurrentEvents(data.channels, data.currentEvents);
             this.ui.updateDateDisplay(this.core.currentDate);
 
