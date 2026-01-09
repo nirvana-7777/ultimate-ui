@@ -195,6 +195,12 @@ class EPGUI {
         const container = document.createElement('div');
         container.className = 'event-progress';
 
+        // Time remaining on the left
+        const timeRemaining = document.createElement('div');
+        timeRemaining.className = 'time-remaining-left';
+        timeRemaining.textContent = program.time_remaining;
+        container.appendChild(timeRemaining);
+
         const progressBar = document.createElement('div');
         progressBar.className = 'progress-bar';
 
@@ -203,17 +209,7 @@ class EPGUI {
         progressFill.style.width = `${program.progress.percentage}%`;
         progressBar.appendChild(progressFill);
 
-        const progressInfo = document.createElement('div');
-        progressInfo.className = 'progress-info';
-
-        // FIXED: Show only remaining time (centered)
-        const timeRemaining = document.createElement('span');
-        timeRemaining.className = 'time-remaining';
-        timeRemaining.textContent = program.time_remaining;
-        progressInfo.appendChild(timeRemaining);
-
         container.appendChild(progressBar);
-        container.appendChild(progressInfo);
 
         return container;
     }
@@ -357,7 +353,7 @@ class EPGUI {
             metaItems.push(`<span class="program-duration">${program.duration} min</span>`);
         }
         if (program.rating) {
-            metaItems.push(`<span class="program-rating">${this.escapeHtml(program.rating)}</span>`);
+            metaItems.push(this.createRatingBadge(program.rating));
         }
         if (program.episode_formatted) {
             metaItems.push(`<span class="program-episode">${program.episode_formatted}</span>`);
@@ -396,6 +392,35 @@ class EPGUI {
             ${metaHTML}
             ${playButton}
         `;
+    }
+
+    // NEW: Create FSK rating badge
+    createRatingBadge(rating) {
+        if (!rating) return '';
+
+        console.log('Creating rating badge for:', rating); // Debug log
+
+        // Extract age number from rating string (handles "FSK 12", "12", "ab 12", etc.)
+        const ageMatch = rating.toString().match(/(\d+)/);
+        if (!ageMatch) {
+            console.log('No age number found in rating:', rating);
+            return `<span class="program-rating">${this.escapeHtml(rating)}</span>`;
+        }
+
+        const age = parseInt(ageMatch[1], 10);
+        console.log('Extracted age:', age);
+
+        // Determine FSK color based on age
+        let fskClass = 'fsk-0';
+        if (age >= 18) fskClass = 'fsk-18';
+        else if (age >= 16) fskClass = 'fsk-16';
+        else if (age >= 12) fskClass = 'fsk-12';
+        else if (age >= 6) fskClass = 'fsk-6';
+
+        const badgeHTML = `<span class="fsk-badge ${fskClass}">FSK ${age}</span>`;
+        console.log('Generated badge HTML:', badgeHTML);
+
+        return badgeHTML;
     }
 
     // NEW: Close daily programs and restore current events with animation
@@ -446,7 +471,7 @@ class EPGUI {
 
             if (program && program.progress) {
                 const progressFill = card.querySelector('.progress-fill');
-                const timeRemaining = card.querySelector('.time-remaining');
+                const timeRemaining = card.querySelector('.time-remaining-left');
 
                 if (progressFill) {
                     const progress = core.calculateProgress(program.start_time, program.end_time);
@@ -539,7 +564,7 @@ class EPGUI {
             detailItems.push(`
                 <div class="detail-item">
                     <span class="detail-label">Altersfreigabe</span>
-                    <span class="detail-value">${this.escapeHtml(program.rating)}</span>
+                    <span class="detail-value">${this.createRatingBadge(program.rating)}</span>
                 </div>
             `);
         }
@@ -595,7 +620,7 @@ class EPGUI {
                     <div class="modal-program-meta">
                         ${program.category ? `<span class="program-category">${this.escapeHtml(program.category)}</span>` : ''}
                         ${program.duration ? `<span class="program-duration">${program.duration} min</span>` : ''}
-                        ${program.rating ? `<span class="program-rating">${this.escapeHtml(program.rating)}</span>` : ''}
+                        ${program.rating ? this.createRatingBadge(program.rating) : ''}
                         ${program.episode_formatted ? `<span class="program-episode">${program.episode_formatted}</span>` : ''}
                     </div>
                 </div>
