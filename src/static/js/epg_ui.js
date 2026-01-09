@@ -195,12 +195,6 @@ class EPGUI {
         const container = document.createElement('div');
         container.className = 'event-progress';
 
-        // Time remaining on the left
-        const timeRemaining = document.createElement('div');
-        timeRemaining.className = 'time-remaining-left';
-        timeRemaining.textContent = program.time_remaining;
-        container.appendChild(timeRemaining);
-
         const progressBar = document.createElement('div');
         progressBar.className = 'progress-bar';
 
@@ -210,6 +204,12 @@ class EPGUI {
         progressBar.appendChild(progressFill);
 
         container.appendChild(progressBar);
+
+        // Time remaining below the progress bar
+        const timeRemaining = document.createElement('div');
+        timeRemaining.className = 'time-remaining-left';
+        timeRemaining.textContent = program.time_remaining;
+        container.appendChild(timeRemaining);
 
         return container;
     }
