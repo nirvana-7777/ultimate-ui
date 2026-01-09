@@ -1,4 +1,4 @@
-// EPG UI - Improved with restructured cards and infinite scroll
+// EPG UI - Improved with inline daily programs
 class EPGUI {
     constructor(core) {
         this.core = core;
@@ -128,6 +128,17 @@ class EPGUI {
             div.appendChild(this.createProgressBar(program));
         }
 
+        // NEW: Add inline daily programs section (hidden by default)
+        const inlineDailyPrograms = document.createElement('div');
+        inlineDailyPrograms.className = 'inline-daily-programs';
+        inlineDailyPrograms.innerHTML = '<h4>Tagesprogramm</h4>';
+
+        const programsList = document.createElement('div');
+        programsList.className = 'programs-list';
+        inlineDailyPrograms.appendChild(programsList);
+
+        div.appendChild(inlineDailyPrograms);
+
         // Expand button
         const expandBtn = document.createElement('button');
         expandBtn.className = 'expand-toggle';
@@ -156,7 +167,17 @@ class EPGUI {
             container.appendChild(subtitle);
         }
 
-        // NEW: Description preview (2 lines max) with "weiterlesen" link
+        // FIXED: Time is now above description
+        const timeInfo = document.createElement('div');
+        timeInfo.className = 'event-time';
+
+        const timeRange = document.createElement('span');
+        timeRange.textContent = `${program.start_time_local} - ${program.end_time_local}`;
+        timeInfo.appendChild(timeRange);
+
+        container.appendChild(timeInfo);
+
+        // NEW: Description preview (3 lines max) with "weiterlesen" link
         if (program.description) {
             const description = document.createElement('div');
             description.className = 'event-description';
@@ -164,7 +185,7 @@ class EPGUI {
             container.appendChild(description);
 
             // Add "weiterlesen" link if description is long
-            if (program.description.length > 80) {
+            if (program.description.length > 100) {
                 const expandLink = document.createElement('button');
                 expandLink.className = 'expand-description-link';
                 expandLink.textContent = 'weiterlesen';
@@ -177,16 +198,6 @@ class EPGUI {
                 container.appendChild(expandLink);
             }
         }
-
-        // FIXED: Time is now above description
-        const timeInfo = document.createElement('div');
-        timeInfo.className = 'event-time';
-
-        const timeRange = document.createElement('span');
-        timeRange.textContent = `${program.start_time_local} - ${program.end_time_local}`;
-        timeInfo.appendChild(timeRange);
-
-        container.appendChild(timeInfo);
 
         return container;
     }
@@ -206,10 +217,9 @@ class EPGUI {
         const progressInfo = document.createElement('div');
         progressInfo.className = 'progress-info';
 
-        // FIXED: Show only remaining time (centered) - keep "min" not "m"
+        // FIXED: Show only remaining time (centered)
         const timeRemaining = document.createElement('span');
         timeRemaining.className = 'time-remaining';
-        // Use the time_remaining from core which already has "noch X min" format
         timeRemaining.textContent = program.time_remaining;
         progressInfo.appendChild(timeRemaining);
 
@@ -220,89 +230,8 @@ class EPGUI {
     }
 
     renderDailyPrograms(channels, dailyPrograms) {
-        const container = document.querySelector('.daily-programs');
-        if (!container) return;
-
-        // Clear existing programs
-        const existingCards = container.querySelectorAll('.channel-daily-card');
-        existingCards.forEach(card => card.remove());
-
-        // Create program list header if needed
-        if (!container.querySelector('.daily-programs-header')) {
-            const header = document.createElement('div');
-            header.className = 'daily-programs-header';
-            header.innerHTML = `
-                <h3>Tagesprogramm</h3>
-                <small class="text-muted">Klicken Sie auf einen Sender, um das Programm anzuzeigen</small>
-            `;
-            container.prepend(header);
-        }
-
-        // Render each channel
-        channels.forEach(channel => {
-            const programs = dailyPrograms.get(channel.id) || [];
-            if (programs.length > 0) {
-                const channelCard = this.createChannelDailyCard(channel, programs);
-                container.appendChild(channelCard);
-            }
-        });
-    }
-
-    createChannelDailyCard(channel, programs) {
-        const div = document.createElement('div');
-        div.className = 'channel-daily-card';
-        div.dataset.channelId = channel.id;
-
-        // Header
-        const header = document.createElement('div');
-        header.className = 'channel-daily-header';
-
-        const logoContainer = document.createElement('div');
-        logoContainer.className = 'channel-logo-container';
-        logoContainer.style.width = '40px';
-        logoContainer.style.height = '40px';
-
-        if (channel.icon_url) {
-            const logo = document.createElement('img');
-            logo.className = 'channel-logo';
-            logo.src = channel.icon_url;
-            logo.alt = channel.display_name;
-            logo.onerror = () => {
-                this.addLogoFallback(logoContainer, channel.display_name);
-            };
-            logoContainer.appendChild(logo);
-        } else {
-            this.addLogoFallback(logoContainer, channel.display_name);
-        }
-
-        header.appendChild(logoContainer);
-
-        const name = document.createElement('div');
-        name.className = 'channel-name-compact';
-        name.style.fontSize = '16px'; // Restore normal size for daily view
-        name.textContent = channel.display_name;
-        header.appendChild(name);
-
-        const toggle = document.createElement('div');
-        toggle.className = 'toggle-icon';
-        toggle.innerHTML = this.expandedChannels.has(channel.id) ? '▲' : '▼';
-        header.appendChild(toggle);
-
-        div.appendChild(header);
-
-        // Programs list
-        const programsList = document.createElement('div');
-        programsList.className = 'programs-list';
-        programsList.style.display = this.expandedChannels.has(channel.id) ? 'block' : 'none';
-
-        programs.forEach(program => {
-            const programElement = this.createProgramCard(channel, program);
-            programsList.appendChild(programElement);
-        });
-
-        div.appendChild(programsList);
-
-        return div;
+        // Removed - daily programs are now inline within each card
+        // This method is kept for compatibility but does nothing
     }
 
     createProgramCard(channel, program) {
@@ -590,22 +519,41 @@ class EPGUI {
     }
 
     toggleChannelExpansion(channelId) {
-        const programsList = document.querySelector(`.channel-daily-card[data-channel-id="${channelId}"] .programs-list`);
-        const toggleIcon = document.querySelector(`.channel-daily-card[data-channel-id="${channelId}"] .toggle-icon`);
+        const card = document.querySelector(`.channel-now-card[data-channel-id="${channelId}"]`);
+        if (!card) return;
 
-        if (programsList && toggleIcon) {
-            if (this.expandedChannels.has(channelId)) {
-                programsList.style.display = 'none';
-                toggleIcon.textContent = '▼';
-                this.expandedChannels.delete(channelId);
-            } else {
-                programsList.style.display = 'block';
-                toggleIcon.textContent = '▲';
-                this.expandedChannels.add(channelId);
+        const isExpanded = card.classList.contains('expanded');
+        const toggleIcon = card.querySelector('.expand-toggle');
+        const programsList = card.querySelector('.inline-daily-programs .programs-list');
 
-                // Scroll into view
-                programsList.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        if (isExpanded) {
+            // Collapse
+            card.classList.remove('expanded');
+            if (toggleIcon) toggleIcon.innerHTML = '▼';
+            this.expandedChannels.delete(channelId);
+        } else {
+            // Expand
+            card.classList.add('expanded');
+            if (toggleIcon) toggleIcon.innerHTML = '▲';
+            this.expandedChannels.add(channelId);
+
+            // Load programs if not already loaded
+            if (programsList && programsList.children.length === 0) {
+                const programs = this.core.dailyPrograms.get(channelId);
+                const channel = this.core.getChannel(channelId);
+
+                if (programs && channel) {
+                    programs.forEach(program => {
+                        const programElement = this.createProgramCard(channel, program);
+                        programsList.appendChild(programElement);
+                    });
+                }
             }
+
+            // Scroll into view
+            setTimeout(() => {
+                card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }, 100);
         }
     }
 
@@ -634,12 +582,14 @@ class EPGUI {
 
     clearExpandedChannels() {
         this.expandedChannels.forEach(channelId => {
-            const programsList = document.querySelector(`.channel-daily-card[data-channel-id="${channelId}"] .programs-list`);
-            const toggleIcon = document.querySelector(`.channel-daily-card[data-channel-id="${channelId}"] .toggle-icon`);
+            const card = document.querySelector(`.channel-now-card[data-channel-id="${channelId}"]`);
+            const toggleIcon = card?.querySelector('.expand-toggle');
 
-            if (programsList && toggleIcon) {
-                programsList.style.display = 'none';
-                toggleIcon.textContent = '▼';
+            if (card) {
+                card.classList.remove('expanded');
+            }
+            if (toggleIcon) {
+                toggleIcon.innerHTML = '▼';
             }
         });
         this.expandedChannels.clear();

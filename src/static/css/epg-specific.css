@@ -12,8 +12,8 @@
     overflow: hidden;
     display: flex;
     flex-direction: column;
-    min-height: 260px;
-    padding-bottom: 50px; /* Reduced space for progress bar */
+    min-height: 320px; /* Increased from 260px to accommodate description below image */
+    padding-bottom: 50px;
 }
 
 .channel-now-card:hover {
@@ -24,12 +24,12 @@
 
 /* FIXED: Restore subtle grey left border */
 .channel-now-card.live {
-    border-left: 4px solid rgba(255, 59, 48, 0.3); /* Grey-red tint */
+    border-left: 4px solid rgba(255, 59, 48, 0.3);
     box-shadow: -2px 0 8px rgba(128, 128, 128, 0.1);
 }
 
 .channel-now-card.upcoming {
-    border-left: 4px solid rgba(52, 199, 89, 0.3); /* Grey-green tint */
+    border-left: 4px solid rgba(52, 199, 89, 0.3);
     box-shadow: -2px 0 8px rgba(128, 128, 128, 0.1);
 }
 
@@ -119,10 +119,10 @@
 .channel-info-compact {
     flex: 1;
     min-width: 0;
-    padding-right: 130px;
+    padding-right: 130px; /* Space for image during top section */
     display: flex;
     flex-direction: column;
-    margin-bottom: 40px; /* Reduced space for progress bar */
+    margin-bottom: 40px;
 }
 
 .event-preview-image {
@@ -159,17 +159,17 @@
     flex: 1;
     display: flex;
     flex-direction: column;
-    min-height: 130px; /* Consistent height for all cards */
+    min-height: 130px;
 }
 
-/* IMPROVED: Event title now has larger font (was channel name size) */
+/* IMPROVED: Event title now has larger font */
 .event-title {
     font-size: 18px;
     font-weight: 700;
     margin-bottom: 6px;
     color: var(--text-primary);
     line-height: 1.4;
-    max-height: 50px; /* Limit to 2 lines */
+    max-height: 50px;
     overflow: hidden;
     display: -webkit-box;
     -webkit-line-clamp: 2;
@@ -181,39 +181,40 @@
     color: var(--text-secondary);
     margin-bottom: 8px;
     font-style: italic;
-    max-height: 40px; /* Limit to 1 line */
+    max-height: 40px;
     overflow: hidden;
     white-space: nowrap;
     text-overflow: ellipsis;
 }
 
-/* FIXED: Event time ABOVE description (not margin-top: auto) */
+/* FIXED: Event time ABOVE description */
 .event-time {
     display: flex;
     align-items: center;
     justify-content: space-between;
     font-size: 13px;
     color: var(--text-muted);
-    margin-top: 4px; /* Space from subtitle/description */
-    margin-bottom: 8px; /* Space to description */
-    order: 3; /* Force order: title -> subtitle -> time -> description */
+    margin-top: 4px;
+    margin-bottom: 8px;
+    order: 3;
 }
 
-/* FIXED: Broader description - same width as before */
+/* IMPROVED: Description now below image, full width, 3 lines */
 .event-description {
     font-size: 13px;
     color: var(--text-secondary);
     line-height: 1.5;
-    margin-top: 0; /* No margin top since time is above */
+    margin-top: 100px; /* Positioned below the 90px image + some spacing */
     margin-bottom: 8px;
     display: -webkit-box;
-    -webkit-line-clamp: 2; /* Show 2 lines max */
+    -webkit-line-clamp: 3; /* Show 3 lines max (changed from 2) */
     -webkit-box-orient: vertical;
     overflow: hidden;
     text-overflow: ellipsis;
-    max-height: 39px; /* 2 lines * 1.5 line-height * 13px */
-    width: 100%; /* Full width like before */
-    order: 4; /* After time */
+    max-height: 58.5px; /* 3 lines * 1.5 line-height * 13px */
+    width: 100%; /* Full width - no padding restriction */
+    padding-right: 0;
+    order: 4;
 }
 
 .event-description.expanded {
@@ -232,7 +233,7 @@
     text-decoration: underline;
     transition: all 0.2s;
     align-self: flex-start;
-    order: 5; /* After description */
+    order: 5;
 }
 
 .expand-description-link:hover {
@@ -245,7 +246,7 @@
 .event-progress {
     padding-top: 8px;
     position: absolute;
-    bottom: 35px; /* Moved up from 20px */
+    bottom: 35px;
     left: 20px;
     right: 20px;
     background-color: var(--bg-card);
@@ -258,7 +259,7 @@
     border-radius: 3px;
     overflow: hidden;
     margin-bottom: 6px;
-    width: calc(100% - 40px); /* Same width as description */
+    width: calc(100% - 40px);
 }
 
 .progress-fill {
@@ -271,14 +272,14 @@
 /* FIXED: Progress info with only remaining time (center aligned) */
 .progress-info {
     display: flex;
-    justify-content: center; /* Center the remaining time */
+    justify-content: center;
     font-size: 12px;
     color: var(--text-muted);
-    width: calc(100% - 40px); /* Same width as progress bar */
+    width: calc(100% - 40px);
     margin-top: 2px;
 }
 
-/* Remaining time centered - MADE VISIBLE */
+/* Remaining time centered */
 .time-remaining {
     font-family: inherit;
     font-size: 12px;
@@ -291,10 +292,10 @@
     display: none;
 }
 
-/* Expand/Collapse Toggle - FIXED: Visible above progress bar */
+/* Expand/Collapse Toggle */
 .expand-toggle {
     position: absolute;
-    bottom: 20px; /* Positioned below progress bar */
+    bottom: 20px;
     right: 20px;
     background: none;
     border: none;
@@ -303,14 +304,14 @@
     padding: 4px;
     border-radius: 4px;
     transition: all 0.2s;
-    z-index: 2; /* Above progress bar */
+    z-index: 2;
     font-size: 14px;
     width: 24px;
     height: 24px;
     display: flex;
     align-items: center;
     justify-content: center;
-    background-color: var(--bg-card); /* Ensure visibility */
+    background-color: var(--bg-card);
     border: 1px solid var(--border-color);
 }
 
@@ -320,55 +321,33 @@
     border-color: var(--accent-color);
 }
 
-/* Daily Programs Card */
-.channel-daily-card {
-    background-color: var(--bg-card);
-    border-radius: var(--radius);
-    border: 1px solid var(--border-color);
-    margin-bottom: 24px;
-    overflow: hidden;
-    transition: all 0.3s;
-}
-
-.channel-daily-header {
-    display: flex;
-    align-items: center;
-    padding: 20px;
-    background-color: var(--bg-tertiary);
-    border-bottom: 1px solid var(--border-color);
-    cursor: pointer;
-    transition: all 0.2s;
-}
-
-.channel-daily-header:hover {
-    background-color: var(--accent-color);
-}
-
-.channel-daily-header:hover .channel-name-compact,
-.channel-daily-header:hover .toggle-icon {
-    color: white;
-}
-
-.daily-programs-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 24px;
-}
-
-.daily-programs-header h3 {
-    font-size: 20px;
-    font-weight: 600;
-}
-
-/* Programs List */
-.programs-list {
+/* Inline Daily Programs - shown when card is expanded */
+.inline-daily-programs {
     display: none;
-    padding: 0;
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 2px solid var(--border-color);
 }
 
-.programs-list.expanded {
+.channel-now-card.expanded .inline-daily-programs {
     display: block;
+}
+
+.channel-now-card.expanded {
+    min-height: auto; /* Allow card to expand */
+}
+
+.inline-daily-programs h4 {
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 16px;
+    color: var(--text-primary);
+}
+
+/* Programs List - now inline within cards */
+.programs-list {
+    display: block;
+    padding: 0;
 }
 
 .program-card {

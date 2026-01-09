@@ -1,4 +1,4 @@
-// EPG Manager - With Infinite Scroll for Current Events (50-item chunks)
+// EPG Manager - With Infinite Scroll and Inline Daily Programs
 class EPGManager {
     constructor() {
         this.core = new EPGCore();
@@ -6,11 +6,9 @@ class EPGManager {
         this.player = null;
         this.initialized = false;
 
-        // IMPROVED: Separate scroll observers for current events and daily programs
+        // Scroll observer for current events only
         this.currentEventsScrollObserver = null;
         this.currentEventsSentinel = null;
-        this.dailyScrollObserver = null;
-        this.dailyScrollSentinel = null;
 
         // Intervals
         this.refreshInterval = null;
@@ -21,13 +19,12 @@ class EPGManager {
         this.handleClick = this.handleClick.bind(this);
         this.handleKeyboard = this.handleKeyboard.bind(this);
         this.loadMoreCurrentEvents = this.loadMoreCurrentEvents.bind(this);
-        this.loadMoreDailyPrograms = this.loadMoreDailyPrograms.bind(this);
     }
 
     async initialize() {
         if (this.initialized) return;
 
-        // IMPROVED: Set chunk size to 50
+        // Set chunk size to 50
         this.core.config.itemsPerPage = 50;
 
         // Load configuration from template
@@ -39,7 +36,7 @@ class EPGManager {
         // Setup date navigation
         this.setupDateNavigation();
 
-        // Setup infinite scroll for BOTH sections
+        // Setup infinite scroll for current events only
         this.setupInfiniteScroll();
 
         // Load initial data
@@ -57,7 +54,7 @@ class EPGManager {
         this.progressUpdateInterval = setInterval(() => this.updateProgressBars(), 30000);
 
         this.initialized = true;
-        console.log('EPGManager initialized successfully with 50-item chunks');
+        console.log('EPGManager initialized successfully with 50-item chunks and inline programs');
     }
 
     loadConfiguration() {
@@ -118,7 +115,7 @@ class EPGManager {
     }
 
     setupInfiniteScroll() {
-        // IMPROVED: Setup intersection observer for current events grid
+        // Setup intersection observer for current events grid only
         this.currentEventsScrollObserver = new IntersectionObserver((entries) => {
             entries.forEach(entry => {
                 if (entry.isIntersecting &&
@@ -146,35 +143,7 @@ class EPGManager {
             console.log('Current events sentinel added and observed');
         }
 
-        // Setup intersection observer for daily programs
-        this.dailyScrollObserver = new IntersectionObserver((entries) => {
-            entries.forEach(entry => {
-                if (entry.isIntersecting &&
-                    this.core.hasMoreChannels &&
-                    !this.core.isLoading) {
-                    console.log('Daily programs sentinel triggered!');
-                    this.loadMoreDailyPrograms();
-                }
-            });
-        }, {
-            root: null,
-            rootMargin: '400px',
-            threshold: 0
-        });
-
-        // Add sentinel element to daily programs
-        const dailyPrograms = document.querySelector('.daily-programs');
-        if (dailyPrograms) {
-            this.dailyScrollSentinel = document.createElement('div');
-            this.dailyScrollSentinel.id = 'daily-scroll-sentinel';
-            this.dailyScrollSentinel.style.cssText = 'height: 20px; background: transparent;';
-            dailyPrograms.appendChild(this.dailyScrollSentinel);
-
-            this.dailyScrollObserver.observe(this.dailyScrollSentinel);
-            console.log('Daily programs sentinel added and observed');
-        }
-
-        console.log('Infinite scroll setup complete for both sections');
+        console.log('Infinite scroll setup complete');
     }
 
     async loadData() {
@@ -184,7 +153,7 @@ class EPGManager {
             const data = await this.core.loadDataForDate(this.core.currentDate);
 
             this.ui.renderCurrentEvents(data.channels, data.currentEvents);
-            this.ui.renderDailyPrograms(data.channels, data.dailyPrograms);
+            // Daily programs are now inline, no separate rendering needed
             this.ui.updateDateDisplay(this.core.currentDate);
 
             console.log(`Loaded ${data.channels.length} channels (page 0, chunk size: 50)`);
@@ -241,38 +210,6 @@ class EPGManager {
         }
     }
 
-    async loadMoreDailyPrograms() {
-        console.log('Loading more daily programs...');
-
-        const currentChannelCount = this.core.channels.length;
-        const success = await this.core.loadMoreChannels();
-
-        if (success) {
-            // Only render new channels (append)
-            const container = document.querySelector('.daily-programs');
-            if (container && this.dailyScrollSentinel) {
-                const newChannels = this.core.channels.slice(currentChannelCount);
-                newChannels.forEach(channel => {
-                    const programs = this.core.dailyPrograms.get(channel.id);
-                    if (programs && programs.length > 0) {
-                        const channelCard = this.ui.createChannelDailyCard(channel, programs);
-
-                        // Insert before sentinel
-                        container.insertBefore(channelCard, this.dailyScrollSentinel);
-                    }
-                });
-
-                console.log(`Added ${newChannels.length} more channels to daily programs`);
-            }
-        } else {
-            console.log('No more channels to load for daily programs');
-            // Remove observer if no more data
-            if (this.dailyScrollObserver && this.dailyScrollSentinel) {
-                this.dailyScrollObserver.unobserve(this.dailyScrollSentinel);
-            }
-        }
-    }
-
     handleClick(e) {
         // Play button on tile
         if (e.target.closest('.btn-play-tile')) {
@@ -288,16 +225,8 @@ class EPGManager {
 
         // Expand toggle on current events
         if (e.target.closest('.expand-toggle')) {
+            e.stopPropagation();
             const channelId = e.target.closest('.channel-now-card')?.dataset.channelId;
-            if (channelId) {
-                this.ui.toggleChannelExpansion(channelId);
-            }
-            return;
-        }
-
-        // Channel header in daily view
-        if (e.target.closest('.channel-daily-header')) {
-            const channelId = e.target.closest('.channel-daily-card')?.dataset.channelId;
             if (channelId) {
                 this.ui.toggleChannelExpansion(channelId);
             }
@@ -412,19 +341,9 @@ class EPGManager {
             this.currentEventsSentinel = null;
         }
 
-        if (this.dailyScrollSentinel && this.dailyScrollSentinel.parentNode) {
-            this.dailyScrollSentinel.parentNode.removeChild(this.dailyScrollSentinel);
-            this.dailyScrollSentinel = null;
-        }
-
         if (this.currentEventsScrollObserver) {
             this.currentEventsScrollObserver.disconnect();
             this.currentEventsScrollObserver = null;
-        }
-
-        if (this.dailyScrollObserver) {
-            this.dailyScrollObserver.disconnect();
-            this.dailyScrollObserver = null;
         }
     }
 
