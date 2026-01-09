@@ -5,18 +5,15 @@ class EPGManager {
         this.ui = new EPGUI(this.core);
         this.player = null;
         this.initialized = false;
-        this.dailyProgramsData = new Map(); // Store daily programs data
+        this.dailyProgramsData = new Map();
 
-        // Scroll observer for current events only
         this.currentEventsScrollObserver = null;
         this.currentEventsSentinel = null;
 
-        // Intervals
         this.refreshInterval = null;
         this.timeUpdateInterval = null;
         this.progressUpdateInterval = null;
 
-        // Bind methods
         this.handleClick = this.handleClick.bind(this);
         this.handleKeyboard = this.handleKeyboard.bind(this);
         this.loadMoreCurrentEvents = this.loadMoreCurrentEvents.bind(this);
@@ -25,33 +22,20 @@ class EPGManager {
     async initialize() {
         if (this.initialized) return;
 
-        // Set chunk size to 50
         this.core.config.itemsPerPage = 50;
 
-        // Load configuration from template
         this.loadConfiguration();
-
-        // Setup event listeners
         this.setupEventListeners();
-
-        // Setup date navigation
         this.setupDateNavigation();
-
-        // Setup infinite scroll for current events only
         this.setupInfiniteScroll();
 
-        // Load initial data
         await this.loadData();
 
-        // Start auto-refresh (if enabled)
         if (this.core.config.refreshInterval > 0) {
             this.startAutoRefresh();
         }
 
-        // Update time every minute
         this.timeUpdateInterval = setInterval(() => this.updateTimeDisplays(), 60000);
-
-        // Update progress bars more frequently (every 30 seconds)
         this.progressUpdateInterval = setInterval(() => this.updateProgressBars(), 30000);
 
         this.initialized = true;
@@ -74,13 +58,9 @@ class EPGManager {
     }
 
     setupEventListeners() {
-        // Global click handler
         document.addEventListener('click', this.handleClick);
-
-        // Global keyboard handler
         document.addEventListener('keydown', this.handleKeyboard);
 
-        // Custom event for playing programs
         document.addEventListener('play-program', (e) => {
             const { channelId, programId } = e.detail;
             this.playProgram(channelId, programId);
@@ -88,7 +68,6 @@ class EPGManager {
     }
 
     setupDateNavigation() {
-        // Date navigation buttons
         const prevBtn = document.getElementById('date-prev-btn');
         const nextBtn = document.getElementById('date-next-btn');
         const todayBtn = document.getElementById('date-today-btn');
@@ -116,7 +95,6 @@ class EPGManager {
     }
 
     setupInfiniteScroll() {
-        // Setup intersection observer for current events grid
         this.currentEventsScrollObserver = new IntersectionObserver((entries) => {
             entries.forEach(entry => {
                 if (entry.isIntersecting &&
@@ -132,10 +110,8 @@ class EPGManager {
             threshold: 0
         });
 
-        // Add sentinel element to current events grid
         const currentEventsGrid = document.getElementById('current-events-grid');
         if (currentEventsGrid) {
-            // Remove old sentinel if exists
             if (this.currentEventsSentinel && this.currentEventsSentinel.parentNode) {
                 this.currentEventsSentinel.parentNode.removeChild(this.currentEventsSentinel);
             }
@@ -158,11 +134,8 @@ class EPGManager {
         try {
             const data = await this.core.loadDataForDate(this.core.currentDate);
 
-            // Store daily programs data
+            this.dailyProgramsData.clear();
             if (data.dailyPrograms && data.dailyPrograms instanceof Map) {
-                // Clear existing data
-                this.dailyProgramsData.clear();
-                // Add all new data
                 data.dailyPrograms.forEach((value, key) => {
                     this.dailyProgramsData.set(key, value);
                 });
@@ -171,7 +144,7 @@ class EPGManager {
             this.ui.renderCurrentEvents(data.channels, data.currentEvents);
             this.ui.updateDateDisplay(this.core.currentDate);
 
-            console.log(`Loaded ${data.channels.length} channels (page 0, chunk size: 50)`);
+            console.log(`Loaded ${data.channels.length} channels with daily programs for ${this.dailyProgramsData.size} channels`);
 
         } catch (error) {
             console.error('Error loading data:', error);
@@ -197,16 +170,17 @@ class EPGManager {
             const newCount = afterCount - beforeCount;
             console.log(`Loaded ${newCount} new channels (${beforeCount} -> ${afterCount})`);
 
-            // Get the new channels (last chunk)
             const newChannels = this.core.channels.slice(beforeCount);
 
-            // Load daily programs for new channels
-            await this.loadDailyProgramsForNewChannels(newChannels);
+            newChannels.forEach(channel => {
+                const programs = this.core.dailyPrograms.get(channel.id);
+                if (programs && programs.length > 0) {
+                    this.dailyProgramsData.set(channel.id, programs);
+                }
+            });
 
-            // Append to current events grid
             const container = document.getElementById('current-events-grid');
             if (container && this.currentEventsSentinel) {
-                // Temporarily remove sentinel
                 const sentinel = this.currentEventsSentinel;
                 if (sentinel.parentNode === container) {
                     sentinel.remove();
@@ -220,14 +194,12 @@ class EPGManager {
                     addedCount++;
                 });
 
-                // Re-add sentinel at the end
                 container.appendChild(sentinel);
 
-                console.log(`Added ${addedCount} cards to current events grid`);
+                console.log(`Added ${addedCount} cards with daily programs for ${newChannels.filter(c => this.dailyProgramsData.has(c.id)).length} channels`);
             }
         } else {
             console.log('No more channels to load for current events');
-            // Remove observer if no more data
             if (this.currentEventsScrollObserver && this.currentEventsSentinel) {
                 this.currentEventsScrollObserver.unobserve(this.currentEventsSentinel);
                 console.log('Stopped observing current events sentinel');
@@ -235,25 +207,7 @@ class EPGManager {
         }
     }
 
-    async loadDailyProgramsForNewChannels(newChannels) {
-        if (!newChannels || newChannels.length === 0) return;
-
-        try {
-            // Load daily programs for each new channel
-            for (const channel of newChannels) {
-                const dailyPrograms = await this.core.loadDailyProgramsForChannel(channel.id, this.core.currentDate);
-                if (dailyPrograms && dailyPrograms.length > 0) {
-                    this.dailyProgramsData.set(channel.id, dailyPrograms);
-                }
-            }
-            console.log(`Loaded daily programs for ${newChannels.length} new channels`);
-        } catch (error) {
-            console.warn('Error loading daily programs for new channels:', error);
-        }
-    }
-
     handleClick(e) {
-        // Play button on tile
         if (e.target.closest('.btn-play-tile')) {
             e.stopPropagation();
             const button = e.target.closest('.btn-play-tile');
@@ -265,7 +219,6 @@ class EPGManager {
             return;
         }
 
-        // Expand button on current event card
         if (e.target.closest('.expand-daily-btn')) {
             e.stopPropagation();
             const button = e.target.closest('.expand-daily-btn');
@@ -276,14 +229,12 @@ class EPGManager {
             return;
         }
 
-        // Close daily programs button
-        if (e.target.closest('.close-daily-programs')) {
+        if (e.target.closest('.close-daily-programs') || e.target.id === 'close-daily-btn') {
             e.preventDefault();
             this.ui.closeDailyPrograms();
             return;
         }
 
-        // Play button in daily programs
         if (e.target.closest('.btn-play') && e.target.closest('.daily-program-card-expanded')) {
             e.stopPropagation();
             const button = e.target.closest('.btn-play');
@@ -295,7 +246,6 @@ class EPGManager {
             return;
         }
 
-        // Program card click (for details) in daily programs
         if (e.target.closest('.daily-program-card-expanded') && !e.target.closest('.btn-play')) {
             const programElement = e.target.closest('.daily-program-card-expanded');
             const programId = programElement.dataset.programId;
@@ -304,7 +254,6 @@ class EPGManager {
             return;
         }
 
-        // Expand description
         if (e.target.closest('.expand-description')) {
             const description = e.target.closest('.program-details')?.querySelector('.program-description');
             if (description) {
@@ -317,12 +266,10 @@ class EPGManager {
     }
 
     handleKeyboard(e) {
-        // Skip if user is typing in an input field
         if (['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) {
             return;
         }
 
-        // Global keyboard shortcuts
         if (e.key === 'Escape') {
             this.ui.closeProgramDetails();
             this.ui.closeDailyPrograms();
@@ -331,19 +278,16 @@ class EPGManager {
             }
         }
 
-        // Alt+Left: Previous day
         if (e.key === 'ArrowLeft' && e.altKey) {
             e.preventDefault();
             this.navigateDate(-1);
         }
 
-        // Alt+Right: Next day
         if (e.key === 'ArrowRight' && e.altKey) {
             e.preventDefault();
             this.navigateDate(1);
         }
 
-        // Alt+T: Today
         if (e.key === 't' && e.altKey) {
             e.preventDefault();
             this.goToToday();
@@ -352,46 +296,24 @@ class EPGManager {
 
     navigateDate(days) {
         this.core.navigateDate(days);
-
-        // Close daily programs when changing date
         this.ui.closeDailyPrograms();
-
-        // Clear daily programs data
         this.dailyProgramsData.clear();
-
-        // Reset pagination when changing dates
         this.core.currentPage = 0;
         this.core.hasMoreChannels = true;
-
-        // Remove old sentinels
         this.removeSentinels();
-
-        // Reload data
         this.loadData().then(() => {
-            // Re-setup infinite scroll
             this.setupInfiniteScroll();
         });
     }
 
     goToToday() {
         this.core.goToToday();
-
-        // Close daily programs when going to today
         this.ui.closeDailyPrograms();
-
-        // Clear daily programs data
         this.dailyProgramsData.clear();
-
-        // Reset pagination
         this.core.currentPage = 0;
         this.core.hasMoreChannels = true;
-
-        // Remove old sentinels
         this.removeSentinels();
-
-        // Reload data
         this.loadData().then(() => {
-            // Re-setup infinite scroll
             this.setupInfiniteScroll();
         });
     }
@@ -426,7 +348,6 @@ class EPGManager {
             return;
         }
 
-        // Initialize player if needed
         if (!this.player) {
             await this.initializePlayer();
         }
@@ -471,9 +392,16 @@ class EPGManager {
 
     showDailyPrograms(channelId) {
         const channel = this.core.getChannel(channelId);
-        const programs = this.dailyProgramsData.get(channelId);
+        let programs = this.dailyProgramsData.get(channelId);
 
-        if (!channel || !programs || programs.length === 0) {
+        if (!channel) {
+            if (window.showToast) {
+                window.showToast('Kanal nicht gefunden', 'error');
+            }
+            return;
+        }
+
+        if (!programs || programs.length === 0) {
             if (window.showToast) {
                 window.showToast('Kein Tagesprogramm verfügbar', 'warning');
             }
@@ -484,14 +412,12 @@ class EPGManager {
     }
 
     updateTimeDisplays() {
-        // Update current time in sidebar
         const timeElement = document.getElementById('current-time');
         if (timeElement) {
             const now = new Date();
             timeElement.textContent = this.core.formatDateTime(now, 'datetime');
         }
 
-        // Update progress bars
         this.updateProgressBars();
     }
 
@@ -500,7 +426,6 @@ class EPGManager {
     }
 
     startAutoRefresh() {
-        // Clear existing interval
         if (this.refreshInterval) {
             clearInterval(this.refreshInterval);
         }
@@ -517,18 +442,14 @@ class EPGManager {
         }, intervalSeconds * 1000);
     }
 
-    // Proper cleanup of all resources
     destroy() {
         console.log('Cleaning up EPGManager...');
 
-        // Remove event listeners
         document.removeEventListener('click', this.handleClick);
         document.removeEventListener('keydown', this.handleKeyboard);
 
-        // Cleanup scroll observers
         this.removeSentinels();
 
-        // Clear intervals
         if (this.refreshInterval) {
             clearInterval(this.refreshInterval);
             this.refreshInterval = null;
@@ -544,13 +465,11 @@ class EPGManager {
             this.progressUpdateInterval = null;
         }
 
-        // Cleanup player
         if (this.player) {
             this.player.destroy();
             this.player = null;
         }
 
-        // Clear core data
         this.core.clearCache();
         this.core.currentEvents.clear();
         this.dailyProgramsData.clear();
@@ -559,12 +478,10 @@ class EPGManager {
         console.log('EPGManager cleanup complete');
     }
 
-    // Added method for refresh compatibility
     async refreshData() {
         console.log('Refreshing EPG data...');
         await this.loadData();
     }
 }
 
-// Export for global access
 window.EPGManager = EPGManager;

@@ -117,8 +117,6 @@ class EPGCore {
                 }
             });
 
-            programs = programs.slice(0, 10);
-
             this.cache.set(cacheKey, programs);
             return programs;
 
@@ -288,11 +286,10 @@ class EPGCore {
         const hours = Math.floor(diff / (1000 * 60 * 60));
         const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
 
-        // This should return "noch X min" or "noch Xh Y min"
         if (hours > 0) {
             return `noch ${hours}h ${minutes} min`;
         }
-        return `noch ${minutes} min`;  // This gives "noch 10 min"
+        return `noch ${minutes} min`;
     }
 
     getProgram(channelId, programId) {
@@ -320,5 +317,15 @@ class EPGCore {
 
     clearCache() {
         this.cache.clear();
+    }
+
+    async loadDailyProgramsForChannel(channelId, date) {
+        const startDate = new Date(date);
+        startDate.setHours(0, 0, 0, 0);
+
+        const endDate = new Date(date);
+        endDate.setHours(23, 59, 59, 999);
+
+        return await this.fetchProgramsForChannel(channelId, startDate, endDate);
     }
 }
