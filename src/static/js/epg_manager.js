@@ -110,6 +110,10 @@ class EPGManager {
             threshold: 0
         });
 
+        console.log('Infinite scroll observer created (sentinel will be added after data loads)');
+    }
+
+    reattachSentinel() {
         const currentEventsGrid = document.getElementById('current-events-grid');
         if (currentEventsGrid) {
             if (this.currentEventsSentinel && this.currentEventsSentinel.parentNode) {
@@ -121,11 +125,11 @@ class EPGManager {
             this.currentEventsSentinel.style.cssText = 'height: 1px; width: 100%; background: transparent;';
             currentEventsGrid.appendChild(this.currentEventsSentinel);
 
-            this.currentEventsScrollObserver.observe(this.currentEventsSentinel);
-            console.log('Current events sentinel added and observed');
+            if (this.currentEventsScrollObserver) {
+                this.currentEventsScrollObserver.observe(this.currentEventsSentinel);
+                console.log('Current events sentinel reattached and observed');
+            }
         }
-
-        console.log('Infinite scroll setup complete');
     }
 
     async loadData() {
@@ -145,6 +149,9 @@ class EPGManager {
             this.ui.updateDateDisplay(this.core.currentDate);
 
             console.log(`Loaded ${data.channels.length} channels with daily programs for ${this.dailyProgramsData.size} channels`);
+
+            // Re-add sentinel after content is rendered
+            this.reattachSentinel();
 
         } catch (error) {
             console.error('Error loading data:', error);
@@ -222,7 +229,8 @@ class EPGManager {
         if (e.target.closest('.expand-daily-btn')) {
             e.stopPropagation();
             const button = e.target.closest('.expand-daily-btn');
-            const channelId = button.dataset.channelId;
+            const channelId = parseInt(button.dataset.channelId, 10);
+            console.log('Expand daily clicked for channel ID:', channelId, 'type:', typeof channelId);
             if (channelId) {
                 this.showDailyPrograms(channelId);
             }
@@ -301,9 +309,7 @@ class EPGManager {
         this.core.currentPage = 0;
         this.core.hasMoreChannels = true;
         this.removeSentinels();
-        this.loadData().then(() => {
-            this.setupInfiniteScroll();
-        });
+        this.loadData();
     }
 
     goToToday() {
@@ -313,9 +319,7 @@ class EPGManager {
         this.core.currentPage = 0;
         this.core.hasMoreChannels = true;
         this.removeSentinels();
-        this.loadData().then(() => {
-            this.setupInfiniteScroll();
-        });
+        this.loadData();
     }
 
     removeSentinels() {
@@ -391,10 +395,18 @@ class EPGManager {
     }
 
     showDailyPrograms(channelId) {
+        console.log('showDailyPrograms called with channelId:', channelId, 'type:', typeof channelId);
+        console.log('Available channels:', this.core.channels.map(c => ({id: c.id, type: typeof c.id, name: c.display_name})));
+        console.log('Daily programs keys:', Array.from(this.dailyProgramsData.keys()));
+
         const channel = this.core.getChannel(channelId);
+        console.log('Found channel:', channel);
+
         let programs = this.dailyProgramsData.get(channelId);
+        console.log('Found programs:', programs ? programs.length : 0);
 
         if (!channel) {
+            console.error('Channel not found for ID:', channelId);
             if (window.showToast) {
                 window.showToast('Kanal nicht gefunden', 'error');
             }
@@ -402,6 +414,7 @@ class EPGManager {
         }
 
         if (!programs || programs.length === 0) {
+            console.warn('No programs found for channel:', channelId);
             if (window.showToast) {
                 window.showToast('Kein Tagesprogramm verfügbar', 'warning');
             }

@@ -298,7 +298,9 @@ class EPGCore {
     }
 
     getChannel(channelId) {
-        return this.channels.find(c => c.id === channelId);
+        // Convert to number for comparison since API might return strings
+        const id = typeof channelId === 'string' ? parseInt(channelId, 10) : channelId;
+        return this.channels.find(c => c.id === id || c.id === channelId);
     }
 
     navigateDate(days) {
