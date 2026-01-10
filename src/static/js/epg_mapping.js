@@ -220,7 +220,8 @@ class EPGMappingManager {
                 const streamingChannel = this.channelLookup.streaming.get(streamingId);
 
                 if (streamingChannel) {
-                    this.handleMapping(streamingId, streamingChannel.name);
+                    const streamingName = streamingChannel.Name || streamingChannel.name || streamingId;
+                    this.handleMapping(streamingId, streamingName);
                 }
             }
         });
@@ -310,12 +311,14 @@ class EPGMappingManager {
             const data = await response.json();
 
             if (data.success) {
-                this.state.streamingChannels = data.channels || [];
+                // Fix: Handle nested channels structure
+                const channelsData = data.channels?.channels || data.channels || [];
+                this.state.streamingChannels = Array.isArray(channelsData) ? channelsData : [];
 
                 // Update lookup
                 this.channelLookup.streaming.clear();
                 this.state.streamingChannels.forEach(channel => {
-                    const channelId = channel.channel_id || channel.id || channel.name;
+                    const channelId = channel.Id || channel.channel_id || channel.id || channel.name;
                     if (channelId) {
                         this.channelLookup.streaming.set(channelId, channel);
                     }
@@ -461,7 +464,7 @@ class EPGMappingManager {
 
         container.innerHTML = '';
 
-        if (this.state.streamingChannels.length === 0) {
+        if (!this.state.streamingChannels || this.state.streamingChannels.length === 0) {
             if (this.elements.streamingEmpty) {
                 this.elements.streamingEmpty.classList.remove('hidden');
             }
@@ -473,7 +476,7 @@ class EPGMappingManager {
         }
 
         this.state.streamingChannels.forEach(channel => {
-            const channelId = channel.channel_id || channel.id || channel.name;
+            const channelId = channel.Id || channel.channel_id || channel.id || channel.name;
             if (!channelId) return;
 
             const card = this.createChannelCard(channel, 'streaming');
@@ -537,7 +540,7 @@ class EPGMappingManager {
 
         // Set channel ID based on type
         if (type === 'streaming') {
-            card.dataset.channelId = channel.channel_id || channel.id || channel.name;
+            card.dataset.channelId = channel.Id || channel.channel_id || channel.id || channel.name;
         } else {
             card.dataset.channelId = channel.id?.toString() || channel.identifier || channel.name;
         }
@@ -554,11 +557,12 @@ class EPGMappingManager {
         }
 
         // Create logo or fallback
-        const logoUrl = channel.logo || channel.logo_url || channel.icon_url || '';
+        const logoUrl = channel.LogoUrl || channel.logo || channel.logo_url || channel.icon_url || '';
         let logoFallback = '?';
 
         if (type === 'streaming') {
-            logoFallback = channel.name ? channel.name.charAt(0).toUpperCase() : '?';
+            const channelName = channel.Name || channel.name || '';
+            logoFallback = channelName ? channelName.charAt(0).toUpperCase() : '?';
         } else {
             // For EPG channels, use display_name or name
             const displayName = channel.display_name || channel.name || '';
@@ -585,7 +589,7 @@ class EPGMappingManager {
 
         // Set display name based on type
         if (type === 'streaming') {
-            nameDiv.textContent = channel.name || channelId;
+            nameDiv.textContent = channel.Name || channel.name || channelId;
         } else {
             // For EPG: Use display_name as main name, show name as ID
             nameDiv.textContent = channel.display_name || channel.name || channelId;
@@ -634,7 +638,8 @@ class EPGMappingManager {
             unmapBtn.title = 'Unmap channel';
             unmapBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
-                this.showUnmapModal(channelId, channel.name);
+                const channelName = channel.Name || channel.name || channelId;
+                this.showUnmapModal(channelId, channelName);
             });
             card.appendChild(unmapBtn);
         }
@@ -817,16 +822,18 @@ class EPGMappingManager {
     updateStats() {
         // Streaming channel count
         if (this.elements.streamingCount) {
-            this.elements.streamingCount.textContent = this.state.streamingChannels.length.toString();
+            const streamingCount = this.state.streamingChannels?.length || 0;
+            this.elements.streamingCount.textContent = streamingCount.toString();
         }
 
         // EPG channel count
         if (this.elements.epgTotalCount) {
-            this.elements.epgTotalCount.textContent = this.state.epgChannels.length.toString();
+            const epgCount = this.state.epgChannels?.length || 0;
+            this.elements.epgTotalCount.textContent = epgCount.toString();
         }
 
         // Mapped count
-        const mappedCount = this.state.aliases.size;
+        const mappedCount = this.state.aliases?.size || 0;
         if (this.elements.mappedCount) {
             this.elements.mappedCount.textContent = mappedCount.toString();
         }
@@ -864,7 +871,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Cleanup on page unload
     window.addEventListener('beforeunload', () => {
         if (window.epgMappingManager) {
-            window.epgMappingManager.destroy();
+            // Cleanup if needed
         }
     });
 });
