@@ -29,7 +29,35 @@ class EPGMappingManager {
             aliases: null
         };
 
-        // DOM Elements
+        // DOM Elements - will be initialized in init()
+        this.elements = {};
+
+        // Channel lookup maps
+        this.channelLookup = {
+            streaming: new Map(), // streamingId -> channel data
+            epg: new Map(), // epgId -> channel data
+            aliasToStreaming: new Map() // alias -> streamingId
+        };
+
+        // Initialize
+        this.init();
+    }
+
+    async init() {
+        this.initializeElements();
+        this.setupEventListeners();
+        this.setupDragAndDrop();
+        await this.loadProviders();
+
+        // Load EPG channels (independent of provider)
+        await this.loadEPGChannels();
+
+        // Update UI
+        this.updateStats();
+    }
+
+    initializeElements() {
+        // Get all DOM elements safely
         this.elements = {
             providerSelect: document.getElementById('provider-select'),
             refreshProviders: document.getElementById('refresh-providers'),
@@ -50,71 +78,59 @@ class EPGMappingManager {
             confirmUnmap: document.getElementById('confirm-unmap'),
             mappingTooltip: document.getElementById('mapping-tooltip')
         };
-
-        // Channel lookup maps
-        this.channelLookup = {
-            streaming: new Map(), // streamingId -> channel data
-            epg: new Map(), // epgId -> channel data
-            aliasToStreaming: new Map() // alias -> streamingId
-        };
-
-        // Initialize
-        this.init();
-    }
-
-    async init() {
-        this.setupEventListeners();
-        this.setupDragAndDrop();
-        await this.loadProviders();
-
-        // Load EPG channels (independent of provider)
-        await this.loadEPGChannels();
-
-        // Update UI
-        this.updateStats();
     }
 
     setupEventListeners() {
         // Provider selection
-        this.elements.providerSelect.addEventListener('change', (e) => {
-            const providerId = e.target.value;
-            if (providerId && providerId !== this.state.selectedProvider) {
-                this.state.selectedProvider = providerId;
-                this.loadStreamingChannels(providerId);
-            }
-        });
+        if (this.elements.providerSelect) {
+            this.elements.providerSelect.addEventListener('change', (e) => {
+                const providerId = e.target.value;
+                if (providerId && providerId !== this.state.selectedProvider) {
+                    this.state.selectedProvider = providerId;
+                    this.loadStreamingChannels(providerId);
+                }
+            });
+        }
 
         // Refresh providers button
-        this.elements.refreshProviders.addEventListener('click', () => {
-            this.loadProviders(true); // Force refresh
-        });
+        if (this.elements.refreshProviders) {
+            this.elements.refreshProviders.addEventListener('click', () => {
+                this.loadProviders(true); // Force refresh
+            });
+        }
 
         // EPG search
-        this.elements.epgSearch.addEventListener('input', (e) => {
-            this.state.searchTerm = e.target.value.toLowerCase();
-            this.renderEPGChannels();
-        });
+        if (this.elements.epgSearch) {
+            this.elements.epgSearch.addEventListener('input', (e) => {
+                this.state.searchTerm = e.target.value.toLowerCase();
+                this.renderEPGChannels();
+            });
+        }
 
-        // Unmap modal
-        this.elements.cancelUnmap.addEventListener('click', () => {
-            this.hideUnmapModal();
-        });
+        // Unmap modal - only if elements exist
+        if (this.elements.cancelUnmap && this.elements.confirmUnmap) {
+            this.elements.cancelUnmap.addEventListener('click', () => {
+                this.hideUnmapModal();
+            });
 
-        this.elements.confirmUnmap.addEventListener('click', () => {
-            this.performUnmap();
-        });
+            this.elements.confirmUnmap.addEventListener('click', () => {
+                this.performUnmap();
+            });
+        }
 
         // Close modal on backdrop click
-        this.elements.unmapModal.addEventListener('click', (e) => {
-            if (e.target === this.elements.unmapModal) {
-                this.hideUnmapModal();
-            }
-        });
+        if (this.elements.unmapModal) {
+            this.elements.unmapModal.addEventListener('click', (e) => {
+                if (e.target === this.elements.unmapModal) {
+                    this.hideUnmapModal();
+                }
+            });
+        }
 
         // Keyboard shortcuts
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') {
-                if (!this.elements.unmapModal.classList.contains('hidden')) {
+                if (this.elements.unmapModal && !this.elements.unmapModal.classList.contains('hidden')) {
                     this.hideUnmapModal();
                 }
             }
@@ -140,7 +156,7 @@ class EPGMappingManager {
                     if (epgChannel) {
                         this.state.currentMapping = {
                             epgId: channelId,
-                            epgName: epgChannel.name
+                            epgName: epgChannel.display_name || epgChannel.name
                         };
                     }
                 }
@@ -214,23 +230,30 @@ class EPGMappingManager {
         if (this.state.isLoading.providers) return;
 
         this.state.isLoading.providers = true;
-        this.elements.providerSelect.disabled = true;
-        this.elements.providerSelect.innerHTML = '<option value="" disabled selected>Loading providers...</option>';
+        if (this.elements.providerSelect) {
+            this.elements.providerSelect.disabled = true;
+            this.elements.providerSelect.innerHTML = '<option value="" disabled selected>Loading providers...</option>';
+        }
 
         try {
             const response = await fetch('/api/mapping/providers');
             const data = await response.json();
 
             if (data.success) {
-                this.state.providers = data.providers;
-                this.cache.providers = data.providers;
+                // Fix: Handle the actual response structure
+                // The providers are in data.providers.providers (not data.providers)
+                const providers = data.providers?.providers || data.providers || [];
+                this.state.providers = providers;
+                this.cache.providers = providers;
                 this.renderProviderSelect();
 
                 // Auto-select first provider if none selected
                 if (this.state.providers.length > 0 && !this.state.selectedProvider) {
                     const firstProvider = this.state.providers[0];
-                    this.state.selectedProvider = firstProvider.id || firstProvider.name;
-                    this.elements.providerSelect.value = this.state.selectedProvider;
+                    this.state.selectedProvider = firstProvider.name || firstProvider.id;
+                    if (this.elements.providerSelect) {
+                        this.elements.providerSelect.value = this.state.selectedProvider;
+                    }
                     await this.loadStreamingChannels(this.state.selectedProvider);
                 }
             } else {
@@ -241,15 +264,21 @@ class EPGMappingManager {
             window.showToast(`Error loading providers: ${error.message}`, 'error');
 
             // Show error in dropdown
-            this.elements.providerSelect.innerHTML = '<option value="" disabled selected>Error loading providers</option>';
+            if (this.elements.providerSelect) {
+                this.elements.providerSelect.innerHTML = '<option value="" disabled selected>Error loading providers</option>';
+            }
         } finally {
             this.state.isLoading.providers = false;
-            this.elements.providerSelect.disabled = false;
+            if (this.elements.providerSelect) {
+                this.elements.providerSelect.disabled = false;
+            }
         }
     }
 
     renderProviderSelect() {
         const select = this.elements.providerSelect;
+        if (!select) return;
+
         select.innerHTML = '';
 
         if (this.state.providers.length === 0) {
@@ -260,9 +289,9 @@ class EPGMappingManager {
         // Add options
         this.state.providers.forEach(provider => {
             const option = document.createElement('option');
-            option.value = provider.id || provider.name;
+            option.value = provider.name || provider.id;
             option.textContent = provider.label || provider.name;
-            option.selected = (provider.id || provider.name) === this.state.selectedProvider;
+            option.selected = (provider.name || provider.id) === this.state.selectedProvider;
             select.appendChild(option);
         });
     }
@@ -272,14 +301,16 @@ class EPGMappingManager {
 
         this.state.isLoading.streaming = true;
         this.showLoading(this.elements.streamingContainer, this.elements.streamingLoading);
-        this.elements.streamingEmpty.classList.add('hidden');
+        if (this.elements.streamingEmpty) {
+            this.elements.streamingEmpty.classList.add('hidden');
+        }
 
         try {
             const response = await fetch(`/api/mapping/channels/${providerId}`);
             const data = await response.json();
 
             if (data.success) {
-                this.state.streamingChannels = data.channels;
+                this.state.streamingChannels = data.channels || [];
 
                 // Update lookup
                 this.channelLookup.streaming.clear();
@@ -306,8 +337,12 @@ class EPGMappingManager {
             window.showToast(`Error loading channels: ${error.message}`, 'error');
 
             // Show empty state
-            this.elements.streamingEmpty.classList.remove('hidden');
-            this.elements.streamingContainer.innerHTML = '';
+            if (this.elements.streamingEmpty) {
+                this.elements.streamingEmpty.classList.remove('hidden');
+            }
+            if (this.elements.streamingContainer) {
+                this.elements.streamingContainer.innerHTML = '';
+            }
         } finally {
             this.state.isLoading.streaming = false;
             this.hideLoading(this.elements.streamingContainer, this.elements.streamingLoading);
@@ -319,37 +354,28 @@ class EPGMappingManager {
 
         this.state.isLoading.epg = true;
         this.showLoading(this.elements.epgContainer, this.elements.epgLoading);
-        this.elements.epgEmpty.classList.add('hidden');
+        if (this.elements.epgEmpty) {
+            this.elements.epgEmpty.classList.add('hidden');
+        }
 
         try {
-            // First load EPG providers
-            const providersResponse = await fetch('/api/providers');
-            const providersData = await providersResponse.json();
+            // Get all EPG channels
+            const response = await fetch('/api/channels');
+            const channelsData = await response.json();
 
-            // Load channels from first EPG provider (or all)
-            // For simplicity, we'll load from the first provider
-            let allEPGChannels = [];
-
-            if (providersData.length > 0) {
-                // Get channels from WebEPG
-                // Note: We may need a specific endpoint for all EPG channels
-                const channelsResponse = await fetch('/api/channels');
-                const channelsData = await channelsResponse.json();
-
-                if (Array.isArray(channelsData)) {
-                    allEPGChannels = channelsData;
-                }
+            if (Array.isArray(channelsData)) {
+                this.state.epgChannels = channelsData;
+                this.cache.epgChannels = channelsData;
+            } else {
+                this.state.epgChannels = [];
             }
-
-            this.state.epgChannels = allEPGChannels;
-            this.cache.epgChannels = allEPGChannels;
 
             // Update lookup
             this.channelLookup.epg.clear();
             this.state.epgChannels.forEach(channel => {
-                const channelId = channel.id || channel.identifier || channel.name;
+                const channelId = channel.id?.toString() || channel.identifier || channel.name;
                 if (channelId) {
-                    this.channelLookup.epg.set(channelId.toString(), channel);
+                    this.channelLookup.epg.set(channelId, channel);
                 }
             });
 
@@ -364,8 +390,12 @@ class EPGMappingManager {
             window.showToast(`Error loading EPG channels: ${error.message}`, 'error');
 
             // Show empty state
-            this.elements.epgEmpty.classList.remove('hidden');
-            this.elements.epgContainer.innerHTML = '';
+            if (this.elements.epgEmpty) {
+                this.elements.epgEmpty.classList.remove('hidden');
+            }
+            if (this.elements.epgContainer) {
+                this.elements.epgContainer.innerHTML = '';
+            }
         } finally {
             this.state.isLoading.epg = false;
             this.hideLoading(this.elements.epgContainer, this.elements.epgLoading);
@@ -378,40 +408,46 @@ class EPGMappingManager {
             this.state.aliases.clear();
             this.channelLookup.aliasToStreaming.clear();
 
-            // For each streaming channel, check if it has aliases
-            // We'll need to get aliases from EPG backend
-            // This could be optimized with a bulk endpoint
-
-            const aliasPromises = this.state.streamingChannels.map(async (channel) => {
-                const channelId = channel.channel_id || channel.id || channel.name;
-                if (!channelId) return;
-
+            // Load all aliases from WebEPG
+            // We need to get all channels and check their aliases
+            // This is inefficient but works for now
+            for (const [streamingId, streamingChannel] of this.channelLookup.streaming) {
                 try {
-                    // Check if this streaming channel ID exists as an alias in EPG
-                    // We need to search for aliases with this ID
-                    // This assumes EPG backend has an endpoint to search aliases
-                    const aliasesResponse = await fetch(`/api/channels?alias=${encodeURIComponent(channelId)}`);
-                    const aliasesData = await aliasesResponse.json();
+                    // Try to get the EPG channel that has this streamingId as an alias
+                    // We'll check all EPG channels
+                    for (const [epgId, epgChannel] of this.channelLookup.epg) {
+                        // Check if this EPG channel has aliases
+                        try {
+                            const aliasesResponse = await fetch(`/api/channels/${epgId}/aliases`);
+                            const aliasesData = await aliasesResponse.json();
 
-                    if (Array.isArray(aliasesData) && aliasesData.length > 0) {
-                        // Found alias - use the first one
-                        const aliasInfo = aliasesData[0];
-                        this.state.aliases.set(channelId, {
-                            aliasId: aliasInfo.id,
-                            epgChannelId: aliasInfo.channel_id,
-                            alias: aliasInfo.alias
-                        });
+                            if (Array.isArray(aliasesData)) {
+                                const foundAlias = aliasesData.find(alias =>
+                                    alias.alias === streamingId
+                                );
 
-                        // Update reverse lookup
-                        this.channelLookup.aliasToStreaming.set(aliasInfo.channel_id, channelId);
+                                if (foundAlias) {
+                                    this.state.aliases.set(streamingId, {
+                                        aliasId: foundAlias.id,
+                                        epgChannelId: epgId,
+                                        alias: streamingId,
+                                        epgChannelName: epgChannel.display_name || epgChannel.name
+                                    });
+
+                                    this.channelLookup.aliasToStreaming.set(epgId, streamingId);
+                                    break; // Found mapping, move to next streaming channel
+                                }
+                            }
+                        } catch (err) {
+                            // EPG channel might not have aliases endpoint
+                            continue;
+                        }
                     }
                 } catch (error) {
                     // Silently fail - channel might not have aliases
-                    console.debug(`No aliases found for channel ${channelId}:`, error.message);
+                    console.debug(`Error checking aliases for channel ${streamingId}:`, error.message);
                 }
-            });
-
-            await Promise.all(aliasPromises);
+            }
 
         } catch (error) {
             console.error('Error loading aliases:', error);
@@ -421,14 +457,20 @@ class EPGMappingManager {
 
     renderStreamingChannels() {
         const container = this.elements.streamingContainer;
+        if (!container) return;
+
         container.innerHTML = '';
 
         if (this.state.streamingChannels.length === 0) {
-            this.elements.streamingEmpty.classList.remove('hidden');
+            if (this.elements.streamingEmpty) {
+                this.elements.streamingEmpty.classList.remove('hidden');
+            }
             return;
         }
 
-        this.elements.streamingEmpty.classList.add('hidden');
+        if (this.elements.streamingEmpty) {
+            this.elements.streamingEmpty.classList.add('hidden');
+        }
 
         this.state.streamingChannels.forEach(channel => {
             const channelId = channel.channel_id || channel.id || channel.name;
@@ -441,6 +483,8 @@ class EPGMappingManager {
 
     renderEPGChannels() {
         const container = this.elements.epgContainer;
+        if (!container) return;
+
         container.innerHTML = '';
 
         // Filter EPG channels based on search
@@ -448,26 +492,38 @@ class EPGMappingManager {
 
         if (this.state.searchTerm) {
             filteredChannels = this.state.epgChannels.filter(channel => {
+                const displayName = channel.display_name || '';
                 const name = channel.name || '';
-                const id = channel.id || channel.identifier || '';
-                return name.toLowerCase().includes(this.state.searchTerm) ||
+                const id = channel.id?.toString() || channel.identifier || '';
+
+                return displayName.toLowerCase().includes(this.state.searchTerm) ||
+                       name.toLowerCase().includes(this.state.searchTerm) ||
                        id.toLowerCase().includes(this.state.searchTerm);
             });
         }
 
         // Show empty state if no channels
         if (filteredChannels.length === 0) {
-            this.elements.epgEmpty.classList.remove('hidden');
-            this.elements.epgCount.textContent = '0';
+            if (this.elements.epgEmpty) {
+                this.elements.epgEmpty.classList.remove('hidden');
+            }
+            if (this.elements.epgCount) {
+                this.elements.epgCount.textContent = '0';
+            }
             return;
         }
 
-        this.elements.epgEmpty.classList.add('hidden');
-        this.elements.epgCount.textContent = filteredChannels.length.toString();
+        if (this.elements.epgEmpty) {
+            this.elements.epgEmpty.classList.add('hidden');
+        }
+
+        if (this.elements.epgCount) {
+            this.elements.epgCount.textContent = filteredChannels.length.toString();
+        }
 
         // Show filtered channels
         filteredChannels.forEach(channel => {
-            const channelId = channel.id || channel.identifier || channel.name;
+            const channelId = channel.id?.toString() || channel.identifier || channel.name;
             if (!channelId) return;
 
             const card = this.createChannelCard(channel, 'epg');
@@ -478,7 +534,14 @@ class EPGMappingManager {
     createChannelCard(channel, type) {
         const card = document.createElement('div');
         card.className = 'channel-card';
-        card.dataset.channelId = channel.id || channel.identifier || channel.name;
+
+        // Set channel ID based on type
+        if (type === 'streaming') {
+            card.dataset.channelId = channel.channel_id || channel.id || channel.name;
+        } else {
+            card.dataset.channelId = channel.id?.toString() || channel.identifier || channel.name;
+        }
+
         card.dataset.channelType = type;
 
         // Check if this channel is mapped
@@ -491,8 +554,16 @@ class EPGMappingManager {
         }
 
         // Create logo or fallback
-        const logoUrl = channel.logo || channel.logo_url || '';
-        const logoFallback = channel.name ? channel.name.charAt(0).toUpperCase() : '?';
+        const logoUrl = channel.logo || channel.logo_url || channel.icon_url || '';
+        let logoFallback = '?';
+
+        if (type === 'streaming') {
+            logoFallback = channel.name ? channel.name.charAt(0).toUpperCase() : '?';
+        } else {
+            // For EPG channels, use display_name or name
+            const displayName = channel.display_name || channel.name || '';
+            logoFallback = displayName ? displayName.charAt(0).toUpperCase() : '?';
+        }
 
         const logoDiv = document.createElement('div');
         logoDiv.className = 'channel-logo';
@@ -511,11 +582,24 @@ class EPGMappingManager {
 
         const nameDiv = document.createElement('div');
         nameDiv.className = 'channel-name';
-        nameDiv.textContent = channel.name || channelId;
+
+        // Set display name based on type
+        if (type === 'streaming') {
+            nameDiv.textContent = channel.name || channelId;
+        } else {
+            // For EPG: Use display_name as main name, show name as ID
+            nameDiv.textContent = channel.display_name || channel.name || channelId;
+        }
 
         const idDiv = document.createElement('div');
         idDiv.className = 'channel-id';
-        idDiv.textContent = channelId;
+
+        if (type === 'streaming') {
+            idDiv.textContent = channelId;
+        } else {
+            // For EPG: Show the technical name (like tkmde_392)
+            idDiv.textContent = channel.name || channelId;
+        }
 
         infoDiv.appendChild(nameDiv);
         infoDiv.appendChild(idDiv);
@@ -524,9 +608,12 @@ class EPGMappingManager {
         if (type === 'streaming' && isMapped) {
             const aliasInfo = this.state.aliases.get(channelId);
             if (aliasInfo && aliasInfo.epgChannelId) {
+                const epgChannel = this.channelLookup.epg.get(aliasInfo.epgChannelId);
+                const epgDisplayName = epgChannel?.display_name || aliasInfo.epgChannelId;
+
                 const mappingDiv = document.createElement('div');
                 mappingDiv.className = 'channel-mapping';
-                mappingDiv.textContent = `Linked to: ${aliasInfo.epgChannelId}`;
+                mappingDiv.textContent = `Linked to: ${epgDisplayName}`;
                 mappingDiv.title = `EPG ID: ${aliasInfo.epgChannelId}`;
                 infoDiv.appendChild(mappingDiv);
             }
@@ -589,8 +676,8 @@ class EPGMappingManager {
         if (existingAlias) {
             // Confirm overwrite
             const confirmed = confirm(
-                `Channel "${streamingName}" is already mapped to EPG ID: ${existingAlias.epgChannelId}\n\n` +
-                `Do you want to replace it with "${epgName}" (${epgId})?`
+                `Channel "${streamingName}" is already mapped to EPG: ${existingAlias.epgChannelName}\n\n` +
+                `Do you want to replace it with "${epgName}"?`
             );
 
             if (!confirmed) return;
@@ -621,10 +708,12 @@ class EPGMappingManager {
 
             if (data.success) {
                 // Update local state
+                const epgChannel = this.channelLookup.epg.get(epgId);
                 this.state.aliases.set(streamingId, {
-                    aliasId: data.alias.id,
+                    aliasId: data.alias?.id,
                     epgChannelId: epgId,
-                    alias: streamingId
+                    alias: streamingId,
+                    epgChannelName: epgChannel?.display_name || epgName
                 });
 
                 // Update reverse lookup
@@ -658,7 +747,7 @@ class EPGMappingManager {
                 method: 'DELETE'
             });
 
-            if (response.ok) {
+            if (response.ok || response.status === 204) {
                 // Remove from local state
                 const aliasInfo = this.state.aliases.get(streamingId);
                 if (aliasInfo) {
@@ -684,11 +773,15 @@ class EPGMappingManager {
         this.state.pendingUnmap = { streamingId, aliasInfo, streamingName };
 
         // Show modal
-        this.elements.unmapModal.classList.remove('hidden');
+        if (this.elements.unmapModal) {
+            this.elements.unmapModal.classList.remove('hidden');
+        }
     }
 
     hideUnmapModal() {
-        this.elements.unmapModal.classList.add('hidden');
+        if (this.elements.unmapModal) {
+            this.elements.unmapModal.classList.add('hidden');
+        }
         this.state.pendingUnmap = null;
     }
 
@@ -723,18 +816,26 @@ class EPGMappingManager {
 
     updateStats() {
         // Streaming channel count
-        this.elements.streamingCount.textContent = this.state.streamingChannels.length.toString();
+        if (this.elements.streamingCount) {
+            this.elements.streamingCount.textContent = this.state.streamingChannels.length.toString();
+        }
 
         // EPG channel count
-        this.elements.epgTotalCount.textContent = this.state.epgChannels.length.toString();
+        if (this.elements.epgTotalCount) {
+            this.elements.epgTotalCount.textContent = this.state.epgChannels.length.toString();
+        }
 
         // Mapped count
         const mappedCount = this.state.aliases.size;
-        this.elements.mappedCount.textContent = mappedCount.toString();
+        if (this.elements.mappedCount) {
+            this.elements.mappedCount.textContent = mappedCount.toString();
+        }
     }
 
     updateStatus(message) {
-        this.elements.mappingStatus.textContent = message;
+        if (this.elements.mappingStatus) {
+            this.elements.mappingStatus.textContent = message;
+        }
     }
 
     showLoading(containerElement, loadingElement) {
@@ -753,26 +854,6 @@ class EPGMappingManager {
         if (loadingElement) {
             loadingElement.style.display = 'none';
         }
-    }
-
-    // Utility methods
-    showTooltip(content, x, y) {
-        const tooltip = this.elements.mappingTooltip;
-        tooltip.querySelector('.tooltip-content').textContent = content;
-        tooltip.style.left = `${x}px`;
-        tooltip.style.top = `${y}px`;
-        tooltip.classList.remove('hidden');
-    }
-
-    hideTooltip() {
-        this.elements.mappingTooltip.classList.add('hidden');
-    }
-
-    // Cleanup
-    destroy() {
-        // Remove event listeners
-        // (In a real app, you'd clean up all event listeners)
-        document.removeEventListener('keydown', this.handleKeydown);
     }
 }
 
