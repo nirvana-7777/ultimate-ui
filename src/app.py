@@ -280,44 +280,11 @@ def configuration():
 
 @app.route("/mapping")
 def epg_mapping():
-    """EPG Mapping tab."""
-    try:
-        webepg = get_webepg_client()
-        ultimate = get_ultimate_backend_client()
-
-        # Get channels from webepg
-        webepg_channels = webepg.get_channels()
-
-        # Get providers from ultimate-backend
-        ultimate_providers = ultimate.get_providers()
-
-        # Get first provider's channels if available
-        ultimate_channels = []
-        selected_provider = None
-
-        if ultimate_providers:
-            selected_provider = ultimate_providers[0].get("id")
-            ultimate_channels = ultimate.get_provider_channels(selected_provider)
-
-        return render_template(
-            "epg_mapping.html",
-            webepg_channels=webepg_channels,
-            ultimate_providers=ultimate_providers,
-            ultimate_channels=ultimate_channels,
-            selected_provider=selected_provider,
-            active_tab="mapping",
-        )
-
-    except Exception as e:
-        logger.error(f"Error loading mapping: {e}")
-        return render_template(
-            "epg_mapping.html",
-            webepg_channels=[],
-            ultimate_providers=[],
-            ultimate_channels=[],
-            error=str(e),
-            active_tab="mapping",
-        )
+    """EPG Mapping tab - now using client-side JavaScript for data loading."""
+    return render_template(
+        "epg_mapping.html",
+        active_tab="mapping",
+    )
 
 
 @app.route("/monitoring")
@@ -516,6 +483,50 @@ def api_import_status():
         return jsonify({"error": str(e)}), 500
 
 
+@app.route("/api/channels", methods=["GET"])
+def api_list_channels():
+    """PROXY: List all channels from WebEPG backend."""
+    try:
+        webepg = get_webepg_client()
+        channels = webepg.get_channels()
+        return jsonify(channels)
+    except Exception as e:
+        logger.error(f"Error listing channels: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/channels/<channel_identifier>/aliases", methods=["GET"])
+def api_list_channel_aliases(channel_identifier):
+    """PROXY: List aliases for a specific channel."""
+    try:
+        webepg = get_webepg_client()
+        # Use session directly since WebEPGClient doesn't have list_aliases method
+        response = webepg.session.get(
+            f"{webepg.base_url}/api/v1/channels/{channel_identifier}/aliases",
+            timeout=webepg.timeout,
+        )
+        response.raise_for_status()
+        return jsonify(response.json())
+    except Exception as e:
+        logger.error(f"Error listing aliases: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/aliases/<int:alias_id>", methods=["DELETE"])
+def api_delete_alias(alias_id):
+    """PROXY: Delete a channel alias."""
+    try:
+        webepg = get_webepg_client()
+        response = webepg.session.delete(
+            f"{webepg.base_url}/api/v1/aliases/{alias_id}", timeout=webepg.timeout
+        )
+        response.raise_for_status()
+        return "", 204
+    except Exception as e:
+        logger.error(f"Error deleting alias {alias_id}: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
 # ============================================================================
 # EXISTING API ENDPOINTS
 # ============================================================================
@@ -570,10 +581,17 @@ def api_create_alias():
         if not channel_identifier or not alias:
             return jsonify({"success": False, "error": "Missing required fields"}), 400
 
+        # Use the WebEPG client's create_channel_alias method
         result = webepg.create_channel_alias(channel_identifier, alias, alias_type)
 
         if result:
-            return jsonify({"success": True, "alias": result})
+            return jsonify(
+                {
+                    "success": True,
+                    "alias": result,
+                    "message": "Alias created successfully",
+                }
+            )
         else:
             return jsonify({"success": False, "error": "Failed to create alias"}), 500
 

@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="epg-mapping-container">
+    <!-- Header with page title -->
+    <div class="mapping-header">
+        <h2 class="page-title">EPG Channel Mapping</h2>
+        <p class="page-description">
+            Drag EPG channels onto streaming channels to create mappings.
+            Mapped channels appear in green. Click to unmap.
+        </p>
+    </div>
+
+    <!-- Main mapping area -->
+    <div class="mapping-area">
+        <!-- Left column: Streaming channels (Ultimate Backend) -->
+        <div class="column streaming-channels">
+            <div class="column-header">
+                <h3>Streaming Channels</h3>
+                <div class="provider-selector">
+                    <label for="provider-select">Provider:</label>
+                    <select id="provider-select" class="provider-dropdown">
+                        <option value="" disabled selected>Loading providers...</option>
+                    </select>
+                    <button id="refresh-providers" class="btn-icon" title="Refresh providers">
+                        ↻
+                    </button>
+                </div>
+            </div>
+
+            <!-- Channels loading state -->
+            <div id="streaming-loading" class="loading-state">
+                <div class="spinner"></div>
+                <p>Loading streaming channels...</p>
+            </div>
+
+            <!-- Channels container -->
+            <div id="streaming-channels-container" class="channels-container">
+                <!-- Channels will be loaded here -->
+            </div>
+
+            <!-- Empty state -->
+            <div id="streaming-empty" class="empty-state hidden">
+                <p>No channels available for selected provider.</p>
+            </div>
+        </div>
+
+        <!-- Right column: EPG channels -->
+        <div class="column epg-channels">
+            <div class="column-header">
+                <h3>EPG Channels</h3>
+                <div class="epg-controls">
+                    <input type="text"
+                           id="epg-search"
+                           placeholder="Search EPG channels..."
+                           class="search-input">
+                    <div class="epg-stats">
+                        <span id="epg-count">0</span> channels
+                    </div>
+                </div>
+            </div>
+
+            <!-- EPG loading state -->
+            <div id="epg-loading" class="loading-state">
+                <div class="spinner"></div>
+                <p>Loading EPG channels...</p>
+            </div>
+
+            <!-- EPG channels container -->
+            <div id="epg-channels-container" class="channels-container">
+                <!-- EPG channels will be loaded here -->
+            </div>
+
+            <!-- Empty state -->
+            <div id="epg-empty" class="empty-state hidden">
+                <p>No EPG channels found.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Status bar -->
+    <div class="status-bar">
+        <div class="status-info">
+            <span class="status-label">Status:</span>
+            <span id="mapping-status" class="status-text">Ready</span>
+        </div>
+        <div class="stats">
+            <span class="stat">
+                <span class="stat-label">Streaming channels:</span>
+                <span id="streaming-count" class="stat-value">0</span>
+            </span>
+            <span class="stat">
+                <span class="stat-label">EPG channels:</span>
+                <span id="epg-total-count" class="stat-value">0</span>
+            </span>
+            <span class="stat">
+                <span class="stat-label">Mapped:</span>
+                <span id="mapped-count" class="stat-value">0</span>
+            </span>
+        </div>
+    </div>
+</div>
+
+<!-- Confirmation modal for unmapping -->
+<div id="unmap-modal" class="modal hidden">
+    <div class="modal-content">
+        <h3>Confirm Unmapping</h3>
+        <p>Are you sure you want to unmap this channel?</p>
+        <div class="modal-actions">
+            <button id="cancel-unmap" class="btn-secondary">Cancel</button>
+            <button id="confirm-unmap" class="btn-danger">Unmap</button>
+        </div>
+    </div>
+</div>
+
+<!-- Mapping info tooltip -->
+<div id="mapping-tooltip" class="tooltip hidden">
+    <div class="tooltip-content"></div>
+</div>
+{% endblock %}

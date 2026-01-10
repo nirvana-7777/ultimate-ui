@@ -14,6 +14,8 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/responsive.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/mobile.css') }}" media="(max-width: 768px)">
 
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/epg_mapping.css') }}">
+
     <!-- Shaka Player from CDN -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/shaka-player/4.6.0/shaka-player.compiled.js" crossorigin="anonymous"></script>
 
@@ -23,6 +25,7 @@
     <script src="{{ url_for('static', filename='js/epg_ui.js') }}" defer></script>
     <script src="{{ url_for('static', filename='js/epg_player.js') }}" defer></script>
     <script src="{{ url_for('static', filename='js/epg_manager.js') }}" defer></script>
+    <script src="{{ url_for('static', filename='js/epg_mapping.js') }}" defer></script>
     <script src="{{ url_for('static', filename='js/config.js') }}" defer></script>
     <script src="{{ url_for('static', filename='js/monitoring.js') }}" defer></script>
 </head>
