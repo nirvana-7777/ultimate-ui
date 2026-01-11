@@ -1,7 +1,7 @@
 /**
  * EPG Mapping Manager
  * Handles drag-and-drop mapping between Ultimate Backend channels and EPG channels
- * IMPROVED VERSION: Uses bulk alias endpoints and shows better display names
+ * IMPROVED VERSION: Better drag-and-drop with container-wide drop zones
  */
 
 class EPGMappingManager {
@@ -174,16 +174,85 @@ class EPGMappingManager {
                 card.classList.remove('dragging');
             });
 
-            // Remove drag-over classes
+            // Remove drag-over classes from all cards
             document.querySelectorAll('.channel-card.drag-over').forEach(card => {
                 card.classList.remove('drag-over');
             });
+
+            // Remove container drag-active class
+            if (this.elements.streamingContainer) {
+                this.elements.streamingContainer.classList.remove('drag-active');
+            }
 
             // Clear current mapping
             this.state.currentMapping = null;
         });
 
-        // Streaming channel drop zones
+        // ============================================
+        // IMPROVED DROP ZONE: Entire streaming container
+        // ============================================
+
+        const streamingContainer = this.elements.streamingContainer;
+        if (!streamingContainer) return;
+
+        // Make container accept drops
+        streamingContainer.addEventListener('dragover', (e) => {
+            if (this.state.currentMapping) {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'move';
+
+                // Visual feedback: highlight container
+                streamingContainer.classList.add('drag-active');
+
+                // Also highlight the closest card
+                this.highlightClosestCard(e.clientX, e.clientY);
+            }
+        });
+
+        streamingContainer.addEventListener('dragenter', (e) => {
+            if (this.state.currentMapping) {
+                e.preventDefault();
+                streamingContainer.classList.add('drag-active');
+            }
+        });
+
+        streamingContainer.addEventListener('dragleave', (e) => {
+            // Only remove if not dragging over a child element
+            if (!streamingContainer.contains(e.relatedTarget)) {
+                streamingContainer.classList.remove('drag-active');
+                // Remove highlight from all cards
+                document.querySelectorAll('.channel-card.drag-over').forEach(card => {
+                    card.classList.remove('drag-over');
+                });
+            }
+        });
+
+        streamingContainer.addEventListener('drop', (e) => {
+            e.preventDefault();
+
+            if (!this.state.currentMapping) return;
+
+            // Remove visual feedback
+            streamingContainer.classList.remove('drag-active');
+            document.querySelectorAll('.channel-card.drag-over').forEach(card => {
+                card.classList.remove('drag-over');
+            });
+
+            // Find the closest streaming channel card
+            const card = this.findClosestCard(e.clientX, e.clientY);
+            if (card && card.dataset.channelType === 'streaming') {
+                const streamingId = card.dataset.channelId;
+                const streamingChannel = this.channelLookup.streaming.get(streamingId);
+                if (streamingChannel) {
+                    const streamingName = streamingChannel.Name || streamingChannel.name || streamingId;
+                    this.handleMapping(streamingId, streamingName);
+                }
+            } else {
+                console.warn('No suitable streaming channel found near drop location');
+            }
+        });
+
+        // Keep existing card drag-over for visual feedback (optional)
         document.addEventListener('dragover', (e) => {
             if (this.state.currentMapping && e.target.classList.contains('channel-card')) {
                 const card = e.target.closest('.channel-card');
@@ -207,29 +276,51 @@ class EPGMappingManager {
             if (e.target.classList.contains('channel-card')) {
                 const card = e.target.closest('.channel-card');
                 if (card && card.classList.contains('drag-over')) {
-                    card.classList.remove('drag-over');
+                    // Only remove if not entering a child element
+                    if (!card.contains(e.relatedTarget)) {
+                        card.classList.remove('drag-over');
+                    }
                 }
             }
         });
+    }
 
-        document.addEventListener('drop', (e) => {
-            e.preventDefault();
+    findClosestCard(x, y) {
+        const cards = document.querySelectorAll('.channel-card[data-channel-type="streaming"]');
+        let closestCard = null;
+        let closestDistance = Infinity;
 
-            if (!this.state.currentMapping) return;
+        cards.forEach(card => {
+            const rect = card.getBoundingClientRect();
 
-            const card = e.target.closest('.channel-card');
-            if (card && card.dataset.channelType === 'streaming') {
-                card.classList.remove('drag-over');
+            // Calculate distance from drop point to card center
+            const cardCenterX = rect.left + rect.width / 2;
+            const cardCenterY = rect.top + rect.height / 2;
+            const distance = Math.sqrt(
+                Math.pow(x - cardCenterX, 2) + Math.pow(y - cardCenterY, 2)
+            );
 
-                const streamingId = card.dataset.channelId;
-                const streamingChannel = this.channelLookup.streaming.get(streamingId);
-
-                if (streamingChannel) {
-                    const streamingName = streamingChannel.Name || streamingChannel.name || streamingId;
-                    this.handleMapping(streamingId, streamingName);
-                }
+            if (distance < closestDistance) {
+                closestDistance = distance;
+                closestCard = card;
             }
         });
+
+        // Only accept if reasonably close (within 200px for generous drop area)
+        return closestDistance < 200 ? closestCard : null;
+    }
+
+    highlightClosestCard(x, y) {
+        // Remove highlight from all cards first
+        document.querySelectorAll('.channel-card.drag-over').forEach(card => {
+            card.classList.remove('drag-over');
+        });
+
+        // Highlight the closest card
+        const closestCard = this.findClosestCard(x, y);
+        if (closestCard) {
+            closestCard.classList.add('drag-over');
+        }
     }
 
     async loadProviders(forceRefresh = false) {

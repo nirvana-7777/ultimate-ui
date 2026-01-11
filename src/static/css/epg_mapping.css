@@ -572,3 +572,57 @@
     color: var(--text-primary);
     font-family: 'SF Mono', Monaco, Consolas, monospace;
 }
+
+.streaming-channels.drag-active {
+    background: rgba(var(--accent-color-rgb), 0.05);
+    border: 2px dashed var(--accent-color);
+    transition: all 0.2s;
+}
+
+.streaming-channels.drag-active .channel-card {
+    opacity: 0.8;
+    transition: opacity 0.2s;
+}
+
+.streaming-channels.drag-active .channel-card.drag-over {
+    opacity: 1;
+    transform: scale(1.02);
+    box-shadow: 0 4px 12px rgba(var(--accent-color-rgb), 0.3);
+    border-color: var(--accent-color);
+    z-index: 10;
+}
+
+/* Channel card drag feedback */
+.channel-card.drag-over {
+    background: rgba(var(--accent-color-rgb), 0.1);
+    border-color: var(--accent-color);
+    border-style: dashed;
+    transform: scale(1.02);
+    transition: all 0.2s;
+}
+
+/* Make the container a proper drop target */
+#streaming-channels-container {
+    min-height: 200px;
+    position: relative;
+}
+
+/* Optional: Add a drop hint */
+#streaming-channels-container::before {
+    content: 'Drop EPG channel here to map';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: var(--text-muted);
+    font-size: 14px;
+    font-style: italic;
+    opacity: 0;
+    transition: opacity 0.2s;
+    pointer-events: none;
+    z-index: 1;
+}
+
+#streaming-channels-container.drag-active::before {
+    opacity: 1;
+}
