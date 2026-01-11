@@ -411,50 +411,105 @@ class EPGMappingManager {
             this.state.aliases.clear();
             this.channelLookup.aliasToStreaming.clear();
 
-            // Load all aliases from WebEPG
-            // We need to get all channels and check their aliases
-            // This is inefficient but works for now
-            for (const [streamingId, streamingChannel] of this.channelLookup.streaming) {
-                try {
-                    // Try to get the EPG channel that has this streamingId as an alias
-                    // We'll check all EPG channels
-                    for (const [epgId, epgChannel] of this.channelLookup.epg) {
-                        // Check if this EPG channel has aliases
-                        try {
-                            const aliasesResponse = await fetch(`/api/channels/${epgId}/aliases`);
-                            const aliasesData = await aliasesResponse.json();
+            // Use the new bulk endpoint to get all aliases at once
+            const response = await fetch('/api/aliases');
+            const data = await response.json();
 
-                            if (Array.isArray(aliasesData)) {
-                                const foundAlias = aliasesData.find(alias =>
-                                    alias.alias === streamingId
-                                );
+            if (data.aliases && Array.isArray(data.aliases)) {
+                data.aliases.forEach(alias => {
+                    if (alias.alias) {
+                        this.state.aliases.set(alias.alias, {
+                            aliasId: alias.id,
+                            epgChannelId: alias.channel_id,
+                            alias: alias.alias,
+                            epgChannelName: alias.channel_display_name || `Channel ${alias.channel_id}`,
+                            aliasType: alias.alias_type,
+                            createdAt: alias.created_at
+                        });
 
-                                if (foundAlias) {
-                                    this.state.aliases.set(streamingId, {
-                                        aliasId: foundAlias.id,
-                                        epgChannelId: epgId,
-                                        alias: streamingId,
-                                        epgChannelName: epgChannel.display_name || epgChannel.name
-                                    });
-
-                                    this.channelLookup.aliasToStreaming.set(epgId, streamingId);
-                                    break; // Found mapping, move to next streaming channel
-                                }
-                            }
-                        } catch (err) {
-                            // EPG channel might not have aliases endpoint
-                            continue;
-                        }
+                        // Add reverse lookup for EPG channels
+                        this.channelLookup.aliasToStreaming.set(alias.channel_id.toString(), alias.alias);
                     }
-                } catch (error) {
-                    // Silently fail - channel might not have aliases
-                    console.debug(`Error checking aliases for channel ${streamingId}:`, error.message);
-                }
-            }
+                });
 
+                logger.debug(`Loaded ${data.aliases.length} aliases from bulk endpoint`);
+            }
         } catch (error) {
             console.error('Error loading aliases:', error);
-            // Don't show toast - this is a background operation
+            // Fallback to individual requests if bulk endpoint fails
+            await this.loadAliasesFallback();
+        }
+    }
+
+    async loadAliasesPaginated(page = 1, perPage = 100) {
+        try {
+            const response = await fetch(`/api/aliases/paginated?page=${page}&per_page=${perPage}`);
+            const data = await response.json();
+
+            if (data.aliases && Array.isArray(data.aliases)) {
+                data.aliases.forEach(alias => {
+                    if (alias.alias) {
+                        this.state.aliases.set(alias.alias, {
+                            aliasId: alias.id,
+                            epgChannelId: alias.channel_id,
+                            alias: alias.alias,
+                            epgChannelName: alias.channel_display_name,
+                            aliasType: alias.alias_type,
+                            createdAt: alias.created_at
+                        });
+                    }
+                });
+
+                // Load more if available
+                if (data.total > page * perPage) {
+                    await this.loadAliasesPaginated(page + 1, perPage);
+                }
+            }
+        } catch (error) {
+            console.error('Error loading paginated aliases:', error);
+        }
+    }
+
+    async loadAliasStatistics() {
+        try {
+            const response = await fetch('/api/aliases/statistics');
+            const data = await response.json();
+
+            if (data.success !== false) {
+                this.state.statistics = data;
+                this.updateStatisticsDisplay();
+            }
+        } catch (error) {
+            console.error('Error loading alias statistics:', error);
+        }
+    }
+
+    updateStatisticsDisplay() {
+        if (!this.state.statistics) return;
+
+        const stats = this.state.statistics;
+        const statsElement = document.getElementById('alias-statistics');
+        if (statsElement) {
+            statsElement.innerHTML = `
+                <div class="stats-grid">
+                    <div class="stat-item">
+                        <span class="stat-label">Total Aliases:</span>
+                        <span class="stat-value">${stats.total_aliases || 0}</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Mapped Channels:</span>
+                        <span class="stat-value">${stats.channels_with_aliases || 0}</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Avg per Channel:</span>
+                        <span class="stat-value">${(stats.avg_aliases_per_channel || 0).toFixed(1)}</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Unmapped:</span>
+                        <span class="stat-value">${stats.channels_without_aliases || 0}</span>
+                    </div>
+                </div>
+            `;
         }
     }
 

@@ -494,6 +494,80 @@ def api_list_channels():
         logger.error(f"Error listing channels: {e}")
         return jsonify({"error": str(e)}), 500
 
+@app.route("/api/aliases", methods=["GET"])
+def api_list_all_aliases():
+    """PROXY: Get all aliases from WebEPG."""
+    try:
+        webepg = get_webepg_client()
+        response = webepg.session.get(
+            f"{webepg.base_url}/api/v1/aliases",
+            timeout=webepg.timeout
+        )
+        response.raise_for_status()
+        return jsonify(response.json())
+    except Exception as e:
+        logger.error(f"Error listing aliases: {e}")
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/aliases/paginated", methods=["GET"])
+def api_list_aliases_paginated():
+    """PROXY: Get aliases with pagination."""
+    try:
+        webepg = get_webepg_client()
+        page = request.args.get("page", 1, type=int)
+        per_page = request.args.get("per_page", 100, type=int)
+        alias_type = request.args.get("alias_type")
+        channel_id = request.args.get("channel_id", type=int)
+
+        params = {
+            "page": page,
+            "per_page": per_page
+        }
+        if alias_type:
+            params["alias_type"] = alias_type
+        if channel_id:
+            params["channel_id"] = channel_id
+
+        response = webepg.session.get(
+            f"{webepg.base_url}/api/v1/aliases/paginated",
+            params=params,
+            timeout=webepg.timeout
+        )
+        response.raise_for_status()
+        return jsonify(response.json())
+    except Exception as e:
+        logger.error(f"Error listing paginated aliases: {e}")
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/aliases/statistics", methods=["GET"])
+def api_get_alias_statistics():
+    """PROXY: Get alias statistics."""
+    try:
+        webepg = get_webepg_client()
+        response = webepg.session.get(
+            f"{webepg.base_url}/api/v1/aliases/statistics",
+            timeout=webepg.timeout
+        )
+        response.raise_for_status()
+        return jsonify(response.json())
+    except Exception as e:
+        logger.error(f"Error getting alias statistics: {e}")
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/aliases/mapping", methods=["GET"])
+def api_get_alias_mapping():
+    """PROXY: Get optimized alias mapping."""
+    try:
+        webepg = get_webepg_client()
+        response = webepg.session.get(
+            f"{webepg.base_url}/api/v1/aliases/mapping",
+            timeout=webepg.timeout
+        )
+        response.raise_for_status()
+        return jsonify(response.json())
+    except Exception as e:
+        logger.error(f"Error getting alias mapping: {e}")
+        return jsonify({"error": str(e)}), 500
 
 @app.route("/api/channels/<channel_identifier>/aliases", methods=["GET"])
 def api_list_channel_aliases(channel_identifier):
