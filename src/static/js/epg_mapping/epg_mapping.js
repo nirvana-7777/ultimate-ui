@@ -11,30 +11,42 @@ import EPGMappingAPI from './epg_mapping_api.js';
 
 class EPGMappingManager {
     constructor() {
-        // Initialize sub-managers
+        // State
         this.state = new EPGMappingState();
         this.dom = new EPGMappingDOM();
         this.api = new EPGMappingAPI();
         this.ui = new EPGMappingUI(this.state, this.dom);
         this.dragDrop = new EPGMappingDragDrop(this.state, this.ui, this);
 
-        // Initialize
-        this.init();
+        // Don't initialize here - wait for DOM to be fully ready
+        // this.init();
     }
 
     async init() {
+        // Check if we're in the right page (EPG mapping page)
+        if (!document.getElementById('provider-select')) {
+            console.warn('Not on EPG mapping page, skipping initialization');
+            return;
+        }
+
         this.dom.initializeElements();
         this.setupEventListeners();
-        this.dragDrop.setup(this.dom.elements.streamingContainer);
+
+        // Only setup drag & drop if container exists
+        if (this.dom.elements.streamingContainer) {
+            this.dragDrop.setup(this.dom.elements.streamingContainer);
+        }
 
         await this.loadProviders();
         await this.loadEPGChannels();
 
+        // Update UI
         this.ui.updateStats();
     }
 
+
     setupEventListeners() {
-        // Provider selection
+        // Provider selection - WITH NULL CHECK
         if (this.dom.elements.providerSelect) {
             this.dom.elements.providerSelect.addEventListener('change', (e) => {
                 const providerId = e.target.value;
@@ -45,14 +57,14 @@ class EPGMappingManager {
             });
         }
 
-        // Refresh providers
+        // Refresh providers button - WITH NULL CHECK
         if (this.dom.elements.refreshProviders) {
             this.dom.elements.refreshProviders.addEventListener('click', () => {
-                this.loadProviders(true);
+                this.loadProviders(true); // Force refresh
             });
         }
 
-        // EPG search
+        // EPG search - WITH NULL CHECK
         if (this.dom.elements.epgSearch) {
             this.dom.elements.epgSearch.addEventListener('input', (e) => {
                 this.state.searchTerm = e.target.value.toLowerCase();
@@ -60,7 +72,7 @@ class EPGMappingManager {
             });
         }
 
-        // Unmap modal
+        // Unmap modal - only if elements exist
         if (this.dom.elements.cancelUnmap && this.dom.elements.confirmUnmap) {
             this.dom.elements.cancelUnmap.addEventListener('click', () => {
                 this.hideUnmapModal();
@@ -71,7 +83,7 @@ class EPGMappingManager {
             });
         }
 
-        // Modal backdrop click
+        // Close modal on backdrop click
         if (this.dom.elements.unmapModal) {
             this.dom.elements.unmapModal.addEventListener('click', (e) => {
                 if (e.target === this.dom.elements.unmapModal) {
@@ -82,9 +94,10 @@ class EPGMappingManager {
 
         // Keyboard shortcuts
         document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape' && this.dom.elements.unmapModal &&
-                !this.dom.elements.unmapModal.classList.contains('hidden')) {
-                this.hideUnmapModal();
+            if (e.key === 'Escape') {
+                if (this.dom.elements.unmapModal && !this.dom.elements.unmapModal.classList.contains('hidden')) {
+                    this.hideUnmapModal();
+                }
             }
         });
     }
@@ -94,31 +107,52 @@ class EPGMappingManager {
         if (this.state.isLoading.providers) return;
 
         this.state.isLoading.providers = true;
-        this.dom.elements.providerSelect.disabled = true;
-        this.dom.updateText(this.dom.elements.providerSelect, 'Loading providers...');
+
+        // ADDED: Null-safe DOM manipulation
+        if (this.dom.elements.providerSelect) {
+            this.dom.elements.providerSelect.disabled = true;
+            this.dom.updateInnerHTML(this.dom.elements.providerSelect, '<option value="" disabled selected>Loading providers...</option>');
+        }
 
         try {
-            const data = await this.api.fetchProviders();
-            const providers = data.providers?.providers || data.providers || [];
+            const response = await fetch('/api/mapping/providers');
+            const data = await response.json();
 
-            this.state.providers = providers;
-            this.state.cache.providers = providers;
-            this.ui.renderProviderSelect();
+            if (data.success) {
+                // Fix: Handle the actual response structure
+                // The providers are in data.providers.providers (not data.providers)
+                const providers = data.providers?.providers || data.providers || [];
+                this.state.providers = providers;
+                this.state.cache.providers = providers;
+                this.ui.renderProviderSelect();
 
-            // Auto-select first provider
-            if (this.state.providers.length > 0 && !this.state.selectedProvider) {
-                const firstProvider = this.state.providers[0];
-                this.state.selectedProvider = firstProvider.name || firstProvider.id;
-                this.dom.setElementValue(this.dom.elements.providerSelect, this.state.selectedProvider);
-                await this.loadStreamingChannels(this.state.selectedProvider);
+                // Auto-select first provider if none selected
+                if (this.state.providers.length > 0 && !this.state.selectedProvider) {
+                    const firstProvider = this.state.providers[0];
+                    this.state.selectedProvider = firstProvider.name || firstProvider.id;
+                    if (this.dom.elements.providerSelect) {
+                        this.dom.elements.providerSelect.value = this.state.selectedProvider;
+                    }
+                    await this.loadStreamingChannels(this.state.selectedProvider);
+                }
+            } else {
+                throw new Error(data.error || 'Failed to load providers');
             }
         } catch (error) {
             console.error('Error loading providers:', error);
             window.showToast(`Error loading providers: ${error.message}`, 'error');
-            this.dom.updateText(this.dom.elements.providerSelect, 'Error loading providers');
+
+            // Show error in dropdown - ADDED: Null check
+            if (this.dom.elements.providerSelect) {
+                this.dom.updateInnerHTML(this.dom.elements.providerSelect, '<option value="" disabled selected>Error loading providers</option>');
+            }
         } finally {
             this.state.isLoading.providers = false;
-            this.dom.elements.providerSelect.disabled = false;
+
+            // ADDED: Null check before setting disabled
+            if (this.dom.elements.providerSelect) {
+                this.dom.elements.providerSelect.disabled = false;
+            }
         }
     }
 
@@ -126,26 +160,65 @@ class EPGMappingManager {
         if (this.state.isLoading.streaming) return;
 
         this.state.isLoading.streaming = true;
-        this.dom.showLoading(this.dom.elements.streamingContainer, this.dom.elements.streamingLoading);
-        this.dom.toggleEmptyState(this.dom.elements.streamingEmpty, false);
+
+        // WITH NULL CHECKS for all DOM elements
+        if (this.dom.elements.streamingContainer && this.dom.elements.streamingLoading) {
+            this.dom.showLoading(this.dom.elements.streamingContainer, this.dom.elements.streamingLoading);
+        }
+
+        if (this.dom.elements.streamingEmpty) {
+            this.dom.elements.streamingEmpty.classList.add('hidden');
+        }
 
         try {
-            const data = await this.api.fetchStreamingChannels(providerId);
-            const channelsData = data.channels?.channels || data.channels || [];
+            const response = await fetch(`/api/mapping/channels/${providerId}`);
+            const data = await response.json();
 
-            this.state.streamingChannels = Array.isArray(channelsData) ? channelsData : [];
-            this.updateStreamingLookup();
+            if (data.success) {
+                // Fix: Handle nested channels structure
+                const channelsData = data.channels?.channels || data.channels || [];
+                this.state.streamingChannels = Array.isArray(channelsData) ? channelsData : [];
 
-            await this.loadAliases();
-            this.ui.renderStreamingChannels();
-            this.ui.updateStats();
+                // Update lookup
+                this.state.channelLookup.streaming.clear();
+                this.state.streamingChannels.forEach(channel => {
+                    const channelId = channel.Id || channel.channel_id || channel.id || channel.name;
+                    if (channelId) {
+                        this.state.channelLookup.streaming.set(channelId, channel);
+                    }
+                });
+
+                // Load aliases for these channels using new bulk endpoint
+                await this.loadAliases();
+
+                // Render channels
+                this.ui.renderStreamingChannels();
+
+                // Update stats
+                this.ui.updateStats();
+            } else {
+                throw new Error(data.error || 'Failed to load channels');
+            }
         } catch (error) {
             console.error('Error loading streaming channels:', error);
             window.showToast(`Error loading channels: ${error.message}`, 'error');
-            this.dom.toggleEmptyState(this.dom.elements.streamingEmpty, true);
+
+            // Show empty state - WITH NULL CHECK
+            if (this.dom.elements.streamingEmpty) {
+                this.dom.elements.streamingEmpty.classList.remove('hidden');
+            }
+
+            // Clear container - WITH NULL CHECK
+            if (this.dom.elements.streamingContainer) {
+                this.dom.elements.streamingContainer.innerHTML = '';
+            }
         } finally {
             this.state.isLoading.streaming = false;
-            this.dom.hideLoading(this.dom.elements.streamingContainer, this.dom.elements.streamingLoading);
+
+            // WITH NULL CHECKS for all DOM elements
+            if (this.dom.elements.streamingContainer && this.dom.elements.streamingLoading) {
+                this.dom.hideLoading(this.dom.elements.streamingContainer, this.dom.elements.streamingLoading);
+            }
         }
     }
 
@@ -153,23 +226,63 @@ class EPGMappingManager {
         if (this.state.isLoading.epg) return;
 
         this.state.isLoading.epg = true;
-        this.dom.showLoading(this.dom.elements.epgContainer, this.dom.elements.epgLoading);
-        this.dom.toggleEmptyState(this.dom.elements.epgEmpty, false);
+
+        // WITH NULL CHECKS for all DOM elements
+        if (this.dom.elements.epgContainer && this.dom.elements.epgLoading) {
+            this.dom.showLoading(this.dom.elements.epgContainer, this.dom.elements.epgLoading);
+        }
+
+        if (this.dom.elements.epgEmpty) {
+            this.dom.elements.epgEmpty.classList.add('hidden');
+        }
 
         try {
-            const channelsData = await this.api.fetchEPGChannels();
-            this.state.epgChannels = Array.isArray(channelsData) ? channelsData : [];
-            this.updateEPGLookup();
+            // Get all EPG channels
+            const response = await fetch('/api/channels');
+            const channelsData = await response.json();
 
+            if (Array.isArray(channelsData)) {
+                this.state.epgChannels = channelsData;
+                this.state.cache.epgChannels = channelsData;
+            } else {
+                this.state.epgChannels = [];
+            }
+
+            // Update lookup
+            this.state.channelLookup.epg.clear();
+            this.state.epgChannels.forEach(channel => {
+                const channelId = channel.id?.toString() || channel.identifier || channel.name;
+                if (channelId) {
+                    this.state.channelLookup.epg.set(channelId, channel);
+                }
+            });
+
+            // Render channels
             this.ui.renderEPGChannels();
+
+            // Update stats
             this.ui.updateStats();
+
         } catch (error) {
             console.error('Error loading EPG channels:', error);
             window.showToast(`Error loading EPG channels: ${error.message}`, 'error');
-            this.dom.toggleEmptyState(this.dom.elements.epgEmpty, true);
+
+            // Show empty state - WITH NULL CHECK
+            if (this.dom.elements.epgEmpty) {
+                this.dom.elements.epgEmpty.classList.remove('hidden');
+            }
+
+            // Clear container - WITH NULL CHECK
+            if (this.dom.elements.epgContainer) {
+                this.dom.elements.epgContainer.innerHTML = '';
+            }
         } finally {
             this.state.isLoading.epg = false;
-            this.dom.hideLoading(this.dom.elements.epgContainer, this.dom.elements.epgLoading);
+
+            // WITH NULL CHECKS for all DOM elements
+            if (this.dom.elements.epgContainer && this.dom.elements.epgLoading) {
+                this.dom.hideLoading(this.dom.elements.epgContainer, this.dom.elements.epgLoading);
+            }
         }
     }
 

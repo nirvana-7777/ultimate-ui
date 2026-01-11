@@ -72,6 +72,16 @@ class EPGMappingDOM {
         if (!element) return;
         isVisible ? element.classList.remove('hidden') : element.classList.add('hidden');
     }
+
+    // Helper to safely update innerHTML
+    updateInnerHTML(element, html) {
+        if (element) element.innerHTML = html;
+    }
+
+    // Helper to safely set disabled state
+    setDisabled(element, disabled) {
+        if (element) element.disabled = disabled;
+    }
 }
 
 export default EPGMappingDOM;
