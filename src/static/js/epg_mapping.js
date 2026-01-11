@@ -1,6 +1,7 @@
 /**
  * EPG Mapping Manager
  * Handles drag-and-drop mapping between Ultimate Backend channels and EPG channels
+ * IMPROVED VERSION: Uses bulk alias endpoints and shows better display names
  */
 
 class EPGMappingManager {
@@ -154,9 +155,13 @@ class EPGMappingManager {
                 if (channelType === 'epg') {
                     const epgChannel = this.channelLookup.epg.get(channelId);
                     if (epgChannel) {
+                        const displayName = epgChannel.display_name || 'Unknown';
+                        const techName = epgChannel.name || channelId;
                         this.state.currentMapping = {
                             epgId: channelId,
-                            epgName: epgChannel.display_name || epgChannel.name
+                            epgDisplayName: displayName,
+                            epgTechName: techName,
+                            epgFullName: `${displayName} (${techName})`
                         };
                     }
                 }
@@ -324,7 +329,7 @@ class EPGMappingManager {
                     }
                 });
 
-                // Load aliases for these channels
+                // Load aliases for these channels using new bulk endpoint
                 await this.loadAliases();
 
                 // Render channels
@@ -411,7 +416,7 @@ class EPGMappingManager {
             this.state.aliases.clear();
             this.channelLookup.aliasToStreaming.clear();
 
-            // OPTION 1: Use the new bulk alias endpoint (most efficient)
+            // TRY NEW BULK ENDPOINT FIRST (most efficient)
             try {
                 const response = await fetch('/api/aliases');
                 if (response.ok) {
@@ -425,6 +430,7 @@ class EPGMappingManager {
                                     epgChannelId: alias.channel_id,
                                     alias: alias.alias,
                                     epgChannelName: alias.channel_display_name || `Channel ${alias.channel_id}`,
+                                    epgTechName: alias.channel_name || alias.channel_id.toString(),  // Store technical name
                                     aliasType: alias.alias_type,
                                     createdAt: alias.created_at
                                 });
@@ -439,13 +445,12 @@ class EPGMappingManager {
                     }
                 }
             } catch (bulkError) {
-                console.warn('Bulk alias endpoint failed, falling back...', bulkError);
+                console.warn('Bulk alias endpoint failed, falling back to individual requests...', bulkError);
             }
 
-            // OPTION 2: Fallback to the original method
-            console.warn('Using fallback alias loading method (less efficient)');
+            // FALLBACK: Original inefficient method (for backward compatibility)
+            console.warn('Using fallback alias loading method');
 
-            // Original inefficient method as fallback
             for (const [streamingId, streamingChannel] of this.channelLookup.streaming) {
                 try {
                     for (const [epgId, epgChannel] of this.channelLookup.epg) {
@@ -463,97 +468,45 @@ class EPGMappingManager {
                                         aliasId: foundAlias.id,
                                         epgChannelId: epgId,
                                         alias: streamingId,
-                                        epgChannelName: epgChannel.display_name || epgChannel.name
+                                        epgChannelName: epgChannel.display_name || epgChannel.name,
+                                        epgTechName: epgChannel.name || epgId
                                     });
 
                                     this.channelLookup.aliasToStreaming.set(epgId, streamingId);
-                                    break;
+                                    break; // Found mapping, move to next streaming channel
                                 }
                             }
                         } catch (err) {
+                            // EPG channel might not have aliases endpoint
                             continue;
                         }
                     }
                 } catch (error) {
+                    // Silently fail - channel might not have aliases
                     console.debug(`Error checking aliases for channel ${streamingId}:`, error.message);
                 }
             }
 
         } catch (error) {
             console.error('Error loading aliases:', error);
+            // Don't show toast - this is a background operation
         }
     }
 
-    async loadAliasesPaginated(page = 1, perPage = 100) {
-        try {
-            const response = await fetch(`/api/aliases/paginated?page=${page}&per_page=${perPage}`);
-            const data = await response.json();
-
-            if (data.aliases && Array.isArray(data.aliases)) {
-                data.aliases.forEach(alias => {
-                    if (alias.alias) {
-                        this.state.aliases.set(alias.alias, {
-                            aliasId: alias.id,
-                            epgChannelId: alias.channel_id,
-                            alias: alias.alias,
-                            epgChannelName: alias.channel_display_name,
-                            aliasType: alias.alias_type,
-                            createdAt: alias.created_at
-                        });
-                    }
-                });
-
-                // Load more if available
-                if (data.total > page * perPage) {
-                    await this.loadAliasesPaginated(page + 1, perPage);
-                }
-            }
-        } catch (error) {
-            console.error('Error loading paginated aliases:', error);
+    findEPGChannelName(channelId) {
+        // Try to find the EPG channel in our lookup
+        const epgChannel = this.channelLookup.epg.get(channelId.toString());
+        if (epgChannel) {
+            return epgChannel.name || channelId;
         }
-    }
 
-    async loadAliasStatistics() {
-        try {
-            const response = await fetch('/api/aliases/statistics');
-            const data = await response.json();
+        // Search in the EPG channels array
+        const foundChannel = this.state.epgChannels.find(
+            channel => channel.id?.toString() === channelId.toString() ||
+                       channel.identifier === channelId.toString()
+        );
 
-            if (data.success !== false) {
-                this.state.statistics = data;
-                this.updateStatisticsDisplay();
-            }
-        } catch (error) {
-            console.error('Error loading alias statistics:', error);
-        }
-    }
-
-    updateStatisticsDisplay() {
-        if (!this.state.statistics) return;
-
-        const stats = this.state.statistics;
-        const statsElement = document.getElementById('alias-statistics');
-        if (statsElement) {
-            statsElement.innerHTML = `
-                <div class="stats-grid">
-                    <div class="stat-item">
-                        <span class="stat-label">Total Aliases:</span>
-                        <span class="stat-value">${stats.total_aliases || 0}</span>
-                    </div>
-                    <div class="stat-item">
-                        <span class="stat-label">Mapped Channels:</span>
-                        <span class="stat-value">${stats.channels_with_aliases || 0}</span>
-                    </div>
-                    <div class="stat-item">
-                        <span class="stat-label">Avg per Channel:</span>
-                        <span class="stat-value">${(stats.avg_aliases_per_channel || 0).toFixed(1)}</span>
-                    </div>
-                    <div class="stat-item">
-                        <span class="stat-label">Unmapped:</span>
-                        <span class="stat-value">${stats.channels_without_aliases || 0}</span>
-                    </div>
-                </div>
-            `;
-        }
+        return foundChannel?.name || channelId;
     }
 
     renderStreamingChannels() {
@@ -706,17 +659,37 @@ class EPGMappingManager {
         infoDiv.appendChild(nameDiv);
         infoDiv.appendChild(idDiv);
 
-        // Add mapping info for streaming channels
+        // Add mapping info for streaming channels with better display text
         if (type === 'streaming' && isMapped) {
             const aliasInfo = this.state.aliases.get(channelId);
-            if (aliasInfo && aliasInfo.epgChannelId) {
+            if (aliasInfo) {
                 const epgChannel = this.channelLookup.epg.get(aliasInfo.epgChannelId);
-                const epgDisplayName = epgChannel?.display_name || aliasInfo.epgChannelId;
+
+                // Build more informative display text
+                let displayText = '';
+                let tooltipText = '';
+
+                if (epgChannel) {
+                    // Format: "Linked to: Display Name (Technical Name)"
+                    const displayName = epgChannel.display_name || 'Unknown';
+                    const techName = epgChannel.name || aliasInfo.epgChannelId;
+                    displayText = `Linked to: ${displayName} (${techName})`;
+                    tooltipText = `EPG ID: ${aliasInfo.epgChannelId}`;
+                } else if (aliasInfo.epgChannelName) {
+                    // If we have the name from alias data
+                    const techName = aliasInfo.epgTechName || this.findEPGChannelName(aliasInfo.epgChannelId);
+                    displayText = `Linked to: ${aliasInfo.epgChannelName} (${techName})`;
+                    tooltipText = `EPG ID: ${aliasInfo.epgChannelId}`;
+                } else {
+                    // Fallback
+                    displayText = `Linked to: Channel ${aliasInfo.epgChannelId}`;
+                    tooltipText = `EPG ID: ${aliasInfo.epgChannelId}`;
+                }
 
                 const mappingDiv = document.createElement('div');
                 mappingDiv.className = 'channel-mapping';
-                mappingDiv.textContent = `Linked to: ${epgDisplayName}`;
-                mappingDiv.title = `EPG ID: ${aliasInfo.epgChannelId}`;
+                mappingDiv.textContent = displayText;
+                mappingDiv.title = tooltipText;
                 infoDiv.appendChild(mappingDiv);
             }
         }
@@ -771,16 +744,24 @@ class EPGMappingManager {
         }
 
         const epgId = this.state.currentMapping.epgId;
-        const epgName = this.state.currentMapping.epgName;
+        const epgDisplayName = this.state.currentMapping.epgDisplayName || 'Unknown';
+        const epgTechName = this.state.currentMapping.epgTechName || epgId;
+        const epgFullName = this.state.currentMapping.epgFullName || `${epgDisplayName} (${epgTechName})`;
 
         // Check if streaming channel already has an alias
         const existingAlias = this.state.aliases.get(streamingId);
 
         if (existingAlias) {
-            // Confirm overwrite
+            // Get details of existing mapping for better confirmation message
+            const existingEPG = this.channelLookup.epg.get(existingAlias.epgChannelId);
+            const existingDisplayName = existingEPG?.display_name || existingAlias.epgChannelName || 'Unknown';
+            const existingTechName = existingEPG?.name || existingAlias.epgChannelId;
+            const existingFullName = `${existingDisplayName} (${existingTechName})`;
+
+            // Confirm overwrite with better display
             const confirmed = confirm(
-                `Channel "${streamingName}" is already mapped to EPG: ${existingAlias.epgChannelName}\n\n` +
-                `Do you want to replace it with "${epgName}"?`
+                `Channel "${streamingName}" is already mapped to:\n${existingFullName}\n\n` +
+                `Do you want to replace it with:\n${epgFullName}?`
             );
 
             if (!confirmed) return;
@@ -791,7 +772,7 @@ class EPGMappingManager {
 
         // Create new alias
         this.state.isLoading.mapping = true;
-        this.updateStatus(`Mapping ${epgName} to ${streamingName}...`);
+        this.updateStatus(`Mapping ${epgFullName} to ${streamingName}...`);
 
         try {
             // Create alias in EPG backend
@@ -810,20 +791,24 @@ class EPGMappingManager {
             const data = await response.json();
 
             if (data.success) {
-                // Update local state
+                // Get the EPG channel for full details
                 const epgChannel = this.channelLookup.epg.get(epgId);
+
+                // Update local state with full details
                 this.state.aliases.set(streamingId, {
                     aliasId: data.alias?.id,
                     epgChannelId: epgId,
                     alias: streamingId,
-                    epgChannelName: epgChannel?.display_name || epgName
+                    epgChannelName: epgChannel?.display_name || epgDisplayName,
+                    epgTechName: epgChannel?.name || epgTechName,
+                    aliasType: 'ultimate_backend'
                 });
 
                 // Update reverse lookup
                 this.channelLookup.aliasToStreaming.set(epgId, streamingId);
 
-                // Show success
-                window.showToast(`Successfully mapped ${epgName} to ${streamingName}`, 'success');
+                // Show success with better display
+                window.showToast(`Successfully mapped ${streamingName} to ${epgFullName}`, 'success');
 
                 // Re-render affected channels
                 this.renderStreamingChannels();
@@ -872,8 +857,25 @@ class EPGMappingManager {
         const aliasInfo = this.state.aliases.get(streamingId);
         if (!aliasInfo) return;
 
+        // Get EPG channel details for better display
+        const epgChannel = this.channelLookup.epg.get(aliasInfo.epgChannelId);
+        const epgDisplayName = epgChannel?.display_name || aliasInfo.epgChannelName || 'Unknown';
+        const epgTechName = epgChannel?.name || aliasInfo.epgTechName || aliasInfo.epgChannelId;
+        const epgFullName = `${epgDisplayName} (${epgTechName})`;
+
+        // Update modal text with better display
+        const modalText = document.querySelector('#unmap-modal .modal-content p');
+        if (modalText) {
+            modalText.textContent = `Are you sure you want to unmap "${streamingName}" from "${epgFullName}"?`;
+        }
+
         // Store for confirmation
-        this.state.pendingUnmap = { streamingId, aliasInfo, streamingName };
+        this.state.pendingUnmap = {
+            streamingId,
+            aliasInfo,
+            streamingName,
+            epgFullName
+        };
 
         // Show modal
         if (this.elements.unmapModal) {
@@ -891,16 +893,16 @@ class EPGMappingManager {
     async performUnmap() {
         if (!this.state.pendingUnmap) return;
 
-        const { streamingId, aliasInfo, streamingName } = this.state.pendingUnmap;
+        const { streamingId, aliasInfo, streamingName, epgFullName } = this.state.pendingUnmap;
 
         this.state.isLoading.mapping = true;
-        this.updateStatus(`Unmapping ${streamingName}...`);
+        this.updateStatus(`Unmapping ${streamingName} from ${epgFullName}...`);
 
         try {
             await this.deleteAlias(aliasInfo.aliasId, streamingId);
 
-            // Show success
-            window.showToast(`Successfully unmapped ${streamingName}`, 'success');
+            // Show success with better info
+            window.showToast(`Successfully unmapped ${streamingName} from ${epgFullName}`, 'success');
 
             // Re-render channels
             this.renderStreamingChannels();
