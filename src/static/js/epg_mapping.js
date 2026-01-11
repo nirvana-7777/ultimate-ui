@@ -411,33 +411,76 @@ class EPGMappingManager {
             this.state.aliases.clear();
             this.channelLookup.aliasToStreaming.clear();
 
-            // Use the new bulk endpoint to get all aliases at once
-            const response = await fetch('/api/aliases');
-            const data = await response.json();
+            // OPTION 1: Use the new bulk alias endpoint (most efficient)
+            try {
+                const response = await fetch('/api/aliases');
+                if (response.ok) {
+                    const data = await response.json();
 
-            if (data.aliases && Array.isArray(data.aliases)) {
-                data.aliases.forEach(alias => {
-                    if (alias.alias) {
-                        this.state.aliases.set(alias.alias, {
-                            aliasId: alias.id,
-                            epgChannelId: alias.channel_id,
-                            alias: alias.alias,
-                            epgChannelName: alias.channel_display_name || `Channel ${alias.channel_id}`,
-                            aliasType: alias.alias_type,
-                            createdAt: alias.created_at
+                    if (data.aliases && Array.isArray(data.aliases)) {
+                        data.aliases.forEach(alias => {
+                            if (alias.alias) {
+                                this.state.aliases.set(alias.alias, {
+                                    aliasId: alias.id,
+                                    epgChannelId: alias.channel_id,
+                                    alias: alias.alias,
+                                    epgChannelName: alias.channel_display_name || `Channel ${alias.channel_id}`,
+                                    aliasType: alias.alias_type,
+                                    createdAt: alias.created_at
+                                });
+
+                                // Add reverse lookup for EPG channels
+                                this.channelLookup.aliasToStreaming.set(alias.channel_id.toString(), alias.alias);
+                            }
                         });
 
-                        // Add reverse lookup for EPG channels
-                        this.channelLookup.aliasToStreaming.set(alias.channel_id.toString(), alias.alias);
+                        console.log(`Loaded ${data.aliases.length} aliases from bulk endpoint`);
+                        return; // Success, exit early
                     }
-                });
-
-                logger.debug(`Loaded ${data.aliases.length} aliases from bulk endpoint`);
+                }
+            } catch (bulkError) {
+                console.warn('Bulk alias endpoint failed, falling back...', bulkError);
             }
+
+            // OPTION 2: Fallback to the original method
+            console.warn('Using fallback alias loading method (less efficient)');
+
+            // Original inefficient method as fallback
+            for (const [streamingId, streamingChannel] of this.channelLookup.streaming) {
+                try {
+                    for (const [epgId, epgChannel] of this.channelLookup.epg) {
+                        try {
+                            const aliasesResponse = await fetch(`/api/channels/${epgId}/aliases`);
+                            const aliasesData = await aliasesResponse.json();
+
+                            if (Array.isArray(aliasesData)) {
+                                const foundAlias = aliasesData.find(alias =>
+                                    alias.alias === streamingId
+                                );
+
+                                if (foundAlias) {
+                                    this.state.aliases.set(streamingId, {
+                                        aliasId: foundAlias.id,
+                                        epgChannelId: epgId,
+                                        alias: streamingId,
+                                        epgChannelName: epgChannel.display_name || epgChannel.name
+                                    });
+
+                                    this.channelLookup.aliasToStreaming.set(epgId, streamingId);
+                                    break;
+                                }
+                            }
+                        } catch (err) {
+                            continue;
+                        }
+                    }
+                } catch (error) {
+                    console.debug(`Error checking aliases for channel ${streamingId}:`, error.message);
+                }
+            }
+
         } catch (error) {
             console.error('Error loading aliases:', error);
-            // Fallback to individual requests if bulk endpoint fails
-            await this.loadAliasesFallback();
         }
     }
 
