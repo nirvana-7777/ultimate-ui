@@ -134,6 +134,24 @@ class EPGCore {
         }
     }
 
+    isSameDay(date1, date2) {
+        return date1.getFullYear() === date2.getFullYear() &&
+               date1.getMonth() === date2.getMonth() &&
+               date1.getDate() === date2.getDate();
+    }
+
+    isTomorrow(date) {
+        const tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        return this.isSameDay(tomorrow, date);
+    }
+
+    isYesterday(date) {
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+        return this.isSameDay(yesterday, date);
+    }
+
     // Updated getSmartTimeBadge method for epg_core.js
     getSmartTimeBadge(startTime, endTime) {
         const now = new Date();
@@ -189,13 +207,6 @@ class EPGCore {
                 class: 'time-badge future'
             };
         }
-    }
-
-    // Add this helper method
-    isYesterday(date) {
-        const yesterday = new Date();
-        yesterday.setDate(yesterday.getDate() - 1);
-        return this.isSameDay(yesterday, date);
     }
 
     async loadDataForDate(date) {
