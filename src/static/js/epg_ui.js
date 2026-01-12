@@ -347,19 +347,46 @@ class EPGUI {
 
         // Find the channel card and get the last program
         const channelCard = content.querySelector('.channel-daily-expanded');
-        if (!channelCard) return;
+        if (!channelCard) {
+            console.log('Channel card not found');
+            return;
+        }
 
         const allProgramCards = channelCard.querySelectorAll('.daily-program-card-expanded');
-        if (allProgramCards.length === 0) return;
+        if (allProgramCards.length === 0) {
+            console.log('No program cards found');
+            return;
+        }
 
         const lastProgramCard = allProgramCards[allProgramCards.length - 1];
         const lastProgramId = lastProgramCard.dataset.programId;
-        const lastProgram = this.core.getProgram(channelId, lastProgramId);
+
+        console.log('Last program card:', lastProgramCard);
+        console.log('Last program ID from dataset:', lastProgramId);
+
+        // Get all programs for this channel from core
+        const allPrograms = this.core.dailyPrograms.get(channelId);
+        console.log('Total programs in core for channel:', allPrograms ? allPrograms.length : 0);
+
+        // Find the last program by ID
+        let lastProgram = null;
+        if (allPrograms && allPrograms.length > 0) {
+            // Try to find by matching ID
+            lastProgram = allPrograms.find(p => String(p.id) === String(lastProgramId));
+
+            // If not found, use the last program in the array
+            if (!lastProgram) {
+                console.log('Program not found by ID, using last program in array');
+                lastProgram = allPrograms[allPrograms.length - 1];
+            }
+        }
 
         if (!lastProgram) {
-            console.log('Could not find last program');
+            console.log('Could not find last program. Channel ID:', channelId, 'Program ID:', lastProgramId);
             return;
         }
+
+        console.log('Found last program:', lastProgram.title, 'End time:', lastProgram.end_time);
 
         const loadMoreBtn = content.querySelector('.load-more-programs-btn');
         if (!loadMoreBtn) return;
@@ -383,7 +410,7 @@ class EPGUI {
             console.log(`Loaded ${newPrograms.length} new programs`);
 
             if (newPrograms.length > 0) {
-                // Insert new programs before the load more button
+                // Insert new programs into the channel card
                 newPrograms.forEach(program => {
                     const programElement = this.createDailyProgramCardExpanded(channel, program);
                     channelCard.appendChild(programElement);
@@ -467,8 +494,13 @@ class EPGUI {
 
         const div = document.createElement('div');
         div.className = 'daily-program-card-expanded';
-        div.dataset.programId = program.id;
-        div.dataset.channelId = channel.id;
+
+        // Ensure program ID is set - use string to avoid type issues
+        const programId = program.id || program.program_id || `${channel.id}_${program.start_time}`;
+        div.dataset.programId = String(programId);
+        div.dataset.channelId = String(channel.id);
+
+        console.log('Creating program card with ID:', programId, 'for program:', program.title);
 
         if (startTime <= now && endTime >= now) {
             div.classList.add('live');
