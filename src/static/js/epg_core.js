@@ -307,13 +307,21 @@ class EPGCore {
     // NEW: Load next day's programs for a specific channel
     async loadNextDayForChannel(channelId, currentEndDate) {
         try {
+            // Start from the end of the last program and move to the NEXT day
             const nextDayStart = new Date(currentEndDate);
+            // Add 1 hour to ensure we're past the current day
+            nextDayStart.setHours(nextDayStart.getHours() + 1);
+            // Then set to midnight of that day
             nextDayStart.setHours(0, 0, 0, 0);
 
             const nextDayEnd = new Date(nextDayStart);
-            nextDayEnd.setHours(23, 59, 59, 999);
+            nextDayEnd.setDate(nextDayEnd.getDate() + 1);
+            nextDayEnd.setHours(0, 0, 0, 0);
+            nextDayEnd.setMilliseconds(-1); // Just before midnight of the following day
 
             const dateKey = nextDayStart.toISOString().split('T')[0];
+
+            console.log(`Loading programs for channel ${channelId} from ${nextDayStart.toISOString()} to ${nextDayEnd.toISOString()}`);
 
             // Check if we've already loaded this date for this channel
             if (!this.loadedDateRanges.has(channelId)) {
@@ -322,6 +330,7 @@ class EPGCore {
 
             const loadedDates = this.loadedDateRanges.get(channelId);
             if (loadedDates.has(dateKey)) {
+                console.log(`Date ${dateKey} already loaded for channel ${channelId}`);
                 return []; // Already loaded
             }
 
@@ -337,6 +346,8 @@ class EPGCore {
             const existingPrograms = this.dailyPrograms.get(channelId) || [];
             const allPrograms = [...existingPrograms, ...programs];
             this.dailyPrograms.set(channelId, allPrograms);
+
+            console.log(`Loaded ${programs.length} programs for ${dateKey}, total now: ${allPrograms.length}`);
 
             return programs;
 
