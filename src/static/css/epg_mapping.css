@@ -626,3 +626,96 @@
 #streaming-channels-container.drag-active::before {
     opacity: 1;
 }
+
+.channel-card.tentative {
+    background: linear-gradient(135deg, rgba(255, 152, 0, 0.1), rgba(255, 152, 0, 0.05));
+    border-color: var(--warning-color, #ff9800);
+    cursor: pointer;
+    animation: pulse-orange 2s infinite;
+}
+
+.channel-card.tentative:hover {
+    background: linear-gradient(135deg, rgba(255, 152, 0, 0.2), rgba(255, 152, 0, 0.1));
+    border-color: var(--warning-hover, #f57c00);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(255, 152, 0, 0.3);
+}
+
+/* Tentative indicator */
+.tentative-indicator {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: var(--warning-color, #ff9800);
+    border: 2px solid var(--bg-secondary);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    animation: blink 1.5s infinite;
+}
+
+/* Suggestion info */
+.channel-suggestion {
+    margin-top: 8px;
+    padding: 4px 8px;
+    background: rgba(255, 152, 0, 0.1);
+    border-radius: 4px;
+    border-left: 3px solid var(--warning-color, #ff9800);
+}
+
+.suggestion-match {
+    font-size: 11px;
+    color: var(--warning-color, #ff9800);
+    font-weight: 500;
+}
+
+.suggestion-confidence {
+    font-size: 10px;
+    color: var(--text-muted);
+    font-family: 'SF Mono', Monaco, Consolas, monospace;
+}
+
+/* Animation for tentative cards */
+@keyframes pulse-orange {
+    0%, 100% {
+        box-shadow: 0 2px 8px rgba(255, 152, 0, 0.1);
+    }
+    50% {
+        box-shadow: 0 2px 12px rgba(255, 152, 0, 0.3);
+    }
+}
+
+@keyframes blink {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.5;
+    }
+}
+
+/* Add to existing mapped styles to ensure proper ordering */
+.channel-card.mapped.tentative {
+    /* When both classes exist, mapped should win */
+    background: linear-gradient(135deg, rgba(76, 175, 80, 0.1), rgba(76, 175, 80, 0.05));
+    border-color: var(--success-color);
+    animation: none;
+}
+
+/* Update stats display if needed */
+.stat.tentative {
+    color: var(--warning-color, #ff9800);
+}
+
+/* Add to responsive section */
+@media (max-width: 768px) {
+    .channel-card.tentative .channel-suggestion {
+        font-size: 10px;
+    }
+
+    .tentative-indicator {
+        width: 10px;
+        height: 10px;
+    }
+}

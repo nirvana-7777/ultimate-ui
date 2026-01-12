@@ -38,6 +38,13 @@ class EPGMappingState {
             epgChannels: null,
             aliases: null
         };
+
+        // NEW: Statistics
+        this.stats = {
+            mapped: 0,
+            tentative: 0,
+            unmapped: 0
+        };
     }
 
     // Getters for computed state
@@ -59,6 +66,21 @@ class EPGMappingState {
         return this.aliases.size;
     }
 
+    // NEW: Update stats
+    updateStats(tentativeCount = 0) {
+        const total = this.streamingChannels.length;
+        const mapped = this.aliases.size;
+        const tentative = tentativeCount;
+        const unmapped = total - mapped - tentative;
+
+        this.stats = {
+            mapped: Math.max(0, mapped),
+            tentative: Math.max(0, tentative),
+            unmapped: Math.max(0, unmapped),
+            total: total
+        };
+    }
+
     isChannelMapped(streamingId) {
         return this.aliases.has(streamingId);
     }
@@ -72,6 +94,7 @@ class EPGMappingState {
         if (aliasData.epgChannelId) {
             this.channelLookup.aliasToStreaming.set(aliasData.epgChannelId, streamingId);
         }
+        this.updateStats(); // Update stats when alias is added
     }
 
     removeAlias(streamingId) {
@@ -80,6 +103,7 @@ class EPGMappingState {
             this.channelLookup.aliasToStreaming.delete(aliasInfo.epgChannelId);
         }
         this.aliases.delete(streamingId);
+        this.updateStats(); // Update stats when alias is removed
     }
 }
 

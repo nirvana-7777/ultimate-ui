@@ -8,6 +8,8 @@ import EPGMappingDOM from './epg_mapping_dom.js';
 import EPGMappingDragDrop from './epg_mapping_dragdrop.js';
 import EPGMappingUI from './epg_mapping_ui.js';
 import EPGMappingAPI from './epg_mapping_api.js';
+import EPGMappingFuzzy from './epg_mapping_fuzzy.js';
+import EPGMappingSuggestions from './epg_mapping_suggestions.js';
 
 class EPGMappingManager {
     constructor() {
@@ -15,11 +17,12 @@ class EPGMappingManager {
         this.state = new EPGMappingState();
         this.dom = new EPGMappingDOM();
         this.api = new EPGMappingAPI();
-        this.ui = new EPGMappingUI(this.state, this.dom);
+        this.fuzzy = new EPGMappingFuzzy();
+        this.suggestions = new EPGMappingSuggestions(this.state, this.fuzzy);
+        this.ui = new EPGMappingUI(this.state, this.dom, this.suggestions);
         this.dragDrop = new EPGMappingDragDrop(this.state, this.ui, this);
 
         // Don't initialize here - wait for DOM to be fully ready
-        // this.init();
     }
 
     async init() {
@@ -44,9 +47,8 @@ class EPGMappingManager {
         this.ui.updateStats();
     }
 
-
     setupEventListeners() {
-        // Provider selection - WITH NULL CHECK
+        // Provider selection
         if (this.dom.elements.providerSelect) {
             this.dom.elements.providerSelect.addEventListener('change', (e) => {
                 const providerId = e.target.value;
@@ -57,22 +59,23 @@ class EPGMappingManager {
             });
         }
 
-        // Refresh providers button - WITH NULL CHECK
+        // Refresh providers button
         if (this.dom.elements.refreshProviders) {
             this.dom.elements.refreshProviders.addEventListener('click', () => {
-                this.loadProviders(true); // Force refresh
+                this.loadProviders(true);
             });
         }
 
-        // EPG search - WITH NULL CHECK
+        // EPG search
         if (this.dom.elements.epgSearch) {
             this.dom.elements.epgSearch.addEventListener('input', (e) => {
                 this.state.searchTerm = e.target.value.toLowerCase();
                 this.ui.renderEPGChannels();
+                this.ui.renderStreamingChannels(); // Also re-render to show/hide suggestions
             });
         }
 
-        // Unmap modal - only if elements exist
+        // Unmap modal
         if (this.dom.elements.cancelUnmap && this.dom.elements.confirmUnmap) {
             this.dom.elements.cancelUnmap.addEventListener('click', () => {
                 this.hideUnmapModal();
@@ -83,7 +86,7 @@ class EPGMappingManager {
             });
         }
 
-        // Close modal on backdrop click
+        // Modal backdrop click
         if (this.dom.elements.unmapModal) {
             this.dom.elements.unmapModal.addEventListener('click', (e) => {
                 if (e.target === this.dom.elements.unmapModal) {
@@ -94,10 +97,25 @@ class EPGMappingManager {
 
         // Keyboard shortcuts
         document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') {
-                if (this.dom.elements.unmapModal && !this.dom.elements.unmapModal.classList.contains('hidden')) {
-                    this.hideUnmapModal();
+            if (e.key === 'Escape' && this.dom.elements.unmapModal &&
+                !this.dom.elements.unmapModal.classList.contains('hidden')) {
+                this.hideUnmapModal();
+            }
+        });
+
+        // Event delegation for suggestion clicks
+        document.addEventListener('click', (e) => {
+            // Check if click is on a tentative channel card
+            if (e.target.closest('.channel-card.tentative')) {
+                const card = e.target.closest('.channel-card');
+                const streamingId = card.dataset.channelId;
+
+                // Don't trigger if clicking on unmap button or other interactive elements
+                if (e.target.closest('.unmap-btn') || e.target.closest('.preview-link')) {
+                    return;
                 }
+
+                this.acceptTentativeMatch(streamingId);
             }
         });
     }
@@ -175,21 +193,19 @@ class EPGMappingManager {
             const data = await response.json();
 
             if (data.success) {
-                // Fix: Handle nested channels structure
                 const channelsData = data.channels?.channels || data.channels || [];
                 this.state.streamingChannels = Array.isArray(channelsData) ? channelsData : [];
 
                 // Update lookup
-                this.state.channelLookup.streaming.clear();
-                this.state.streamingChannels.forEach(channel => {
-                    const channelId = channel.Id || channel.channel_id || channel.id || channel.name;
-                    if (channelId) {
-                        this.state.channelLookup.streaming.set(channelId, channel);
-                    }
-                });
+                this.updateStreamingLookup();
 
-                // Load aliases for these channels using new bulk endpoint
+                // Load aliases
                 await this.loadAliases();
+
+                // Generate suggestions after EPG channels are loaded
+                if (this.state.epgChannels.length > 0) {
+                    this.generateSuggestions();
+                }
 
                 // Render channels
                 this.ui.renderStreamingChannels();
@@ -249,13 +265,16 @@ class EPGMappingManager {
             }
 
             // Update lookup
-            this.state.channelLookup.epg.clear();
-            this.state.epgChannels.forEach(channel => {
-                const channelId = channel.id?.toString() || channel.identifier || channel.name;
-                if (channelId) {
-                    this.state.channelLookup.epg.set(channelId, channel);
-                }
-            });
+            this.updateEPGLookup();
+
+            // Initialize fuzzy matching with EPG channels
+            this.fuzzy.initialize(this.state.epgChannels);
+
+            // Generate suggestions if streaming channels are already loaded
+            if (this.state.streamingChannels.length > 0) {
+                this.generateSuggestions();
+                this.ui.renderStreamingChannels(); // Re-render to show suggestions
+            }
 
             // Render channels
             this.ui.renderEPGChannels();
@@ -305,7 +324,53 @@ class EPGMappingManager {
         }
     }
 
-    // Core mapping functionality
+    // Generate suggestions for all channels
+    generateSuggestions() {
+        this.suggestions.generateSuggestions();
+
+        // Update stats with tentative count
+        this.state.updateStats(this.suggestions.getTentativeCount());
+
+        // Notify UI to update stats display
+        if (this.ui.updateStats) {
+            this.ui.updateStats();
+        }
+    }
+
+    // Accept a tentative match (orange → green)
+    async acceptTentativeMatch(streamingId) {
+        const suggestion = this.suggestions.getSuggestion(streamingId);
+        if (!suggestion) return;
+
+        const streamingChannel = this.state.channelLookup.streaming.get(streamingId);
+        const streamingName = streamingChannel?.Name || streamingChannel?.name || streamingId;
+
+        const epgDisplayName = suggestion.displayName;
+        const epgTechName = suggestion.epgChannel?.name || suggestion.epgId;
+        const epgFullName = `${epgDisplayName} (${epgTechName})`;
+
+        // Check for existing mapping
+        const existingAlias = this.state.getAliasInfo(streamingId);
+        if (existingAlias) {
+            // If already mapped, just remove from suggestions
+            this.suggestions.suggestions.delete(streamingId);
+            this.generateSuggestions();
+            this.ui.renderStreamingChannels();
+            return;
+        }
+
+        // Create the mapping
+        await this.createMapping(streamingId, suggestion.epgId, streamingName, epgFullName);
+
+        // Remove from suggestions
+        this.suggestions.acceptSuggestion(streamingId);
+
+        // Update suggestions and UI
+        this.generateSuggestions();
+        this.ui.renderStreamingChannels();
+    }
+
+    // Core mapping functionality (for drag & drop)
     async handleMapping(streamingId) {
         if (!this.state.currentMapping || !this.state.currentMapping.epgId) {
             window.showToast('Please select an EPG channel to map', 'warning');
@@ -329,6 +394,11 @@ class EPGMappingManager {
             await this.deleteAlias(existingAlias.aliasId, streamingId);
         }
 
+        // Remove from suggestions if it was a tentative match
+        if (this.suggestions.hasTentativeMatch(streamingId)) {
+            this.suggestions.acceptSuggestion(streamingId);
+        }
+
         // Create new alias
         await this.createMapping(streamingId, epgId, streamingName, epgFullName);
     }
@@ -345,8 +415,8 @@ class EPGMappingManager {
                 aliasId: data.alias?.id,
                 epgChannelId: epgId,
                 alias: streamingId,
-                epgChannelName: epgChannel?.display_name || this.state.currentMapping.epgDisplayName,
-                epgTechName: epgChannel?.name || this.state.currentMapping.epgTechName,
+                epgChannelName: epgChannel?.display_name || this.state.currentMapping?.epgDisplayName || epgFullName,
+                epgTechName: epgChannel?.name || epgId,
                 aliasType: 'ultimate_backend'
             });
 

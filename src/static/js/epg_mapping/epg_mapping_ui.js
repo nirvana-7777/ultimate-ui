@@ -4,9 +4,10 @@
  */
 
 class EPGMappingUI {
-    constructor(stateManager, domManager) {
+    constructor(stateManager, domManager, suggestionsManager) {
         this.state = stateManager;
         this.dom = domManager;
+        this.suggestions = suggestionsManager;
     }
 
     // Provider UI
@@ -84,23 +85,55 @@ class EPGMappingUI {
 
         // Check if mapped
         const isMapped = type === 'streaming' && this.state.isChannelMapped(channelId);
+
+        // Check if has tentative match (only for streaming channels)
+        const hasTentative = type === 'streaming' && this.suggestions.hasTentativeMatch(channelId) && !isMapped;
+
         if (isMapped) {
             card.classList.add('mapped', 'new');
+        } else if (hasTentative) {
+            card.classList.add('tentative');
+
+            // Add tooltip with suggestion info
+            const suggestion = this.suggestions.getSuggestion(channelId);
+            if (suggestion) {
+                card.title = `Suggested match: ${suggestion.displayName} (${suggestion.score}% match)\nClick to confirm`;
+            }
         }
 
         // Build card content
         card.appendChild(this.createChannelLogo(channel, type));
-        card.appendChild(this.createChannelInfo(channel, type, channelId, isMapped));
+        card.appendChild(this.createChannelInfo(channel, type, channelId, isMapped, hasTentative));
 
         // Add unmap button for mapped channels
         if (type === 'streaming' && isMapped) {
             card.appendChild(this.createUnmapButton(channelId, channel));
         }
 
+        // Add suggestion info for tentative matches
+        if (type === 'streaming' && hasTentative && !isMapped) {
+            const suggestionInfo = this.createSuggestionInfo(channelId);
+            if (suggestionInfo) {
+                const infoDiv = card.querySelector('.channel-info');
+                if (infoDiv) {
+                    infoDiv.appendChild(suggestionInfo);
+                }
+            }
+
+            // Add tentative indicator
+            const indicator = document.createElement('div');
+            indicator.className = 'tentative-indicator';
+            indicator.title = 'Tentative match - click to confirm';
+            card.appendChild(indicator);
+        }
+
         // Make EPG channels draggable
         if (type === 'epg') {
             card.draggable = true;
             card.title = 'Drag to map onto a streaming channel';
+        } else if (hasTentative && !isMapped) {
+            card.style.cursor = 'pointer';
+            // Title already set above
         } else {
             card.title = 'Drop EPG channel here to map';
         }
@@ -111,6 +144,27 @@ class EPGMappingUI {
         }
 
         return card;
+    }
+
+    createSuggestionInfo(streamingId) {
+        const suggestion = this.suggestions.getSuggestion(streamingId);
+        if (!suggestion) return null;
+
+        const suggestionDiv = document.createElement('div');
+        suggestionDiv.className = 'channel-suggestion';
+
+        const matchText = document.createElement('div');
+        matchText.className = 'suggestion-match';
+        matchText.textContent = `Suggested: ${suggestion.displayName}`;
+
+        const confidenceText = document.createElement('div');
+        confidenceText.className = 'suggestion-confidence';
+        confidenceText.textContent = `${suggestion.score}% match`;
+
+        suggestionDiv.appendChild(matchText);
+        suggestionDiv.appendChild(confidenceText);
+
+        return suggestionDiv;
     }
 
     // Helper methods for card creation
@@ -144,7 +198,7 @@ class EPGMappingUI {
         return logoDiv;
     }
 
-    createChannelInfo(channel, type, channelId, isMapped) {
+    createChannelInfo(channel, type, channelId, isMapped, hasTentative = false) {
         const infoDiv = document.createElement('div');
         infoDiv.className = 'channel-info';
 
@@ -164,13 +218,6 @@ class EPGMappingUI {
         if (type === 'streaming' && isMapped) {
             const mappingInfo = this.createMappingInfo(channelId);
             if (mappingInfo) infoDiv.appendChild(mappingInfo);
-        }
-
-        // Mapped indicator
-        if (isMapped) {
-            const indicator = document.createElement('div');
-            indicator.className = 'mapped-indicator';
-            // Append to card, not info
         }
 
         return infoDiv;
@@ -231,13 +278,30 @@ class EPGMappingUI {
 
     // Stats and status
     updateStats() {
-        this.dom.updateText(this.dom.elements.streamingCount, this.state.streamingChannels.length);
-        this.dom.updateText(this.dom.elements.epgTotalCount, this.state.epgChannels.length);
-        this.dom.updateText(this.dom.elements.mappedCount, this.state.mappedCount);
+        // Streaming channel count
+        const streamingCount = this.state.streamingChannels?.length || 0;
+        this.dom.updateText(this.dom.elements.streamingCount, streamingCount.toString());
+
+        // EPG channel count
+        const epgCount = this.state.epgChannels?.length || 0;
+        this.dom.updateText(this.dom.elements.epgTotalCount, epgCount.toString());
+
+        // Mapped count
+        const mappedCount = this.state.mappedCount || 0;
+        this.dom.updateText(this.dom.elements.mappedCount, mappedCount.toString());
+
+        // Update tentative count if we have that element
+        const tentativeElement = document.getElementById('tentative-count');
+        if (tentativeElement) {
+            const tentativeCount = this.state.stats?.tentative || this.suggestions.getTentativeCount();
+            this.dom.updateText(tentativeElement, tentativeCount.toString());
+        }
     }
 
     updateStatus(message) {
-        this.dom.updateText(this.dom.elements.mappingStatus, message);
+        if (this.dom.elements.mappingStatus) {
+            this.dom.elements.mappingStatus.textContent = message;
+        }
     }
 }
 
