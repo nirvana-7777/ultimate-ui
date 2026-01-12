@@ -1,9 +1,11 @@
-// EPG UI - With separate daily programs section and animations
+// epg_ui.js - Updated with smart time badges and no LIVE/DEMNÄCHST text
 class EPGUI {
     constructor(core) {
         this.core = core;
         this.expandedChannels = new Set();
         this.currentModal = null;
+        this.dailyProgramsInfiniteScroll = null;
+        this.currentLoadingChannel = null;
     }
 
     renderCurrentEvents(channels, currentEvents) {
@@ -37,11 +39,9 @@ class EPGUI {
             div.classList.add(program.is_live ? 'live' : 'upcoming');
         }
 
-        // IMPROVED: Restructured layout
         const header = document.createElement('div');
         header.className = 'channel-header-compact';
 
-        // Logo section (logo + name + play button)
         const logoSection = document.createElement('div');
         logoSection.className = 'channel-logo-section';
 
@@ -63,13 +63,11 @@ class EPGUI {
 
         logoSection.appendChild(logoContainer);
 
-        // IMPROVED: Channel name now under logo with smaller font
         const name = document.createElement('div');
         name.className = 'channel-name-compact';
         name.textContent = channel.display_name;
         logoSection.appendChild(name);
 
-        // Play button underneath name
         if (program && (program.stream_url || program.stream)) {
             const playBtn = document.createElement('button');
             playBtn.className = 'btn-play-tile';
@@ -81,11 +79,9 @@ class EPGUI {
 
         header.appendChild(logoSection);
 
-        // Event info - now takes main space
         const info = document.createElement('div');
         info.className = 'channel-info-compact';
 
-        // Current program - title now on top with larger font
         if (program) {
             info.appendChild(this.createEventInfo(program));
         } else {
@@ -97,7 +93,6 @@ class EPGUI {
 
         header.appendChild(info);
 
-        // Preview image in top-right corner
         if (program) {
             const imageUrl = program.image_url || program.icon_url;
             if (imageUrl) {
@@ -123,12 +118,10 @@ class EPGUI {
 
         div.appendChild(header);
 
-        // IMPROVED: Progress bar with fixed positioning
         if (program && program.progress) {
             div.appendChild(this.createProgressBar(program));
         }
 
-        // ADD: Expand button to show daily programs
         const expandBtn = document.createElement('button');
         expandBtn.className = 'expand-daily-btn';
         expandBtn.innerHTML = '▼ Vorschau anzeigen';
@@ -142,13 +135,11 @@ class EPGUI {
         const container = document.createElement('div');
         container.className = 'current-event';
 
-        // IMPROVED: Title now larger (was 16px, now 18px from CSS)
         const title = document.createElement('div');
         title.className = 'event-title';
         title.textContent = program.title;
         container.appendChild(title);
 
-        // Subtitle
         if (program.subtitle) {
             const subtitle = document.createElement('div');
             subtitle.className = 'event-subtitle';
@@ -156,24 +147,43 @@ class EPGUI {
             container.appendChild(subtitle);
         }
 
-        // FIXED: Time is now above description
+        // UPDATED: Use smart time badge instead of simple time
         const timeInfo = document.createElement('div');
         timeInfo.className = 'event-time';
 
-        const timeRange = document.createElement('span');
-        timeRange.textContent = `${program.start_time_local} - ${program.end_time_local}`;
-        timeInfo.appendChild(timeRange);
+        if (program.time_badge) {
+            // Create time badge element
+            const timeBadge = document.createElement('span');
+            timeBadge.className = program.time_badge.class;
+            timeBadge.textContent = program.time_badge.text;
+
+            // For live programs, show "LIVE" badge + time range
+            if (program.time_badge.type === 'live') {
+                const timeRange = document.createElement('span');
+                timeRange.textContent = ` ${program.time_badge.timeRange}`;
+                timeRange.style.color = 'var(--text-muted)';
+                timeRange.style.marginLeft = '8px';
+                timeInfo.appendChild(timeBadge);
+                timeInfo.appendChild(timeRange);
+            } else {
+                // For non-live, just show the time badge
+                timeInfo.appendChild(timeBadge);
+            }
+        } else {
+            // Fallback to old format
+            const timeRange = document.createElement('span');
+            timeRange.textContent = `${program.start_time_local} - ${program.end_time_local}`;
+            timeInfo.appendChild(timeRange);
+        }
 
         container.appendChild(timeInfo);
 
-        // NEW: Description preview (2 lines max) with "weiterlesen" link
         if (program.description) {
             const description = document.createElement('div');
             description.className = 'event-description';
             description.textContent = program.description;
             container.appendChild(description);
 
-            // Add "weiterlesen" link if description is long
             if (program.description.length > 100) {
                 const expandLink = document.createElement('button');
                 expandLink.className = 'expand-description-link';
@@ -205,7 +215,6 @@ class EPGUI {
 
         container.appendChild(progressBar);
 
-        // Time remaining below the progress bar
         const timeRemaining = document.createElement('div');
         timeRemaining.className = 'time-remaining-left';
         timeRemaining.textContent = program.time_remaining;
@@ -214,7 +223,6 @@ class EPGUI {
         return container;
     }
 
-    // UPDATED: Show daily programs using data from manager with animation
     showDailyPrograms(channel, programs) {
         const container = document.getElementById('daily-programs-container');
         const content = document.getElementById('daily-programs-content');
@@ -222,25 +230,23 @@ class EPGUI {
 
         if (!container || !content) return;
 
-        // Hide current events with animation
+        this.currentLoadingChannel = channel.id;
+
         if (currentEventsGrid) {
             currentEventsGrid.classList.add('hiding');
             setTimeout(() => {
                 currentEventsGrid.style.display = 'none';
-            }, 300); // Match CSS transition time
+            }, 300);
         }
 
-        // Clear previous content
         content.innerHTML = '';
 
-        // Create channel header
         const channelCard = document.createElement('div');
         channelCard.className = 'channel-daily-expanded';
 
         const header = document.createElement('div');
         header.className = 'channel-daily-header-expanded';
 
-        // Logo
         const logoContainer = document.createElement('div');
         logoContainer.className = 'channel-logo-container';
         if (channel.icon_url) {
@@ -257,7 +263,6 @@ class EPGUI {
         }
         header.appendChild(logoContainer);
 
-        // Channel name
         const name = document.createElement('div');
         name.className = 'channel-daily-name';
         name.textContent = channel.display_name;
@@ -265,7 +270,6 @@ class EPGUI {
 
         channelCard.appendChild(header);
 
-        // Add all programs
         programs.forEach(program => {
             const programElement = this.createDailyProgramCardExpanded(channel, program);
             channelCard.appendChild(programElement);
@@ -273,17 +277,129 @@ class EPGUI {
 
         content.appendChild(channelCard);
 
-        // Show the section
+        // NEW: Add "Load more" button for multi-day support
+        const loadMoreBtn = document.createElement('button');
+        loadMoreBtn.className = 'load-more-programs-btn';
+        loadMoreBtn.innerHTML = '▼ Mehr Programme laden';
+        loadMoreBtn.style.cssText = `
+            display: block;
+            width: 100%;
+            padding: 16px;
+            background-color: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            color: var(--text-secondary);
+            cursor: pointer;
+            border-radius: 0 0 var(--radius) var(--radius);
+            font-size: 14px;
+            text-align: center;
+            transition: all 0.2s;
+            margin-top: 0;
+        `;
+
+        loadMoreBtn.addEventListener('mouseenter', () => {
+            loadMoreBtn.style.backgroundColor = 'var(--bg-card)';
+        });
+
+        loadMoreBtn.addEventListener('mouseleave', () => {
+            loadMoreBtn.style.backgroundColor = 'var(--bg-tertiary)';
+        });
+
+        loadMoreBtn.addEventListener('click', async () => {
+            await this.loadMoreDailyPrograms(channel.id);
+        });
+
+        content.appendChild(loadMoreBtn);
+
         container.style.display = 'block';
         container.classList.add('active');
 
-        // Scroll to the daily programs section
         setTimeout(() => {
             container.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }, 100);
+
+        // Setup infinite scroll observer
+        this.setupDailyProgramsInfiniteScroll(channel.id);
     }
 
-    // NEW: Create expanded program cards with more details
+    // NEW: Load more daily programs for a channel
+    async loadMoreDailyPrograms(channelId) {
+        const channel = this.core.getChannel(channelId);
+        if (!channel || !this.currentLoadingChannel) return;
+
+        const content = document.getElementById('daily-programs-content');
+        if (!content) return;
+
+        // Find the last program to get its end time
+        const lastProgramElement = content.querySelector('.daily-program-card-expanded:last-child');
+        if (!lastProgramElement) return;
+
+        const lastProgram = this.core.getProgram(channelId, lastProgramElement.dataset.programId);
+        if (!lastProgram) return;
+
+        const loadMoreBtn = content.querySelector('.load-more-programs-btn');
+        if (loadMoreBtn) {
+            loadMoreBtn.disabled = true;
+            loadMoreBtn.innerHTML = 'Lädt mehr Programme...';
+        }
+
+        try {
+            // Load next day's programs
+            const newPrograms = await this.core.loadNextDayForChannel(
+                channelId,
+                lastProgram.end_time
+            );
+
+            if (newPrograms.length > 0) {
+                newPrograms.forEach(program => {
+                    const programElement = this.createDailyProgramCardExpanded(channel, program);
+                    content.insertBefore(programElement, loadMoreBtn);
+                });
+
+                if (loadMoreBtn) {
+                    loadMoreBtn.disabled = false;
+                    loadMoreBtn.innerHTML = '▼ Mehr Programme laden';
+                }
+            } else {
+                // No more programs available
+                if (loadMoreBtn) {
+                    loadMoreBtn.disabled = true;
+                    loadMoreBtn.innerHTML = 'Keine weiteren Programme verfügbar';
+                    loadMoreBtn.style.cursor = 'default';
+                }
+            }
+        } catch (error) {
+            console.error('Error loading more programs:', error);
+            if (loadMoreBtn) {
+                loadMoreBtn.disabled = false;
+                loadMoreBtn.innerHTML = '▼ Mehr Programme laden (Erneut versuchen)';
+            }
+        }
+    }
+
+    // NEW: Setup infinite scroll for daily programs
+    setupDailyProgramsInfiniteScroll(channelId) {
+        if (this.dailyProgramsInfiniteScroll) {
+            this.dailyProgramsInfiniteScroll.disconnect();
+        }
+
+        this.dailyProgramsInfiniteScroll = new IntersectionObserver(async (entries) => {
+            for (const entry of entries) {
+                if (entry.isIntersecting && this.currentLoadingChannel === channelId) {
+                    await this.loadMoreDailyPrograms(channelId);
+                }
+            }
+        }, {
+            root: null,
+            rootMargin: '500px',
+            threshold: 0.1
+        });
+
+        const loadMoreBtn = document.querySelector('.load-more-programs-btn');
+        if (loadMoreBtn) {
+            this.dailyProgramsInfiniteScroll.observe(loadMoreBtn);
+        }
+    }
+
     createDailyProgramCardExpanded(channel, program) {
         const now = new Date();
         const startTime = new Date(program.start_time);
@@ -300,7 +416,6 @@ class EPGUI {
             div.classList.add('upcoming');
         }
 
-        // Big image
         const imageContainer = document.createElement('div');
         if (program.image_url || program.icon_url) {
             const img = document.createElement('img');
@@ -324,7 +439,6 @@ class EPGUI {
         }
         div.appendChild(imageContainer);
 
-        // Full details
         const details = document.createElement('div');
         details.className = 'daily-program-details-expanded';
         details.innerHTML = this.createDailyProgramDetailsExpandedHTML(program);
@@ -333,18 +447,33 @@ class EPGUI {
         return div;
     }
 
+    // UPDATED: Use smart time badges without LIVE/DEMNÄCHST text
     createDailyProgramDetailsExpandedHTML(program) {
-        const now = new Date();
-        const startTime = new Date(program.start_time);
-
-        let timeBadge = '';
-        if (startTime <= now) {
-            timeBadge = '<span class="time-badge live">LIVE</span>';
+        // Use the smart time badge
+        let timeDisplay = '';
+        if (program.time_badge) {
+            timeDisplay = `
+                <div class="program-time">
+                    <span class="${program.time_badge.class}">${program.time_badge.text}</span>
+                </div>
+            `;
         } else {
-            timeBadge = '<span class="time-badge upcoming">DEMNÄCHST</span>';
+            // Fallback
+            const startTime = new Date(program.start_time);
+            const now = new Date();
+            let timeBadge = '';
+            if (startTime <= now) {
+                timeBadge = '<span class="time-badge live">LIVE</span>';
+            } else {
+                timeBadge = '<span class="time-badge today">' + program.start_time_local + '</span>';
+            }
+            timeDisplay = `
+                <div class="program-time">
+                    ${timeBadge}
+                </div>
+            `;
         }
 
-        // All available info
         const metaItems = [];
         if (program.category) {
             metaItems.push(`<span class="program-category">${this.escapeHtml(program.category)}</span>`);
@@ -370,11 +499,9 @@ class EPGUI {
         const metaHTML = metaItems.length > 0 ?
             `<div class="daily-program-meta-expanded">${metaItems.join('')}</div>` : '';
 
-        // FULL description (no truncation)
         const descriptionHTML = program.description ?
             `<div class="daily-program-description-expanded">${this.escapeHtml(program.description)}</div>` : '';
 
-        // Play button if available
         const streamUrl = program.stream_url || program.stream;
         let playButton = '';
         if (streamUrl) {
@@ -382,10 +509,7 @@ class EPGUI {
         }
 
         return `
-            <div class="program-time">
-                ${timeBadge}
-                <span>${program.start_time_local} - ${program.end_time_local}</span>
-            </div>
+            ${timeDisplay}
             <div class="daily-program-title-expanded">${this.escapeHtml(program.title)}</div>
             ${program.subtitle ? `<div class="program-subtitle">${this.escapeHtml(program.subtitle)}</div>` : ''}
             ${descriptionHTML}
@@ -394,39 +518,32 @@ class EPGUI {
         `;
     }
 
-    // NEW: Create FSK rating badge
-    createRatingBadge(rating) {
-        if (!rating) return '';
-
-        console.log('Creating rating badge for:', rating); // Debug log
-
-        // Extract age number from rating string (handles "FSK 12", "12", "ab 12", etc.)
-        const ageMatch = rating.toString().match(/(\d+)/);
-        if (!ageMatch) {
-            console.log('No age number found in rating:', rating);
-            return `<span class="program-rating">${this.escapeHtml(rating)}</span>`;
+    // Add CSS for yesterday badge
+    addTimeBadgeCSS() {
+        if (!document.querySelector('#time-badge-styles')) {
+            const style = document.createElement('style');
+            style.id = 'time-badge-styles';
+            style.textContent = `
+                .time-badge.yesterday {
+                    background: linear-gradient(135deg, #8E8E93, #AEAEB2);
+                    color: white;
+                }
+            `;
+            document.head.appendChild(style);
         }
-
-        const age = parseInt(ageMatch[1], 10);
-        console.log('Extracted age:', age);
-
-        // Determine FSK color based on age
-        let fskClass = 'fsk-0';
-        if (age >= 18) fskClass = 'fsk-18';
-        else if (age >= 16) fskClass = 'fsk-16';
-        else if (age >= 12) fskClass = 'fsk-12';
-        else if (age >= 6) fskClass = 'fsk-6';
-
-        const badgeHTML = `<span class="fsk-badge ${fskClass}">FSK ${age}</span>`;
-        console.log('Generated badge HTML:', badgeHTML);
-
-        return badgeHTML;
     }
 
-    // NEW: Close daily programs and restore current events with animation
+    // Rest of the class remains the same...
     closeDailyPrograms() {
         const container = document.getElementById('daily-programs-container');
         const currentEventsGrid = document.getElementById('current-events-grid');
+
+        if (this.dailyProgramsInfiniteScroll) {
+            this.dailyProgramsInfiniteScroll.disconnect();
+            this.dailyProgramsInfiniteScroll = null;
+        }
+
+        this.currentLoadingChannel = null;
 
         if (container) {
             container.classList.add('hiding');
@@ -436,10 +553,8 @@ class EPGUI {
             }, 300);
         }
 
-        // Show current events with animation
         if (currentEventsGrid) {
             currentEventsGrid.style.display = 'grid';
-            // Trigger reflow
             void currentEventsGrid.offsetWidth;
             currentEventsGrid.classList.remove('hiding');
             currentEventsGrid.classList.add('showing');
@@ -488,7 +603,6 @@ class EPGUI {
     }
 
     showProgramDetails(program) {
-        // Close existing modal
         this.closeProgramDetails();
 
         const modal = document.getElementById('program-details-modal');
@@ -500,13 +614,11 @@ class EPGUI {
         modal.classList.add('active');
         this.currentModal = modal;
 
-        // Add event listeners
         const closeBtn = modal.querySelector('.modal-close');
         if (closeBtn) {
             closeBtn.addEventListener('click', () => this.closeProgramDetails());
         }
 
-        // Play button now dispatches event with correct data structure
         const playBtn = content.querySelector('.btn-play');
         if (playBtn) {
             playBtn.addEventListener('click', () => {
@@ -521,7 +633,6 @@ class EPGUI {
             });
         }
 
-        // Close modal on backdrop click
         modal.addEventListener('click', (e) => {
             if (e.target === modal) {
                 this.closeProgramDetails();
@@ -532,15 +643,25 @@ class EPGUI {
     createProgramDetailsModalHTML(program) {
         const imageUrl = program.icon_url || program.image_url || '';
 
-        // Build details grid from all available fields
-        const detailItems = [];
+        // Use smart time badge in modal
+        let timeDisplay = '';
+        if (program.time_badge) {
+            timeDisplay = `
+                <div class="detail-item">
+                    <span class="detail-label">Sendezeit</span>
+                    <span class="detail-value ${program.time_badge.class}">${program.time_badge.text}</span>
+                </div>
+            `;
+        } else {
+            timeDisplay = `
+                <div class="detail-item">
+                    <span class="detail-label">Sendezeit</span>
+                    <span class="detail-value">${program.start_time_local} - ${program.end_time_local}</span>
+                </div>
+            `;
+        }
 
-        detailItems.push(`
-            <div class="detail-item">
-                <span class="detail-label">Sendezeit</span>
-                <span class="detail-value">${program.start_time_local} - ${program.end_time_local}</span>
-            </div>
-        `);
+        const detailItems = [timeDisplay];
 
         if (program.date_local) {
             detailItems.push(`
@@ -588,7 +709,6 @@ class EPGUI {
         }
 
         if (program.actors) {
-            // Truncate long actor lists
             const actors = program.actors.length > 100 ?
                 program.actors.substring(0, 100) + '...' :
                 program.actors;
@@ -603,7 +723,6 @@ class EPGUI {
         const detailsGrid = detailItems.length > 0 ?
             `<div class="modal-program-details">${detailItems.join('')}</div>` : '';
 
-        // Check for stream URL (both field names)
         const streamUrl = program.stream_url || program.stream;
 
         return `
@@ -693,10 +812,39 @@ class EPGUI {
         container.appendChild(fallback);
     }
 
+    createRatingBadge(rating) {
+        if (!rating) return '';
+
+        const ageMatch = rating.toString().match(/(\d+)/);
+        if (!ageMatch) {
+            return `<span class="program-rating">${this.escapeHtml(rating)}</span>`;
+        }
+
+        const age = parseInt(ageMatch[1], 10);
+
+        let fskClass = 'fsk-0';
+        if (age >= 18) fskClass = 'fsk-18';
+        else if (age >= 16) fskClass = 'fsk-16';
+        else if (age >= 12) fskClass = 'fsk-12';
+        else if (age >= 6) fskClass = 'fsk-6';
+
+        return `<span class="fsk-badge ${fskClass}">FSK ${age}</span>`;
+    }
+
     escapeHtml(text) {
         if (!text) return '';
         const div = document.createElement('div');
         div.textContent = text;
         return div.innerHTML;
+    }
+
+    // Initialize with time badge CSS
+    constructor(core) {
+        this.core = core;
+        this.expandedChannels = new Set();
+        this.currentModal = null;
+        this.dailyProgramsInfiniteScroll = null;
+        this.currentLoadingChannel = null;
+        this.addTimeBadgeCSS(); // Add CSS for time badges
     }
 }

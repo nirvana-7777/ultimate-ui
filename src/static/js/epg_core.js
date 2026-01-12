@@ -1,4 +1,4 @@
-// epg_core.js - Fixed with "m" format for time remaining
+// epg_core.js - Enhanced with smart time badges and multi-day support
 class EPGCore {
     constructor() {
         this.config = {
@@ -16,6 +16,9 @@ class EPGCore {
         this.currentDate = new Date();
         this.hasMoreChannels = true;
         this.currentPage = 0;
+
+        // New: Track loaded date ranges for infinite scroll
+        this.loadedDateRanges = new Map(); // channelId -> Set of date strings
     }
 
     async fetchChannels(page = 0) {
@@ -106,7 +109,6 @@ class EPGCore {
 
                 program.episode_formatted = this.parseXmltvNsEpisode(program.episode_num);
 
-
                 // Calculate progress if program is currently airing
                 const now = new Date();
                 const start = new Date(program.start_time);
@@ -118,6 +120,9 @@ class EPGCore {
                     program.progress = this.calculateProgress(program.start_time, program.end_time);
                     program.time_remaining = this.calculateTimeRemaining(program.end_time);
                 }
+
+                // NEW: Add smart time badge
+                program.time_badge = this.getSmartTimeBadge(program.start_time, program.end_time);
             });
 
             this.cache.set(cacheKey, programs);
@@ -127,6 +132,70 @@ class EPGCore {
             console.warn(`Error fetching programs for channel ${channelId}:`, error);
             return [];
         }
+    }
+
+    // Updated getSmartTimeBadge method for epg_core.js
+    getSmartTimeBadge(startTime, endTime) {
+        const now = new Date();
+        const start = new Date(startTime);
+        const end = new Date(endTime);
+
+        // Check if it's currently airing
+        const isToday = this.isSameDay(now, start);
+        const isYesterday = this.isYesterday(start);
+        const isTomorrow = this.isTomorrow(start);
+
+        // Calculate if program is currently airing
+        const isCurrentlyAiring = start <= now && end >= now;
+
+        if (isCurrentlyAiring) {
+            return {
+                type: 'live',
+                text: 'LIVE',
+                timeRange: this.formatDateTime(startTime, 'time') + ' - ' + this.formatDateTime(endTime, 'time'),
+                class: 'time-badge live'
+            };
+        } else if (isToday) {
+            // Today but not yet started - show only time range
+            return {
+                type: 'today',
+                text: this.formatDateTime(startTime, 'time') + ' - ' + this.formatDateTime(endTime, 'time'),
+                timeRange: this.formatDateTime(startTime, 'time') + ' - ' + this.formatDateTime(endTime, 'time'),
+                class: 'time-badge today'
+            };
+        } else if (isTomorrow) {
+            // Tomorrow - show "Morgen HH:MM - HH:MM"
+            return {
+                type: 'tomorrow',
+                text: 'Morgen ' + this.formatDateTime(startTime, 'time') + ' - ' + this.formatDateTime(endTime, 'time'),
+                timeRange: 'Morgen ' + this.formatDateTime(startTime, 'time') + ' - ' + this.formatDateTime(endTime, 'time'),
+                class: 'time-badge tomorrow'
+            };
+        } else if (isYesterday) {
+            // Yesterday - show "Gestern HH:MM - HH:MM"
+            return {
+                type: 'yesterday',
+                text: 'Gestern ' + this.formatDateTime(startTime, 'time') + ' - ' + this.formatDateTime(endTime, 'time'),
+                timeRange: 'Gestern ' + this.formatDateTime(startTime, 'time') + ' - ' + this.formatDateTime(endTime, 'time'),
+                class: 'time-badge yesterday'
+            };
+        } else {
+            // Future date - show "DD.MM. HH:MM - HH:MM"
+            const dateStr = this.formatDateTime(startTime, 'short-date');
+            return {
+                type: 'future',
+                text: `${dateStr} ${this.formatDateTime(startTime, 'time')} - ${this.formatDateTime(endTime, 'time')}`,
+                timeRange: `${dateStr} ${this.formatDateTime(startTime, 'time')} - ${this.formatDateTime(endTime, 'time')}`,
+                class: 'time-badge future'
+            };
+        }
+    }
+
+    // Add this helper method
+    isYesterday(date) {
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+        return this.isSameDay(yesterday, date);
     }
 
     async loadDataForDate(date) {
@@ -224,6 +293,48 @@ class EPGCore {
         }
     }
 
+    // NEW: Load next day's programs for a specific channel
+    async loadNextDayForChannel(channelId, currentEndDate) {
+        try {
+            const nextDayStart = new Date(currentEndDate);
+            nextDayStart.setHours(0, 0, 0, 0);
+
+            const nextDayEnd = new Date(nextDayStart);
+            nextDayEnd.setHours(23, 59, 59, 999);
+
+            const dateKey = nextDayStart.toISOString().split('T')[0];
+
+            // Check if we've already loaded this date for this channel
+            if (!this.loadedDateRanges.has(channelId)) {
+                this.loadedDateRanges.set(channelId, new Set());
+            }
+
+            const loadedDates = this.loadedDateRanges.get(channelId);
+            if (loadedDates.has(dateKey)) {
+                return []; // Already loaded
+            }
+
+            const programs = await this.fetchProgramsForChannel(
+                channelId,
+                nextDayStart,
+                nextDayEnd
+            );
+
+            loadedDates.add(dateKey);
+
+            // Append to existing programs
+            const existingPrograms = this.dailyPrograms.get(channelId) || [];
+            const allPrograms = [...existingPrograms, ...programs];
+            this.dailyPrograms.set(channelId, allPrograms);
+
+            return programs;
+
+        } catch (error) {
+            console.warn(`Error loading next day for channel ${channelId}:`, error);
+            return [];
+        }
+    }
+
     formatDateTime(dateTime, format = 'datetime') {
         const date = new Date(dateTime);
         const options = {
@@ -247,6 +358,13 @@ class EPGCore {
                     minute: '2-digit'
                 });
                 return date.toLocaleTimeString(this.config.dateFormat, options);
+
+            case 'short-date':
+                Object.assign(options, {
+                    day: '2-digit',
+                    month: '2-digit'
+                });
+                return date.toLocaleDateString(this.config.dateFormat, options);
 
             default:
                 Object.assign(options, {
@@ -301,7 +419,6 @@ class EPGCore {
     }
 
     getChannel(channelId) {
-        // Convert to number for comparison since API might return strings
         const id = typeof channelId === 'string' ? parseInt(channelId, 10) : channelId;
         return this.channels.find(c => c.id === id || c.id === channelId);
     }
@@ -311,6 +428,7 @@ class EPGCore {
         this.cache.clear();
         this.currentEvents.clear();
         this.dailyPrograms.clear();
+        this.loadedDateRanges.clear();
     }
 
     goToToday() {
@@ -318,6 +436,7 @@ class EPGCore {
         this.cache.clear();
         this.currentEvents.clear();
         this.dailyPrograms.clear();
+        this.loadedDateRanges.clear();
     }
 
     clearCache() {
@@ -334,34 +453,16 @@ class EPGCore {
         return await this.fetchProgramsForChannel(channelId, startDate, endDate);
     }
 
-    // Add this method to the EPGCore class (around line 400-450, before the closing brace)
-    /**
-     * Parse xmltv_ns format episode numbers
-     * Format: season.episode.part/total-parts
-     * - All numbers are 0-based (0 = first season/episode/part)
-     * - season 0 = specials/no season
-     * - episode 0 = first episode
-     * - part 0 = first part
-     * - Trailing dot required if no part info
-     *
-     * Examples:
-     * - "0.12." = Episode 13 (season 1, episode 12)
-     * - "1.4." = Season 2, Episode 5 (season 1, episode 4)
-     * - "2.15.0/2" = Season 3, Episode 16, Part 1 of 2
-     * - "1.3.1/3" = Season 2, Episode 4, Part 2 of 3
-     */
     parseXmltvNsEpisode(episodeNum) {
         if (!episodeNum || typeof episodeNum !== 'string') {
             return null;
         }
 
-        // Remove trailing dot if present
         episodeNum = episodeNum.trim();
         episodeNum = episodeNum.replace(/\.$/, '');
 
         const parts = episodeNum.split('.');
 
-        // Must have at least season and episode
         if (parts.length < 2 || parts[0] === '' || parts[1] === '') {
             return null;
         }
@@ -369,18 +470,14 @@ class EPGCore {
         const season = parseInt(parts[0], 10);
         const episode = parseInt(parts[1], 10);
 
-        // Validate numbers
         if (isNaN(season) || isNaN(episode) || season < 0 || episode < 0) {
             return null;
         }
 
-        // Convert from 0-based to 1-based for display
         const displaySeason = season + 1;
         const displayEpisode = episode + 1;
 
-        // Check for special episodes (season 0 in xmltv_ns)
         if (season === 0) {
-            // Season 0 is actually Season 1 in display (0-based to 1-based)
             let result = `S01E${displayEpisode.toString().padStart(2, '0')}`;
 
             if (parts.length >= 3 && parts[2]) {
@@ -392,10 +489,8 @@ class EPGCore {
             return result;
         }
 
-        // Regular season episode
         let result = `S${displaySeason.toString().padStart(2, '0')}E${displayEpisode.toString().padStart(2, '0')}`;
 
-        // Add part information if available
         if (parts.length >= 3 && parts[2]) {
             const partInfo = this.parsePartInfo(parts[2]);
             if (partInfo) {
@@ -406,10 +501,6 @@ class EPGCore {
         return result;
     }
 
-    /**
-     * Parse part information (e.g., "0/2", "1/3")
-     * Returns object with current and total (1-based)
-     */
     parsePartInfo(partString) {
         if (!partString) return null;
 
@@ -424,7 +515,6 @@ class EPGCore {
             return null;
         }
 
-        // Convert from 0-based to 1-based
         return {
             current: partCurrent + 1,
             total: partTotal
