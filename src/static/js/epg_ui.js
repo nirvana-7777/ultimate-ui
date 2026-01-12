@@ -6,6 +6,7 @@ class EPGUI {
         this.currentModal = null;
         this.dailyProgramsInfiniteScroll = null;
         this.currentLoadingChannel = null;
+        this.addTimeBadgeCSS();
     }
 
     renderCurrentEvents(channels, currentEvents) {
@@ -836,15 +837,5 @@ class EPGUI {
         const div = document.createElement('div');
         div.textContent = text;
         return div.innerHTML;
-    }
-
-    // Initialize with time badge CSS
-    constructor(core) {
-        this.core = core;
-        this.expandedChannels = new Set();
-        this.currentModal = null;
-        this.dailyProgramsInfiniteScroll = null;
-        this.currentLoadingChannel = null;
-        this.addTimeBadgeCSS(); // Add CSS for time badges
     }
 }
