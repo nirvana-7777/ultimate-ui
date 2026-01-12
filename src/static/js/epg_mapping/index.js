@@ -3,10 +3,6 @@
  * Initializes the application
  */
 
-// Import the FuzzySet library (you'll need to include it in your HTML)
-// Add this to your base.html:
-// <script src="https://cdn.jsdelivr.net/npm/fuzzyset.js@1.0.6/lib/fuzzyset.min.js"></script>
-
 import EPGMappingManager from './epg_mapping.js';
 
 // Initialize when DOM is loaded
@@ -15,11 +11,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const isMappingPage = document.getElementById('provider-select') !== null;
 
     if (isMappingPage) {
-        // Check if FuzzySet is available
+        // Optional: Check if FuzzySet is loaded (local version)
         if (typeof FuzzySet === 'undefined') {
-            console.error('FuzzySet library is not loaded. Please include fuzzyset.js');
-            alert('Fuzzy matching requires FuzzySet library. Please check console for details.');
-            return;
+            console.warn('FuzzySet not found. Check if /static/lib/fuzzyset.js is accessible.');
+            // You can still continue - fuzzy matching just won't work
         }
 
         window.epgMappingManager = new EPGMappingManager();
