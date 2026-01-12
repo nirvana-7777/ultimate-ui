@@ -1,4 +1,4 @@
-// epg_ui.js - Updated with smart time badges and no LIVE/DEMNÄCHST text
+// epg_ui.js - Updated with smart time badges and fixed infinite scroll
 class EPGUI {
     constructor(core) {
         this.core = core;
@@ -6,6 +6,7 @@ class EPGUI {
         this.currentModal = null;
         this.dailyProgramsInfiniteScroll = null;
         this.currentLoadingChannel = null;
+        this.isLoadingMorePrograms = false; // NEW: Track loading state
         this.addTimeBadgeCSS();
     }
 
@@ -232,6 +233,7 @@ class EPGUI {
         if (!container || !content) return;
 
         this.currentLoadingChannel = channel.id;
+        this.isLoadingMorePrograms = false; // Reset loading state
 
         if (currentEventsGrid) {
             currentEventsGrid.classList.add('hiding');
@@ -282,6 +284,7 @@ class EPGUI {
         const loadMoreBtn = document.createElement('button');
         loadMoreBtn.className = 'load-more-programs-btn';
         loadMoreBtn.innerHTML = '▼ Mehr Programme laden';
+        loadMoreBtn.dataset.channelId = channel.id; // Store channel ID
         loadMoreBtn.style.cssText = `
             display: block;
             width: 100%;
@@ -298,11 +301,15 @@ class EPGUI {
         `;
 
         loadMoreBtn.addEventListener('mouseenter', () => {
-            loadMoreBtn.style.backgroundColor = 'var(--bg-card)';
+            if (!loadMoreBtn.disabled) {
+                loadMoreBtn.style.backgroundColor = 'var(--bg-card)';
+            }
         });
 
         loadMoreBtn.addEventListener('mouseleave', () => {
-            loadMoreBtn.style.backgroundColor = 'var(--bg-tertiary)';
+            if (!loadMoreBtn.disabled) {
+                loadMoreBtn.style.backgroundColor = 'var(--bg-tertiary)';
+            }
         });
 
         loadMoreBtn.addEventListener('click', async () => {
@@ -314,91 +321,143 @@ class EPGUI {
         container.style.display = 'block';
         container.classList.add('active');
 
+        // Setup infinite scroll observer AFTER button is in DOM
         setTimeout(() => {
+            this.setupDailyProgramsInfiniteScroll(channel.id);
             container.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }, 100);
-
-        // Setup infinite scroll observer
-        this.setupDailyProgramsInfiniteScroll(channel.id);
     }
 
     // NEW: Load more daily programs for a channel
     async loadMoreDailyPrograms(channelId) {
+        // Prevent multiple simultaneous loads
+        if (this.isLoadingMorePrograms) {
+            console.log('Already loading more programs, skipping...');
+            return;
+        }
+
         const channel = this.core.getChannel(channelId);
-        if (!channel || !this.currentLoadingChannel) return;
+        if (!channel || this.currentLoadingChannel !== channelId) {
+            console.log('Channel not found or not current channel');
+            return;
+        }
 
         const content = document.getElementById('daily-programs-content');
         if (!content) return;
 
-        // Find the last program to get its end time
-        const lastProgramElement = content.querySelector('.daily-program-card-expanded:last-child');
-        if (!lastProgramElement) return;
+        // Find the channel card and get the last program
+        const channelCard = content.querySelector('.channel-daily-expanded');
+        if (!channelCard) return;
 
-        const lastProgram = this.core.getProgram(channelId, lastProgramElement.dataset.programId);
-        if (!lastProgram) return;
+        const allProgramCards = channelCard.querySelectorAll('.daily-program-card-expanded');
+        if (allProgramCards.length === 0) return;
 
-        const loadMoreBtn = content.querySelector('.load-more-programs-btn');
-        if (loadMoreBtn) {
-            loadMoreBtn.disabled = true;
-            loadMoreBtn.innerHTML = 'Lädt mehr Programme...';
+        const lastProgramCard = allProgramCards[allProgramCards.length - 1];
+        const lastProgramId = lastProgramCard.dataset.programId;
+        const lastProgram = this.core.getProgram(channelId, lastProgramId);
+
+        if (!lastProgram) {
+            console.log('Could not find last program');
+            return;
         }
 
+        const loadMoreBtn = content.querySelector('.load-more-programs-btn');
+        if (!loadMoreBtn) return;
+
+        // Set loading state
+        this.isLoadingMorePrograms = true;
+        loadMoreBtn.disabled = true;
+        loadMoreBtn.innerHTML = 'Lädt mehr Programme...';
+        loadMoreBtn.style.cursor = 'wait';
+        loadMoreBtn.style.backgroundColor = 'var(--bg-tertiary)';
+
         try {
+            console.log(`Loading next day after ${lastProgram.end_time}`);
+
             // Load next day's programs
             const newPrograms = await this.core.loadNextDayForChannel(
                 channelId,
                 lastProgram.end_time
             );
 
+            console.log(`Loaded ${newPrograms.length} new programs`);
+
             if (newPrograms.length > 0) {
+                // Insert new programs before the load more button
                 newPrograms.forEach(program => {
                     const programElement = this.createDailyProgramCardExpanded(channel, program);
-                    content.insertBefore(programElement, loadMoreBtn);
+                    channelCard.appendChild(programElement);
                 });
 
-                if (loadMoreBtn) {
-                    loadMoreBtn.disabled = false;
-                    loadMoreBtn.innerHTML = '▼ Mehr Programme laden';
-                }
+                // Re-enable button
+                loadMoreBtn.disabled = false;
+                loadMoreBtn.innerHTML = '▼ Mehr Programme laden';
+                loadMoreBtn.style.cursor = 'pointer';
             } else {
                 // No more programs available
-                if (loadMoreBtn) {
-                    loadMoreBtn.disabled = true;
-                    loadMoreBtn.innerHTML = 'Keine weiteren Programme verfügbar';
-                    loadMoreBtn.style.cursor = 'default';
+                loadMoreBtn.disabled = true;
+                loadMoreBtn.innerHTML = 'Keine weiteren Programme verfügbar';
+                loadMoreBtn.style.cursor = 'default';
+                loadMoreBtn.style.opacity = '0.6';
+
+                // Disconnect observer since there's nothing more to load
+                if (this.dailyProgramsInfiniteScroll) {
+                    this.dailyProgramsInfiniteScroll.disconnect();
                 }
             }
         } catch (error) {
             console.error('Error loading more programs:', error);
-            if (loadMoreBtn) {
-                loadMoreBtn.disabled = false;
-                loadMoreBtn.innerHTML = '▼ Mehr Programme laden (Erneut versuchen)';
-            }
+            loadMoreBtn.disabled = false;
+            loadMoreBtn.innerHTML = '▼ Mehr Programme laden (Erneut versuchen)';
+            loadMoreBtn.style.cursor = 'pointer';
+        } finally {
+            this.isLoadingMorePrograms = false;
         }
     }
 
     // NEW: Setup infinite scroll for daily programs
     setupDailyProgramsInfiniteScroll(channelId) {
+        // Disconnect existing observer
         if (this.dailyProgramsInfiniteScroll) {
             this.dailyProgramsInfiniteScroll.disconnect();
+            this.dailyProgramsInfiniteScroll = null;
         }
 
+        // Wait for button to be in DOM
+        const loadMoreBtn = document.querySelector('.load-more-programs-btn');
+        if (!loadMoreBtn) {
+            console.warn('Load more button not found for infinite scroll setup');
+            return;
+        }
+
+        console.log('Setting up infinite scroll for channel', channelId);
+
+        // Create new observer
         this.dailyProgramsInfiniteScroll = new IntersectionObserver(async (entries) => {
             for (const entry of entries) {
-                if (entry.isIntersecting && this.currentLoadingChannel === channelId) {
+                if (entry.isIntersecting &&
+                    this.currentLoadingChannel === channelId &&
+                    !this.isLoadingMorePrograms) {
+
+                    const btn = entry.target;
+                    if (btn.disabled && btn.innerHTML === 'Keine weiteren Programme verfügbar') {
+                        console.log('No more programs to load, skipping');
+                        return;
+                    }
+
+                    console.log('Infinite scroll triggered for daily programs');
                     await this.loadMoreDailyPrograms(channelId);
                 }
             }
         }, {
             root: null,
-            rootMargin: '500px',
+            rootMargin: '500px', // Trigger earlier
             threshold: 0.1
         });
 
-        const loadMoreBtn = document.querySelector('.load-more-programs-btn');
-        if (loadMoreBtn) {
-            this.dailyProgramsInfiniteScroll.observe(loadMoreBtn);
-        }
+        // Observe the button
+        this.dailyProgramsInfiniteScroll.observe(loadMoreBtn);
+        console.log('Observing load more button for channel', channelId);
     }
 
     createDailyProgramCardExpanded(channel, program) {
@@ -534,7 +593,6 @@ class EPGUI {
         }
     }
 
-    // Rest of the class remains the same...
     closeDailyPrograms() {
         const container = document.getElementById('daily-programs-container');
         const currentEventsGrid = document.getElementById('current-events-grid');
