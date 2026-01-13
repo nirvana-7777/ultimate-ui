@@ -21,6 +21,15 @@ class EPGCore {
         this.loadedDateRanges = new Map(); // channelId -> Set of date strings
     }
 
+    parseUTCTime(timeString) {
+        // If the time string doesn't end with 'Z' and doesn't have timezone info, treat as UTC
+        if (timeString && !timeString.endsWith('Z') && !timeString.includes('+') && !timeString.includes('T')) {
+            // Likely format: "2026-01-13 20:00:00" - treat as UTC
+            return new Date(timeString + 'Z');
+        }
+        return new Date(timeString);
+    }
+
     async fetchChannels(page = 0) {
         try {
             const cacheKey = `channels_${page}`;
@@ -103,16 +112,17 @@ class EPGCore {
                     program.end_time
                 );
 
-                program.start_time_local = this.formatDateTime(program.start_time, 'time');
-                program.end_time_local = this.formatDateTime(program.end_time, 'time');
-                program.date_local = this.formatDateTime(program.start_time, 'date');
+                program.start_time_local = this.formatDateTime(this.parseUTCTime(program.start_time), 'time');
+                program.end_time_local = this.formatDateTime(this.parseUTCTime(program.end_time), 'time');
+                program.date_local = this.formatDateTime(this.parseUTCTime(program.start_time), 'date');
+
 
                 program.episode_formatted = this.parseXmltvNsEpisode(program.episode_num);
 
                 // Calculate progress if program is currently airing
                 const now = new Date();
-                const start = new Date(program.start_time);
-                const end = new Date(program.end_time);
+                const start = this.parseUTCTime(program.start_time);
+                const end = this.parseUTCTime(program.end_time);
 
                 program.is_live = start <= now && end >= now;
 
@@ -155,8 +165,8 @@ class EPGCore {
     // Updated getSmartTimeBadge method for epg_core.js
     getSmartTimeBadge(startTime, endTime) {
         const now = new Date();
-        const start = new Date(startTime);
-        const end = new Date(endTime);
+        const start = this.parseUTCTime(startTime);
+        const end = this.parseUTCTime(endTime);
 
         // Check if it's currently airing
         const isToday = this.isSameDay(now, start);
@@ -307,17 +317,18 @@ class EPGCore {
     // NEW: Load next day's programs for a specific channel
     async loadNextDayForChannel(channelId, currentEndDate) {
         try {
-            // Start from the end of the last program and move to the NEXT day
-            const nextDayStart = new Date(currentEndDate);
-            // Add 1 hour to ensure we're past the current day
-            nextDayStart.setHours(nextDayStart.getHours() + 1);
-            // Then set to midnight of that day
+            // Get the date of the last program's end time
+            const lastProgramDate = new Date(currentEndDate);
+
+            // Move to the NEXT day (add 1 day, then set to midnight)
+            const nextDayStart = new Date(lastProgramDate);
+            nextDayStart.setDate(nextDayStart.getDate() + 1);
             nextDayStart.setHours(0, 0, 0, 0);
 
             const nextDayEnd = new Date(nextDayStart);
             nextDayEnd.setDate(nextDayEnd.getDate() + 1);
             nextDayEnd.setHours(0, 0, 0, 0);
-            nextDayEnd.setMilliseconds(-1); // Just before midnight of the following day
+            nextDayEnd.setMilliseconds(-1);
 
             const dateKey = nextDayStart.toISOString().split('T')[0];
 
