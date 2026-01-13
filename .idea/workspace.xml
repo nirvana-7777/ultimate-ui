@@ -1,9 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="26a67a20-b618-41a8-9b0d-40ca26281999" name="Changes" comment="Fix EPG Loading">
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-    </list>
+    <list default="true" id="26a67a20-b618-41a8-9b0d-40ca26281999" name="Changes" comment="Fix EPG Loading" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -69,14 +67,7 @@
       <workItem from="1767791792133" duration="31342000" />
       <workItem from="1768139692903" duration="17108000" />
       <workItem from="1768246823095" duration="3360000" />
-    </task>
-    <task id="LOCAL-00071" summary="Fix EPG Loading">
-      <option name="closed" value="true" />
-      <created>1767793376637</created>
-      <option name="number" value="00071" />
-      <option name="presentableId" value="LOCAL-00071" />
-      <option name="project" value="LOCAL" />
-      <updated>1767793376637</updated>
+      <workItem from="1768318939572" duration="490000" />
     </task>
     <task id="LOCAL-00072" summary="Fix EPG Loading">
       <option name="closed" value="true" />
@@ -462,7 +453,15 @@
       <option name="project" value="LOCAL" />
       <updated>1768299108755</updated>
     </task>
-    <option name="localTasksCounter" value="120" />
+    <task id="LOCAL-00120" summary="Fix EPG Loading">
+      <option name="closed" value="true" />
+      <created>1768319222071</created>
+      <option name="number" value="00120" />
+      <option name="presentableId" value="LOCAL-00120" />
+      <option name="project" value="LOCAL" />
+      <updated>1768319222071</updated>
+    </task>
+    <option name="localTasksCounter" value="121" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
