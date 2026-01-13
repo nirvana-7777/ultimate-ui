@@ -21,15 +21,6 @@ class EPGCore {
         this.loadedDateRanges = new Map(); // channelId -> Set of date strings
     }
 
-    parseUTCTime(timeString) {
-        // If the time string doesn't end with 'Z' and doesn't have timezone info, treat as UTC
-        if (timeString && !timeString.endsWith('Z') && !timeString.includes('+') && !timeString.includes('T')) {
-            // Likely format: "2026-01-13 20:00:00" - treat as UTC
-            return new Date(timeString + 'Z');
-        }
-        return new Date(timeString);
-    }
-
     async fetchChannels(page = 0) {
         try {
             const cacheKey = `channels_${page}`;
@@ -112,17 +103,17 @@ class EPGCore {
                     program.end_time
                 );
 
-                program.start_time_local = this.formatDateTime(this.parseUTCTime(program.start_time), 'time');
-                program.end_time_local = this.formatDateTime(this.parseUTCTime(program.end_time), 'time');
-                program.date_local = this.formatDateTime(this.parseUTCTime(program.start_time), 'date');
+                program.start_time_local = this.formatDateTime(program.start_time, 'time');
+                program.end_time_local = this.formatDateTime(program.end_time, 'time');
+                program.date_local = this.formatDateTime(program.start_time, 'date');
 
 
                 program.episode_formatted = this.parseXmltvNsEpisode(program.episode_num);
 
                 // Calculate progress if program is currently airing
                 const now = new Date();
-                const start = this.parseUTCTime(program.start_time);
-                const end = this.parseUTCTime(program.end_time);
+                const start = new Date(program.start_time);
+                const end = new Date(program.end_time);
 
                 program.is_live = start <= now && end >= now;
 
@@ -165,8 +156,8 @@ class EPGCore {
     // Updated getSmartTimeBadge method for epg_core.js
     getSmartTimeBadge(startTime, endTime) {
         const now = new Date();
-        const start = this.parseUTCTime(startTime);
-        const end = this.parseUTCTime(endTime);
+        const start = new Date(startTime);
+        const end = new Date(endTime);
 
         // Check if it's currently airing
         const isToday = this.isSameDay(now, start);
