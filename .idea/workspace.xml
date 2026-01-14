@@ -1,15 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="26a67a20-b618-41a8-9b0d-40ca26281999" name="Changes" comment="Split epg_ui.js">
+    <list default="true" id="26a67a20-b618-41a8-9b0d-40ca26281999" name="Changes" comment="Stricter Linting">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/static/js/ui/EPGEventHandler.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/static/js/ui/EPGEventHandler.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/static/js/ui/EPGInfiniteScroll.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/static/js/ui/EPGInfiniteScroll.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/static/js/ui/EPGModalManager.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/static/js/ui/EPGModalManager.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/static/js/ui/EPGRenderer.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/static/js/ui/EPGRenderer.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/static/js/ui/EPGUIMain.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/static/js/ui/EPGUIMain.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/static/js/ui/index.js" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/templates/base.html" beforeDir="false" afterPath="$PROJECT_DIR$/src/templates/base.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/eslint.config.cjs" beforeDir="false" afterPath="$PROJECT_DIR$/eslint.config.cjs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/static/js/base.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/static/js/base.js" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -79,47 +74,7 @@
       <workItem from="1768318939572" duration="1013000" />
       <workItem from="1768386656720" duration="3543000" />
       <workItem from="1768399893477" duration="2236000" />
-      <workItem from="1768403116851" duration="3872000" />
-    </task>
-    <task id="LOCAL-00076" summary="Fix EPG Loading">
-      <option name="closed" value="true" />
-      <created>1767821307776</created>
-      <option name="number" value="00076" />
-      <option name="presentableId" value="LOCAL-00076" />
-      <option name="project" value="LOCAL" />
-      <updated>1767821307777</updated>
-    </task>
-    <task id="LOCAL-00077" summary="Fix EPG Loading">
-      <option name="closed" value="true" />
-      <created>1767864417324</created>
-      <option name="number" value="00077" />
-      <option name="presentableId" value="LOCAL-00077" />
-      <option name="project" value="LOCAL" />
-      <updated>1767864417324</updated>
-    </task>
-    <task id="LOCAL-00078" summary="Fix EPG Loading">
-      <option name="closed" value="true" />
-      <created>1767881070711</created>
-      <option name="number" value="00078" />
-      <option name="presentableId" value="LOCAL-00078" />
-      <option name="project" value="LOCAL" />
-      <updated>1767881070711</updated>
-    </task>
-    <task id="LOCAL-00079" summary="Fix EPG Loading">
-      <option name="closed" value="true" />
-      <created>1767882339967</created>
-      <option name="number" value="00079" />
-      <option name="presentableId" value="LOCAL-00079" />
-      <option name="project" value="LOCAL" />
-      <updated>1767882339967</updated>
-    </task>
-    <task id="LOCAL-00080" summary="Fix EPG Loading">
-      <option name="closed" value="true" />
-      <created>1767883256666</created>
-      <option name="number" value="00080" />
-      <option name="presentableId" value="LOCAL-00080" />
-      <option name="project" value="LOCAL" />
-      <updated>1767883256666</updated>
+      <workItem from="1768403116851" duration="7435000" />
     </task>
     <task id="LOCAL-00081" summary="Fix EPG Loading">
       <option name="closed" value="true" />
@@ -473,7 +428,47 @@
       <option name="project" value="LOCAL" />
       <updated>1768416612634</updated>
     </task>
-    <option name="localTasksCounter" value="125" />
+    <task id="LOCAL-00125" summary="Split epg_ui.js">
+      <option name="closed" value="true" />
+      <created>1768418275680</created>
+      <option name="number" value="00125" />
+      <option name="presentableId" value="LOCAL-00125" />
+      <option name="project" value="LOCAL" />
+      <updated>1768418275683</updated>
+    </task>
+    <task id="LOCAL-00126" summary="Stricter Linting">
+      <option name="closed" value="true" />
+      <created>1768420338155</created>
+      <option name="number" value="00126" />
+      <option name="presentableId" value="LOCAL-00126" />
+      <option name="project" value="LOCAL" />
+      <updated>1768420338155</updated>
+    </task>
+    <task id="LOCAL-00127" summary="Stricter Linting">
+      <option name="closed" value="true" />
+      <created>1768420586519</created>
+      <option name="number" value="00127" />
+      <option name="presentableId" value="LOCAL-00127" />
+      <option name="project" value="LOCAL" />
+      <updated>1768420586520</updated>
+    </task>
+    <task id="LOCAL-00128" summary="Stricter Linting">
+      <option name="closed" value="true" />
+      <created>1768420942439</created>
+      <option name="number" value="00128" />
+      <option name="presentableId" value="LOCAL-00128" />
+      <option name="project" value="LOCAL" />
+      <updated>1768420942439</updated>
+    </task>
+    <task id="LOCAL-00129" summary="Stricter Linting">
+      <option name="closed" value="true" />
+      <created>1768421286018</created>
+      <option name="number" value="00129" />
+      <option name="presentableId" value="LOCAL-00129" />
+      <option name="project" value="LOCAL" />
+      <updated>1768421286018</updated>
+    </task>
+    <option name="localTasksCounter" value="130" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -484,6 +479,7 @@
     <MESSAGE value="Fix EPG Loading" />
     <MESSAGE value="Add Streaming Channels EPG" />
     <MESSAGE value="Split epg_ui.js" />
-    <option name="LAST_COMMIT_MESSAGE" value="Split epg_ui.js" />
+    <MESSAGE value="Stricter Linting" />
+    <option name="LAST_COMMIT_MESSAGE" value="Stricter Linting" />
   </component>
 </project>

@@ -118,7 +118,7 @@ class BaseTemplate {
                 statusDot.title = 'WebEPG ist offline';
                 indicator.className = 'status-indicator offline';
             }
-        } catch (error) {
+        } catch (_error) {
             const statusDot = document.getElementById('webepg-status');
             if (statusDot) {
                 statusDot.className = 'status-dot offline';
