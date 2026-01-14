@@ -28,6 +28,15 @@
     <script src="{{ url_for('static', filename='js/epg_player.js') }}" defer></script>
     <script src="{{ url_for('static', filename='js/epg_manager.js') }}" defer></script>
     <script type="module" src="{{ url_for('static', filename='js/epg_mapping/index.js') }}" defer></script>
+    <!-- Add these after the existing script tags -->
+    <script src="{{ url_for('static', filename='js/ui/EPGUtilities.js') }}" defer></script>
+    <script src="{{ url_for('static', filename='js/ui/EPGEventHandler.js') }}" defer></script>
+    <script src="{{ url_for('static', filename='js/ui/EPGDateManager.js') }}" defer></script>
+    <script src="{{ url_for('static', filename='js/ui/EPGInfiniteScroll.js') }}" defer></script>
+    <script src="{{ url_for('static', filename='js/ui/EPGModalManager.js') }}" defer></script>
+    <script src="{{ url_for('static', filename='js/ui/EPGRenderer.js') }}" defer></script>
+    <script src="{{ url_for('static', filename='js/ui/EPGUIMain.js') }}" defer></script>
+    <script src="{{ url_for('static', filename='js/ui/index.js') }}" defer></script>
     <script src="{{ url_for('static', filename='js/config.js') }}" defer></script>
     <script src="{{ url_for('static', filename='js/monitoring.js') }}" defer></script>
 </head>
