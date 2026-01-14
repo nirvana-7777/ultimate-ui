@@ -37,6 +37,10 @@ module.exports = [
         Event: "readonly",
         CustomEvent: "readonly",
 
+        // Third-party libraries
+        FuzzySet: "readonly", // Added for epg_mapping_fuzzy.js
+        shaka: "readonly",    // Added for epg_player.js (Shaka Player library)
+
         // Browser objects
         location: "readonly",
         sessionStorage: "readonly",
@@ -51,12 +55,13 @@ module.exports = [
         epgDisplayManager: "readonly",
         monitoringManager: "readonly",
         baseTemplate: "readonly",
-        CONFIG_DATA: "readonly", // From config.js
+        CONFIG_DATA: "readonly",
+        epgMappingManager: "readonly", // Added for epg_mapping_ui.js
 
         // EPG related globals
-        EPGCore: "readonly", // Defined in epg_core.js
-        EPGUI: "readonly",   // Defined elsewhere (probably epg_ui.js)
-        EPGPlayer: "readonly" // Defined elsewhere
+        EPGCore: "readonly",
+        EPGUI: "readonly",
+        EPGPlayer: "readonly"
       }
     },
 
@@ -64,7 +69,7 @@ module.exports = [
       "no-unused-vars": ["warn", {
         "argsIgnorePattern": "^_",
         "caughtErrorsIgnorePattern": "^_",
-        "varsIgnorePattern": "^_" // Allow unused variables starting with _
+        "varsIgnorePattern": "^_"
       }],
       "no-undef": "error",
       "no-console": "off"
