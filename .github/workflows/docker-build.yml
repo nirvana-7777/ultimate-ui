@@ -137,59 +137,28 @@ jobs:
   frontend-check:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Set up Node.js ${{ env.NODE_VERSION }}
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
 
-      - name: Check HTML syntax
+      - name: Install frontend linters
         run: |
-          # Check for basic HTML syntax issues
-          find . -name "*.html" -type f -exec grep -l "<html" {} \; | while read file; do
-            echo "Checking $file"
-            if ! grep -q "</html>" "$file"; then
-              echo "ERROR: $file missing closing </html> tag"
-              exit 1
-            fi
-            if ! grep -q "<head>" "$file" && grep -q "<body>" "$file"; then
-              echo "ERROR: $file missing <head> or <body> tags"
-              exit 1
-            fi
-          done
+          npm install --no-save eslint htmlhint stylelint stylelint-config-standard
 
-      - name: Check JavaScript syntax
+      - name: Lint JavaScript
         run: |
-          # Install jshint if needed
-          if ! command -v jshint &> /dev/null; then
-            npm install -g jshint
-          fi
-          
-          # Run jshint on JavaScript files
-          find . -name "*.js" -type f -not -path "./node_modules/*" -not -path "./.git/*" | while read file; do
-            echo "Checking $file"
-            jshint "$file" || echo "WARNING: $file has JavaScript issues (non-blocking)"
-          done || true
+          npx eslint "src/static/js/**/*.js"
 
-      - name: Check CSS syntax
+      - name: Lint HTML
         run: |
-          # Install stylelint if needed
-          if ! command -v stylelint &> /dev/null; then
-            npm install -g stylelint stylelint-config-standard
-          fi
-          
-          # Create stylelint config if not exists
-          if [ ! -f .stylelintrc.json ]; then
-            echo '{"extends": "stylelint-config-standard"}' > .stylelintrc.json
-          fi
-          
-          # Run stylelint on CSS files
-          find . -name "*.css" -type f -not -path "./node_modules/*" -not -path "./.git/*" | while read file; do
-            echo "Checking $file"
-            stylelint "$file" || echo "WARNING: $file has CSS issues (non-blocking)"
-          done || true
+          npx htmlhint "src/templates/**/*.html"
+
+      - name: Lint CSS
+        run: |
+          npx stylelint "src/static/css/**/*.css"
 
   codeql:
     name: CodeQL Security Analysis
