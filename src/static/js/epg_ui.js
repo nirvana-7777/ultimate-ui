@@ -1,4 +1,4 @@
-// epg_ui.js - Updated for provider channel support
+// epg_ui.js - Fixed with provider channel play button support
 class EPGUI {
     constructor(core) {
         this.core = core;
@@ -17,7 +17,6 @@ class EPGUI {
         container.innerHTML = '';
 
         channels.forEach(channel => {
-            // For provider channels, use channel.Id; for EPG channels, use channel.id
             const channelId = channel.Id || channel.id;
             const program = currentEvents.get(channelId);
             const card = this.createCurrentEventCard(channel, program);
@@ -40,8 +39,7 @@ class EPGUI {
     createCurrentEventCard(channel, program) {
         const div = document.createElement('div');
         div.className = 'channel-now-card';
-        
-        // For provider channels, use channel.Id; for EPG channels, use channel.id
+
         const channelId = channel.Id || channel.id;
         div.dataset.channelId = channelId;
 
@@ -58,7 +56,6 @@ class EPGUI {
         const logoContainer = document.createElement('div');
         logoContainer.className = 'channel-logo-container';
 
-        // Use LogoUrl for provider channels, icon_url for EPG channels
         const logoUrl = channel.LogoUrl || channel.icon_url;
         if (logoUrl) {
             const logo = document.createElement('img');
@@ -80,12 +77,26 @@ class EPGUI {
         name.textContent = channel.Name || channel.display_name;
         logoSection.appendChild(name);
 
-        if (program && (program.stream_url || program.stream)) {
+        // FIXED: Add play button for provider channels OR if program has stream
+        const isProviderChannel = this.core.activeProvider && channel.StreamUrl;
+        const hasStream = isProviderChannel || (program && (program.stream_url || program.stream));
+
+        if (hasStream) {
             const playBtn = document.createElement('button');
-            playBtn.className = 'btn-play-tile';
-            playBtn.innerHTML = '<span>▶</span> Play';
-            playBtn.dataset.channelId = channelId;
-            playBtn.dataset.programId = program.id;
+
+            if (isProviderChannel) {
+                // Provider channel - play the channel stream directly
+                playBtn.className = 'btn-play-channel';
+                playBtn.innerHTML = '<span>▶</span> Live';
+                playBtn.dataset.channelId = channelId;
+            } else {
+                // Regular EPG - play the program stream
+                playBtn.className = 'btn-play-tile';
+                playBtn.innerHTML = '<span>▶</span> Play';
+                playBtn.dataset.channelId = channelId;
+                playBtn.dataset.programId = program.id;
+            }
+
             logoSection.appendChild(playBtn);
         }
 
@@ -257,7 +268,7 @@ class EPGUI {
 
         const logoContainer = document.createElement('div');
         logoContainer.className = 'channel-logo-container';
-        
+
         const logoUrl = channel.LogoUrl || channel.icon_url;
         if (logoUrl) {
             const logo = document.createElement('img');
@@ -344,8 +355,6 @@ class EPGUI {
         const programId = program.id || program.program_id || `${channel.id}_${program.start_time}`;
         div.dataset.programId = String(programId);
         div.dataset.channelId = String(channel.id);
-
-        console.log('Creating program card with ID:', programId, 'for program:', program.title);
 
         if (startTime <= now && endTime >= now) {
             div.classList.add('live');
@@ -482,28 +491,21 @@ class EPGUI {
         const lastProgramCard = allProgramCards[allProgramCards.length - 1];
         const lastProgramId = lastProgramCard.dataset.programId;
 
-        console.log('Last program card:', lastProgramCard);
-        console.log('Last program ID from dataset:', lastProgramId);
-
         const allPrograms = this.core.dailyPrograms.get(channelId);
-        console.log('Total programs in core for channel:', allPrograms ? allPrograms.length : 0);
 
         let lastProgram = null;
         if (allPrograms && allPrograms.length > 0) {
             lastProgram = allPrograms.find(p => String(p.id) === String(lastProgramId));
 
             if (!lastProgram) {
-                console.log('Program not found by ID, using last program in array');
                 lastProgram = allPrograms[allPrograms.length - 1];
             }
         }
 
         if (!lastProgram) {
-            console.log('Could not find last program. Channel ID:', channelId, 'Program ID:', lastProgramId);
+            console.log('Could not find last program');
             return;
         }
-
-        console.log('Found last program:', lastProgram.title, 'End time:', lastProgram.end_time);
 
         const loadMoreBtn = content.querySelector('.load-more-programs-btn');
         if (!loadMoreBtn) return;
@@ -515,14 +517,10 @@ class EPGUI {
         loadMoreBtn.style.backgroundColor = 'var(--bg-tertiary)';
 
         try {
-            console.log(`Loading next day after ${lastProgram.end_time}`);
-
             const newPrograms = await this.core.loadNextDayForChannel(
                 channelId,
                 lastProgram.end_time
             );
-
-            console.log(`Loaded ${newPrograms.length} new programs`);
 
             if (newPrograms.length > 0) {
                 newPrograms.forEach(program => {
@@ -561,11 +559,9 @@ class EPGUI {
 
         const loadMoreBtn = document.querySelector('.load-more-programs-btn');
         if (!loadMoreBtn) {
-            console.warn('Load more button not found for infinite scroll setup');
+            console.warn('Load more button not found');
             return;
         }
-
-        console.log('Setting up infinite scroll for channel', channelId);
 
         this.dailyProgramsInfiniteScroll = new IntersectionObserver(async (entries) => {
             for (const entry of entries) {
@@ -575,11 +571,9 @@ class EPGUI {
 
                     const btn = entry.target;
                     if (btn.disabled && btn.innerHTML === 'Keine weiteren Programme verfügbar') {
-                        console.log('No more programs to load, skipping');
                         return;
                     }
 
-                    console.log('Infinite scroll triggered for daily programs');
                     await this.loadMoreDailyPrograms(channelId);
                 }
             }
@@ -590,7 +584,6 @@ class EPGUI {
         });
 
         this.dailyProgramsInfiniteScroll.observe(loadMoreBtn);
-        console.log('Observing load more button for channel', channelId);
     }
 
     addTimeBadgeCSS() {
@@ -910,3 +903,6 @@ class EPGUI {
         return div.innerHTML;
     }
 }
+
+// Export for use
+window.EPGUI = EPGUI;

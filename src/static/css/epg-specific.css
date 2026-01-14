@@ -1,4 +1,4 @@
-/* Ultimate UI - EPG Specific Components - Enhanced with smart time badges */
+/* Ultimate UI - EPG Specific Components - Enhanced with smart time badges and provider support */
 
 /* Channel Now Playing Card */
 .channel-now-card {
@@ -91,7 +91,9 @@
     word-wrap: break-word;
 }
 
-.btn-play-tile {
+/* UPDATED: Play buttons for both program and channel streams */
+.btn-play-tile,
+.btn-play-channel {
     background: linear-gradient(135deg, var(--accent-color), var(--accent-hover));
     color: white;
     border: none;
@@ -107,9 +109,20 @@
     box-shadow: 0 2px 8px rgba(33, 150, 243, 0.3);
 }
 
-.btn-play-tile:hover {
+.btn-play-tile:hover,
+.btn-play-channel:hover {
     transform: translateY(-2px);
     box-shadow: 0 4px 12px rgba(33, 150, 243, 0.4);
+}
+
+/* NEW: Special styling for channel live stream button */
+.btn-play-channel {
+    background: linear-gradient(135deg, #FF3B30, #FF6B6B);
+    box-shadow: 0 2px 8px rgba(255, 59, 48, 0.3);
+}
+
+.btn-play-channel:hover {
+    box-shadow: 0 4px 12px rgba(255, 59, 48, 0.4);
 }
 
 .channel-info-compact {
@@ -344,7 +357,7 @@
     border-color: var(--error-color);
 }
 
-/* NEW: Smart Time Badges */
+/* Smart Time Badges */
 .time-badge {
     display: inline-flex;
     align-items: center;
@@ -675,6 +688,13 @@
     border-color: var(--accent-color);
 }
 
+/* UPDATED: Date controls visibility */
+.date-controls {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+}
+
 /* Responsive design for provider filter */
 @media (max-width: 768px) {
     .epg-controls {
@@ -701,13 +721,13 @@
         gap: 10px;
     }
 
+    .date-controls {
+        flex-direction: column;
+        width: 100%;
+    }
+
     .date-nav-btn,
     .date-today-btn {
         width: 100%;
     }
-}
-
-/* Hide date navigation in provider mode */
-.date-navigation.hidden {
-    display: none;
 }
