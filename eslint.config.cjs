@@ -1,4 +1,4 @@
-export default [
+module.exports = [
   {
     files: ["src/static/js/**/*.js"],
     ignores: ["node_modules/**"],
@@ -15,3 +15,4 @@ export default [
     }
   }
 ];
+
