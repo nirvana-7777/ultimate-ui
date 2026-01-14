@@ -198,7 +198,7 @@ class EPGMappingUI {
         return logoDiv;
     }
 
-    createChannelInfo(channel, type, channelId, isMapped, hasTentative = false) {
+    createChannelInfo(channel, type, channelId, isMapped, _hasTentative = false) {
         const infoDiv = document.createElement('div');
         infoDiv.className = 'channel-info';
 

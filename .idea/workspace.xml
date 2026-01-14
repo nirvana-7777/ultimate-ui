@@ -3,7 +3,7 @@
   <component name="ChangeListManager">
     <list default="true" id="26a67a20-b618-41a8-9b0d-40ca26281999" name="Changes" comment="Stricter Linting">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/eslint.config.cjs" beforeDir="false" afterPath="$PROJECT_DIR$/eslint.config.cjs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/static/js/epg_mapping/epg_mapping_ui.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/static/js/epg_mapping/epg_mapping_ui.js" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -73,23 +73,7 @@
       <workItem from="1768318939572" duration="1013000" />
       <workItem from="1768386656720" duration="3543000" />
       <workItem from="1768399893477" duration="2236000" />
-      <workItem from="1768403116851" duration="7919000" />
-    </task>
-    <task id="LOCAL-00082" summary="Fix EPG Loading">
-      <option name="closed" value="true" />
-      <created>1767887410976</created>
-      <option name="number" value="00082" />
-      <option name="presentableId" value="LOCAL-00082" />
-      <option name="project" value="LOCAL" />
-      <updated>1767887410976</updated>
-    </task>
-    <task id="LOCAL-00083" summary="Fix EPG Loading">
-      <option name="closed" value="true" />
-      <created>1767887950499</created>
-      <option name="number" value="00083" />
-      <option name="presentableId" value="LOCAL-00083" />
-      <option name="project" value="LOCAL" />
-      <updated>1767887950499</updated>
+      <workItem from="1768403116851" duration="8676000" />
     </task>
     <task id="LOCAL-00084" summary="Fix EPG Loading">
       <option name="closed" value="true" />
@@ -467,7 +451,23 @@
       <option name="project" value="LOCAL" />
       <updated>1768421840561</updated>
     </task>
-    <option name="localTasksCounter" value="131" />
+    <task id="LOCAL-00131" summary="Stricter Linting">
+      <option name="closed" value="true" />
+      <created>1768422324219</created>
+      <option name="number" value="00131" />
+      <option name="presentableId" value="LOCAL-00131" />
+      <option name="project" value="LOCAL" />
+      <updated>1768422324219</updated>
+    </task>
+    <task id="LOCAL-00132" summary="Stricter Linting">
+      <option name="closed" value="true" />
+      <created>1768423378036</created>
+      <option name="number" value="00132" />
+      <option name="presentableId" value="LOCAL-00132" />
+      <option name="project" value="LOCAL" />
+      <updated>1768423378036</updated>
+    </task>
+    <option name="localTasksCounter" value="133" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
