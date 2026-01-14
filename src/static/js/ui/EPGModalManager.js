@@ -2,7 +2,6 @@
 class EPGModalManager {
     constructor(epgUI) {
         this.epgUI = epgUI;
-        this.utilities = epgUI.components.utilities;
     }
 
     showProgramDetails(program) {
@@ -44,6 +43,8 @@ class EPGModalManager {
     }
 
     createProgramDetailsModalHTML(program) {
+        // Access utilities through epgUI
+        const utilities = this.epgUI.components.utilities;
         const imageUrl = program.icon_url || program.image_url || '';
 
         let timeDisplay = '';
@@ -78,7 +79,7 @@ class EPGModalManager {
             detailItems.push(`
                 <div class="detail-item">
                     <span class="detail-label">Kategorie</span>
-                    <span class="detail-value">${this.utilities.escapeHtml(program.category)}</span>
+                    <span class="detail-value">${utilities.escapeHtml(program.category)}</span>
                 </div>
             `);
         }
@@ -87,7 +88,7 @@ class EPGModalManager {
             detailItems.push(`
                 <div class="detail-item">
                     <span class="detail-label">Altersfreigabe</span>
-                    <span class="detail-value">${this.utilities.createRatingBadge(program.rating)}</span>
+                    <span class="detail-value">${utilities.createRatingBadge(program.rating)}</span>
                 </div>
             `);
         }
@@ -105,7 +106,7 @@ class EPGModalManager {
             detailItems.push(`
                 <div class="detail-item">
                     <span class="detail-label">Regie</span>
-                    <span class="detail-value">${this.utilities.escapeHtml(program.directors)}</span>
+                    <span class="detail-value">${utilities.escapeHtml(program.directors)}</span>
                 </div>
             `);
         }
@@ -117,7 +118,7 @@ class EPGModalManager {
             detailItems.push(`
                 <div class="detail-item">
                     <span class="detail-label">Besetzung</span>
-                    <span class="detail-value">${this.utilities.escapeHtml(actors)}</span>
+                    <span class="detail-value">${utilities.escapeHtml(actors)}</span>
                 </div>
             `);
         }
@@ -130,25 +131,25 @@ class EPGModalManager {
         return `
             <div class="modal-program-header">
                 ${imageUrl ? 
-                    `<img src="${imageUrl}" alt="${this.utilities.escapeHtml(program.title)}" class="modal-program-image" 
+                    `<img src="${imageUrl}" alt="${utilities.escapeHtml(program.title)}" class="modal-program-image" 
                          onerror="this.onerror=null; this.style.display='none'; this.parentNode.innerHTML='<div class=\\'modal-program-image\\' style=\\'background: linear-gradient(135deg, var(--bg-tertiary), var(--border-color)); display: flex; align-items: center; justify-content: center; color: var(--text-muted);\\'>Kein Bild</div>';">` :
                     `<div class="modal-program-image" style="background: linear-gradient(135deg, var(--bg-tertiary), var(--border-color)); display: flex; align-items: center; justify-content: center; color: var(--text-muted);">Kein Bild</div>`
                 }
                 <div class="modal-program-info">
-                    <h3 class="modal-program-title">${this.utilities.escapeHtml(program.title)}</h3>
-                    ${program.subtitle ? `<div class="modal-program-subtitle">${this.utilities.escapeHtml(program.subtitle)}</div>` : ''}
+                    <h3 class="modal-program-title">${utilities.escapeHtml(program.title)}</h3>
+                    ${program.subtitle ? `<div class="modal-program-subtitle">${utilities.escapeHtml(program.subtitle)}</div>` : ''}
                     
                     <div class="modal-program-meta">
-                        ${program.category ? `<span class="program-category">${this.utilities.escapeHtml(program.category)}</span>` : ''}
+                        ${program.category ? `<span class="program-category">${utilities.escapeHtml(program.category)}</span>` : ''}
                         ${program.duration ? `<span class="program-duration">${program.duration} min</span>` : ''}
-                        ${program.rating ? this.utilities.createRatingBadge(program.rating) : ''}
+                        ${program.rating ? utilities.createRatingBadge(program.rating) : ''}
                         ${program.episode_formatted ? `<span class="program-episode">${program.episode_formatted}</span>` : ''}
                     </div>
                 </div>
             </div>
             
             <div class="modal-program-description">
-                ${program.description ? `<p>${this.utilities.escapeHtml(program.description)}</p>` : ''}
+                ${program.description ? `<p>${utilities.escapeHtml(program.description)}</p>` : ''}
             </div>
             
             ${detailsGrid}

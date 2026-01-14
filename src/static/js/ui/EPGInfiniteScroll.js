@@ -3,7 +3,6 @@ class EPGInfiniteScroll {
     constructor(epgUI) {
         this.epgUI = epgUI;
         this.core = epgUI.core;
-        this.renderer = epgUI.components.renderer;
         this.dailyProgramsInfiniteScroll = null;
     }
 
@@ -104,8 +103,10 @@ class EPGInfiniteScroll {
             );
 
             if (newPrograms.length > 0) {
+                // We need to access the renderer through epgUI
+                const renderer = this.epgUI.components.renderer;
                 newPrograms.forEach(program => {
-                    const programElement = this.renderer.createDailyProgramCardExpanded(channel, program);
+                    const programElement = renderer.createDailyProgramCardExpanded(channel, program);
                     channelCard.appendChild(programElement);
                 });
 

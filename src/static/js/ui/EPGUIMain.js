@@ -10,13 +10,28 @@ class EPGUIMain {
 
         // Initialize components
         this.components = {
-            renderer: new EPGRenderer(this),
-            modalManager: new EPGModalManager(this),
-            infiniteScroll: new EPGInfiniteScroll(this),
-            dateManager: new EPGDateManager(this),
             utilities: new EPGUtilities(),
-            eventHandler: new EPGEventHandler(this)
+            renderer: null, // Will be set after EPGRenderer is loaded
+            modalManager: null, // Will be set after EPGModalManager is loaded
+            infiniteScroll: null, // Will be set after EPGInfiniteScroll is loaded
+            dateManager: null, // Will be set after EPGDateManager is loaded
+            eventHandler: null // Will be set after EPGEventHandler is loaded
         };
+
+        // Add CSS
+        this.components.utilities.addTimeBadgeCSS();
+    }
+
+    // Initialize components after all are loaded
+    initializeComponents() {
+        this.components.renderer = new EPGRenderer(this);
+        this.components.modalManager = new EPGModalManager(this);
+        this.components.infiniteScroll = new EPGInfiniteScroll(this);
+        this.components.dateManager = new EPGDateManager(this);
+        this.components.eventHandler = new EPGEventHandler(this);
+
+        // Setup event listeners
+        this.components.eventHandler.setupEventListeners();
     }
 
     // High-level rendering methods

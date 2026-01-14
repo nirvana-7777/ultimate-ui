@@ -3,7 +3,6 @@ class EPGEventHandler {
     constructor(epgUI) {
         this.epgUI = epgUI;
         this.core = epgUI.core;
-        this.setupEventListeners();
     }
 
     setupEventListeners() {

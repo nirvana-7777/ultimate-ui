@@ -3,7 +3,6 @@ class EPGRenderer {
     constructor(epgUI) {
         this.epgUI = epgUI;
         this.core = epgUI.core;
-        this.utilities = epgUI.components.utilities;
     }
 
     renderCurrentEvents(channels, currentEvents) {
@@ -59,11 +58,11 @@ class EPGRenderer {
             logo.src = logoUrl;
             logo.alt = channel.Name || channel.display_name;
             logo.onerror = () => {
-                this.utilities.addLogoFallback(logoContainer, channel.Name || channel.display_name);
+                this.epgUI.components.utilities.addLogoFallback(logoContainer, channel.Name || channel.display_name);
             };
             logoContainer.appendChild(logo);
         } else {
-            this.utilities.addLogoFallback(logoContainer, channel.Name || channel.display_name);
+            this.epgUI.components.utilities.addLogoFallback(logoContainer, channel.Name || channel.display_name);
         }
 
         logoSection.appendChild(logoContainer);
@@ -272,11 +271,11 @@ class EPGRenderer {
             logo.src = logoUrl;
             logo.alt = channel.Name || channel.display_name;
             logo.onerror = () => {
-                this.utilities.addLogoFallback(logoContainer, channel.Name || channel.display_name);
+                this.epgUI.components.utilities.addLogoFallback(logoContainer, channel.Name || channel.display_name);
             };
             logoContainer.appendChild(logo);
         } else {
-            this.utilities.addLogoFallback(logoContainer, channel.Name || channel.display_name);
+            this.epgUI.components.utilities.addLogoFallback(logoContainer, channel.Name || channel.display_name);
         }
         header.appendChild(logoContainer);
 
@@ -390,6 +389,8 @@ class EPGRenderer {
     }
 
     createDailyProgramDetailsExpandedHTML(program) {
+        const utilities = this.epgUI.components.utilities;
+
         let timeDisplay = '';
         if (program.time_badge) {
             timeDisplay = `
@@ -415,31 +416,31 @@ class EPGRenderer {
 
         const metaItems = [];
         if (program.category) {
-            metaItems.push(`<span class="program-category">${this.utilities.escapeHtml(program.category)}</span>`);
+            metaItems.push(`<span class="program-category">${utilities.escapeHtml(program.category)}</span>`);
         }
         if (program.duration) {
             metaItems.push(`<span class="program-duration">${program.duration} min</span>`);
         }
         if (program.rating) {
-            metaItems.push(this.utilities.createRatingBadge(program.rating));
+            metaItems.push(utilities.createRatingBadge(program.rating));
         }
         if (program.episode_formatted) {
             metaItems.push(`<span class="program-episode">${program.episode_formatted}</span>`);
         }
         if (program.directors) {
-            metaItems.push(`<span class="program-directors">Regie: ${this.utilities.escapeHtml(program.directors)}</span>`);
+            metaItems.push(`<span class="program-directors">Regie: ${utilities.escapeHtml(program.directors)}</span>`);
         }
         if (program.actors) {
             const actors = program.actors.length > 100 ?
                 program.actors.substring(0, 100) + '...' : program.actors;
-            metaItems.push(`<span class="program-actors">Darsteller: ${this.utilities.escapeHtml(actors)}</span>`);
+            metaItems.push(`<span class="program-actors">Darsteller: ${utilities.escapeHtml(actors)}</span>`);
         }
 
         const metaHTML = metaItems.length > 0 ?
             `<div class="daily-program-meta-expanded">${metaItems.join('')}</div>` : '';
 
         const descriptionHTML = program.description ?
-            `<div class="daily-program-description-expanded">${this.utilities.escapeHtml(program.description)}</div>` : '';
+            `<div class="daily-program-description-expanded">${utilities.escapeHtml(program.description)}</div>` : '';
 
         const streamUrl = program.stream_url || program.stream;
         let playButton = '';
@@ -449,8 +450,8 @@ class EPGRenderer {
 
         return `
             ${timeDisplay}
-            <div class="daily-program-title-expanded">${this.utilities.escapeHtml(program.title)}</div>
-            ${program.subtitle ? `<div class="program-subtitle">${this.utilities.escapeHtml(program.subtitle)}</div>` : ''}
+            <div class="daily-program-title-expanded">${utilities.escapeHtml(program.title)}</div>
+            ${program.subtitle ? `<div class="program-subtitle">${utilities.escapeHtml(program.subtitle)}</div>` : ''}
             ${descriptionHTML}
             ${metaHTML}
             ${playButton}

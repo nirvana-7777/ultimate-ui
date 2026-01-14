@@ -1,9 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="26a67a20-b618-41a8-9b0d-40ca26281999" name="Changes" comment="Add Streaming Channels EPG">
+    <list default="true" id="26a67a20-b618-41a8-9b0d-40ca26281999" name="Changes" comment="Split epg_ui.js">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/static/js/epg_ui.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/static/js/ui/EPGEventHandler.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/static/js/ui/EPGEventHandler.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/static/js/ui/EPGInfiniteScroll.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/static/js/ui/EPGInfiniteScroll.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/static/js/ui/EPGModalManager.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/static/js/ui/EPGModalManager.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/static/js/ui/EPGRenderer.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/static/js/ui/EPGRenderer.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/static/js/ui/EPGUIMain.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/static/js/ui/EPGUIMain.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/static/js/ui/index.js" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/src/templates/base.html" beforeDir="false" afterPath="$PROJECT_DIR$/src/templates/base.html" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -74,15 +79,7 @@
       <workItem from="1768318939572" duration="1013000" />
       <workItem from="1768386656720" duration="3543000" />
       <workItem from="1768399893477" duration="2236000" />
-      <workItem from="1768403116851" duration="2641000" />
-    </task>
-    <task id="LOCAL-00075" summary="Fix EPG Loading">
-      <option name="closed" value="true" />
-      <created>1767819464867</created>
-      <option name="number" value="00075" />
-      <option name="presentableId" value="LOCAL-00075" />
-      <option name="project" value="LOCAL" />
-      <updated>1767819464869</updated>
+      <workItem from="1768403116851" duration="3872000" />
     </task>
     <task id="LOCAL-00076" summary="Fix EPG Loading">
       <option name="closed" value="true" />
@@ -468,7 +465,15 @@
       <option name="project" value="LOCAL" />
       <updated>1768414715082</updated>
     </task>
-    <option name="localTasksCounter" value="124" />
+    <task id="LOCAL-00124" summary="Split epg_ui.js">
+      <option name="closed" value="true" />
+      <created>1768416612634</created>
+      <option name="number" value="00124" />
+      <option name="presentableId" value="LOCAL-00124" />
+      <option name="project" value="LOCAL" />
+      <updated>1768416612634</updated>
+    </task>
+    <option name="localTasksCounter" value="125" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -478,6 +483,7 @@
     <MESSAGE value="Initial" />
     <MESSAGE value="Fix EPG Loading" />
     <MESSAGE value="Add Streaming Channels EPG" />
-    <option name="LAST_COMMIT_MESSAGE" value="Add Streaming Channels EPG" />
+    <MESSAGE value="Split epg_ui.js" />
+    <option name="LAST_COMMIT_MESSAGE" value="Split epg_ui.js" />
   </component>
 </project>
