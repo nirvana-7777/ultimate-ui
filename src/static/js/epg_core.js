@@ -1,4 +1,4 @@
-// epg_core.js - Enhanced with smart time badges and multi-day support
+// epg_core.js - Enhanced with provider filtering and smart time badges
 class EPGCore {
     constructor() {
         this.config = {
@@ -17,11 +17,83 @@ class EPGCore {
         this.hasMoreChannels = true;
         this.currentPage = 0;
 
-        // New: Track loaded date ranges for infinite scroll
+        // NEW: Provider filtering
+        this.activeProvider = null; // null = All EPG, string = provider ID
+        this.providerChannels = []; // Channels from selected provider
+        this.providers = []; // List of available providers
+
+        // Track loaded date ranges for infinite scroll
         this.loadedDateRanges = new Map(); // channelId -> Set of date strings
     }
 
+    // NEW: Set active provider and load its channels
+    async setActiveProvider(providerId) {
+        this.activeProvider = providerId;
+        this.providerChannels = [];
+        
+        if (providerId) {
+            await this.loadProviderChannels(providerId);
+        }
+        
+        // Clear cache and reset state
+        this.resetEPGState();
+    }
+
+    // NEW: Load channels for a specific provider
+    async loadProviderChannels(providerId) {
+        try {
+            const response = await fetch(`/api/mapping/channels/${providerId}`);
+            const data = await response.json();
+            
+            if (data.success && data.channels?.channels) {
+                this.providerChannels = data.channels.channels;
+                console.log(`Loaded ${this.providerChannels.length} channels for provider ${providerId}`);
+            } else {
+                console.warn('No channels found for provider:', providerId);
+                this.providerChannels = [];
+            }
+        } catch (error) {
+            console.error('Error loading provider channels:', error);
+            this.providerChannels = [];
+        }
+    }
+
+    // NEW: Load available providers
+    async loadProviders() {
+        try {
+            const response = await fetch('/api/mapping/providers');
+            const data = await response.json();
+            
+            if (data.success) {
+                // The providers are in data.providers.providers or data.providers
+                this.providers = data.providers?.providers || data.providers || [];
+                return this.providers;
+            }
+        } catch (error) {
+            console.error('Error loading providers:', error);
+        }
+        return [];
+    }
+
+    // NEW: Get channels based on active provider
     async fetchChannels(page = 0) {
+        // If a provider is selected, use its channels
+        if (this.activeProvider && this.providerChannels.length > 0) {
+            // For provider mode, we show all channels at once (no pagination)
+            if (page === 0) {
+                return {
+                    channels: this.providerChannels,
+                    hasMore: false
+                };
+            } else {
+                return {
+                    channels: [],
+                    hasMore: false
+                };
+            }
+        }
+
+        // Original behavior for "All EPG"
         try {
             const cacheKey = `channels_${page}`;
             const cached = this.cache.get(cacheKey);
@@ -58,15 +130,10 @@ class EPGCore {
         }
     }
 
-    calculateDuration(startTime, endTime) {
-        const start = new Date(startTime);
-        const end = new Date(endTime);
-        const diff = end - start;
-        return Math.round(diff / (1000 * 60));
-    }
-
+    // MODIFIED: Handle provider channels differently
     async fetchProgramsForChannel(channelId, startDate, endDate) {
         try {
+            // For provider channels, use the channel ID directly (it's the alias)
             const cacheKey = `programs_${channelId}_${startDate.toISOString().split('T')[0]}`;
             const cached = this.cache.get(cacheKey);
 
@@ -107,7 +174,6 @@ class EPGCore {
                 program.end_time_local = this.formatDateTime(program.end_time, 'time');
                 program.date_local = this.formatDateTime(program.start_time, 'date');
 
-
                 program.episode_formatted = this.parseXmltvNsEpisode(program.episode_num);
 
                 // Calculate progress if program is currently airing
@@ -122,7 +188,7 @@ class EPGCore {
                     program.time_remaining = this.calculateTimeRemaining(program.end_time);
                 }
 
-                // NEW: Add smart time badge
+                // Add smart time badge
                 program.time_badge = this.getSmartTimeBadge(program.start_time, program.end_time);
             });
 
@@ -135,90 +201,35 @@ class EPGCore {
         }
     }
 
-    isSameDay(date1, date2) {
-        return date1.getFullYear() === date2.getFullYear() &&
-               date1.getMonth() === date2.getMonth() &&
-               date1.getDate() === date2.getDate();
+    // NEW: Reset EPG state when switching providers
+    resetEPGState() {
+        this.channels = [];
+        this.currentEvents.clear();
+        this.dailyPrograms.clear();
+        this.loadedDateRanges.clear();
+        this.cache.clear();
+        this.currentPage = 0;
+        this.hasMoreChannels = true;
     }
 
-    isTomorrow(date) {
-        const tomorrow = new Date();
-        tomorrow.setDate(tomorrow.getDate() + 1);
-        return this.isSameDay(tomorrow, date);
-    }
-
-    isYesterday(date) {
-        const yesterday = new Date();
-        yesterday.setDate(yesterday.getDate() - 1);
-        return this.isSameDay(yesterday, date);
-    }
-
-    // Updated getSmartTimeBadge method for epg_core.js
-    getSmartTimeBadge(startTime, endTime) {
-        const now = new Date();
-        const start = new Date(startTime);
-        const end = new Date(endTime);
-
-        // Check if it's currently airing
-        const isToday = this.isSameDay(now, start);
-        const isYesterday = this.isYesterday(start);
-        const isTomorrow = this.isTomorrow(start);
-
-        // Calculate if program is currently airing
-        const isCurrentlyAiring = start <= now && end >= now;
-
-        if (isCurrentlyAiring) {
-            return {
-                type: 'live',
-                text: 'LIVE',
-                timeRange: this.formatDateTime(startTime, 'time') + ' - ' + this.formatDateTime(endTime, 'time'),
-                class: 'time-badge live'
-            };
-        } else if (isToday) {
-            // Today but not yet started - show only time range
-            return {
-                type: 'today',
-                text: this.formatDateTime(startTime, 'time') + ' - ' + this.formatDateTime(endTime, 'time'),
-                timeRange: this.formatDateTime(startTime, 'time') + ' - ' + this.formatDateTime(endTime, 'time'),
-                class: 'time-badge today'
-            };
-        } else if (isTomorrow) {
-            // Tomorrow - show "Morgen HH:MM - HH:MM"
-            return {
-                type: 'tomorrow',
-                text: 'Morgen ' + this.formatDateTime(startTime, 'time') + ' - ' + this.formatDateTime(endTime, 'time'),
-                timeRange: 'Morgen ' + this.formatDateTime(startTime, 'time') + ' - ' + this.formatDateTime(endTime, 'time'),
-                class: 'time-badge tomorrow'
-            };
-        } else if (isYesterday) {
-            // Yesterday - show "Gestern HH:MM - HH:MM"
-            return {
-                type: 'yesterday',
-                text: 'Gestern ' + this.formatDateTime(startTime, 'time') + ' - ' + this.formatDateTime(endTime, 'time'),
-                timeRange: 'Gestern ' + this.formatDateTime(startTime, 'time') + ' - ' + this.formatDateTime(endTime, 'time'),
-                class: 'time-badge yesterday'
-            };
-        } else {
-            // Future date - show "DD.MM. HH:MM - HH:MM"
-            const dateStr = this.formatDateTime(startTime, 'short-date');
-            return {
-                type: 'future',
-                text: `${dateStr} ${this.formatDateTime(startTime, 'time')} - ${this.formatDateTime(endTime, 'time')}`,
-                timeRange: `${dateStr} ${this.formatDateTime(startTime, 'time')} - ${this.formatDateTime(endTime, 'time')}`,
-                class: 'time-badge future'
-            };
-        }
-    }
-
+    // MODIFIED: Load data with provider support
     async loadDataForDate(date) {
         this.isLoading = true;
         this.cache.clear();
 
         try {
+            // Clear previous state
+            this.channels = [];
+            this.currentEvents.clear();
+            this.dailyPrograms.clear();
+            this.loadedDateRanges.clear();
+            this.currentPage = 0;
+            this.hasMoreChannels = true;
+
+            // Get channels based on active provider
             const { channels, hasMore } = await this.fetchChannels(0);
             this.channels = channels;
             this.hasMoreChannels = hasMore;
-            this.currentPage = 0;
 
             const now = new Date();
             const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
@@ -236,49 +247,14 @@ class EPGCore {
         }
     }
 
-    async processChannelsWithPrograms(channels, startDate, endDate) {
-        this.currentEvents.clear();
-        this.dailyPrograms.clear();
-
-        const now = new Date();
-
-        const programPromises = channels.map(async (channel) => {
-            try {
-                const programs = await this.fetchProgramsForChannel(
-                    channel.id,
-                    startDate,
-                    endDate
-                );
-
-                channel.programs = programs;
-
-                // Find current event
-                const currentProgram = programs.find(program => {
-                    const start = new Date(program.start_time);
-                    const end = new Date(program.end_time);
-                    return start <= now && end >= now;
-                });
-
-                if (currentProgram) {
-                    currentProgram.channel_name = channel.display_name || channel.name;
-                    currentProgram.channel_icon = channel.icon_url;
-
-                    this.currentEvents.set(channel.id, currentProgram);
-                }
-
-                this.dailyPrograms.set(channel.id, programs);
-
-            } catch (error) {
-                console.warn(`Error processing channel ${channel.id}:`, error);
-                channel.programs = [];
-            }
-        });
-
-        await Promise.all(programPromises);
-    }
-
+    // MODIFIED: Load more channels with provider support
     async loadMoreChannels() {
         if (!this.hasMoreChannels || this.isLoading) {
+            return false;
+        }
+
+        // In provider mode, there's no "more" to load
+        if (this.activeProvider) {
             return false;
         }
 
@@ -305,58 +281,142 @@ class EPGCore {
         }
     }
 
-    // NEW: Load next day's programs for a specific channel
-    async loadNextDayForChannel(channelId, currentEndDate) {
-        try {
-            // Get the date of the last program's end time
-            const lastProgramDate = new Date(currentEndDate);
-
-            // Move to the NEXT day (add 1 day, then set to midnight)
-            const nextDayStart = new Date(lastProgramDate);
-            nextDayStart.setDate(nextDayStart.getDate() + 1);
-            nextDayStart.setHours(0, 0, 0, 0);
-
-            const nextDayEnd = new Date(nextDayStart);
-            nextDayEnd.setDate(nextDayEnd.getDate() + 1);
-            nextDayEnd.setHours(0, 0, 0, 0);
-            nextDayEnd.setMilliseconds(-1);
-
-            const dateKey = nextDayStart.toISOString().split('T')[0];
-
-            console.log(`Loading programs for channel ${channelId} from ${nextDayStart.toISOString()} to ${nextDayEnd.toISOString()}`);
-
-            // Check if we've already loaded this date for this channel
-            if (!this.loadedDateRanges.has(channelId)) {
-                this.loadedDateRanges.set(channelId, new Set());
+    // MODIFIED: Get channel with provider support
+    getChannel(channelId) {
+        if (this.activeProvider) {
+            // In provider mode, find channel in providerChannels
+            const channel = this.providerChannels.find(c => c.Id === channelId);
+            if (channel) {
+                return {
+                    id: channel.Id,
+                    display_name: channel.Name,
+                    name: channel.Id,
+                    icon_url: channel.LogoUrl
+                };
             }
-
-            const loadedDates = this.loadedDateRanges.get(channelId);
-            if (loadedDates.has(dateKey)) {
-                console.log(`Date ${dateKey} already loaded for channel ${channelId}`);
-                return []; // Already loaded
-            }
-
-            const programs = await this.fetchProgramsForChannel(
-                channelId,
-                nextDayStart,
-                nextDayEnd
-            );
-
-            loadedDates.add(dateKey);
-
-            // Append to existing programs
-            const existingPrograms = this.dailyPrograms.get(channelId) || [];
-            const allPrograms = [...existingPrograms, ...programs];
-            this.dailyPrograms.set(channelId, allPrograms);
-
-            console.log(`Loaded ${programs.length} programs for ${dateKey}, total now: ${allPrograms.length}`);
-
-            return programs;
-
-        } catch (error) {
-            console.warn(`Error loading next day for channel ${channelId}:`, error);
-            return [];
         }
+        
+        // Fallback to original lookup
+        const id = typeof channelId === 'string' ? parseInt(channelId, 10) : channelId;
+        return this.channels.find(c => c.id === id || c.id === channelId);
+    }
+
+    processChannelsWithPrograms(channels, startDate, endDate) {
+        this.currentEvents.clear();
+        this.dailyPrograms.clear();
+
+        const now = new Date();
+
+        const programPromises = channels.map(async (channel) => {
+            try {
+                // For provider channels, use channel.Id; for EPG channels, use channel.id
+                const channelId = channel.Id || channel.id;
+                const programs = await this.fetchProgramsForChannel(
+                    channelId,
+                    startDate,
+                    endDate
+                );
+
+                channel.programs = programs;
+
+                // Find current event
+                const currentProgram = programs.find(program => {
+                    const start = new Date(program.start_time);
+                    const end = new Date(program.end_time);
+                    return start <= now && end >= now;
+                });
+
+                if (currentProgram) {
+                    currentProgram.channel_name = channel.display_name || channel.Name;
+                    currentProgram.channel_icon = channel.icon_url || channel.LogoUrl;
+                    this.currentEvents.set(channelId, currentProgram);
+                }
+
+                this.dailyPrograms.set(channelId, programs);
+
+            } catch (error) {
+                console.warn(`Error processing channel ${channel.Id || channel.id}:`, error);
+                channel.programs = [];
+            }
+        });
+
+        return Promise.all(programPromises);
+    }
+
+    // ... rest of the class remains the same (isSameDay, getSmartTimeBadge, etc.)
+    
+    isSameDay(date1, date2) {
+        return date1.getFullYear() === date2.getFullYear() &&
+               date1.getMonth() === date2.getMonth() &&
+               date1.getDate() === date2.getDate();
+    }
+
+    isTomorrow(date) {
+        const tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        return this.isSameDay(tomorrow, date);
+    }
+
+    isYesterday(date) {
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+        return this.isSameDay(yesterday, date);
+    }
+
+    getSmartTimeBadge(startTime, endTime) {
+        const now = new Date();
+        const start = new Date(startTime);
+        const end = new Date(endTime);
+
+        const isToday = this.isSameDay(now, start);
+        const isYesterday = this.isYesterday(start);
+        const isTomorrow = this.isTomorrow(start);
+        const isCurrentlyAiring = start <= now && end >= now;
+
+        if (isCurrentlyAiring) {
+            return {
+                type: 'live',
+                text: 'LIVE',
+                timeRange: this.formatDateTime(startTime, 'time') + ' - ' + this.formatDateTime(endTime, 'time'),
+                class: 'time-badge live'
+            };
+        } else if (isToday) {
+            return {
+                type: 'today',
+                text: this.formatDateTime(startTime, 'time') + ' - ' + this.formatDateTime(endTime, 'time'),
+                timeRange: this.formatDateTime(startTime, 'time') + ' - ' + this.formatDateTime(endTime, 'time'),
+                class: 'time-badge today'
+            };
+        } else if (isTomorrow) {
+            return {
+                type: 'tomorrow',
+                text: 'Morgen ' + this.formatDateTime(startTime, 'time') + ' - ' + this.formatDateTime(endTime, 'time'),
+                timeRange: 'Morgen ' + this.formatDateTime(startTime, 'time') + ' - ' + this.formatDateTime(endTime, 'time'),
+                class: 'time-badge tomorrow'
+            };
+        } else if (isYesterday) {
+            return {
+                type: 'yesterday',
+                text: 'Gestern ' + this.formatDateTime(startTime, 'time') + ' - ' + this.formatDateTime(endTime, 'time'),
+                timeRange: 'Gestern ' + this.formatDateTime(startTime, 'time') + ' - ' + this.formatDateTime(endTime, 'time'),
+                class: 'time-badge yesterday'
+            };
+        } else {
+            const dateStr = this.formatDateTime(startTime, 'short-date');
+            return {
+                type: 'future',
+                text: `${dateStr} ${this.formatDateTime(startTime, 'time')} - ${this.formatDateTime(endTime, 'time')}`,
+                timeRange: `${dateStr} ${this.formatDateTime(startTime, 'time')} - ${this.formatDateTime(endTime, 'time')}`,
+                class: 'time-badge future'
+            };
+        }
+    }
+
+    calculateDuration(startTime, endTime) {
+        const start = new Date(startTime);
+        const end = new Date(endTime);
+        const diff = end - start;
+        return Math.round(diff / (1000 * 60));
     }
 
     formatDateTime(dateTime, format = 'datetime') {
@@ -440,11 +500,6 @@ class EPGCore {
     getProgram(channelId, programId) {
         const programs = this.dailyPrograms.get(channelId);
         return programs?.find(p => p.id === programId);
-    }
-
-    getChannel(channelId) {
-        const id = typeof channelId === 'string' ? parseInt(channelId, 10) : channelId;
-        return this.channels.find(c => c.id === id || c.id === channelId);
     }
 
     navigateDate(days) {

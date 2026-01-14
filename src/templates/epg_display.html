@@ -5,6 +5,13 @@
     <!-- Sticky Date Navigation -->
     <div class="date-navigation">
         <h2>EPG Programmübersicht</h2>
+        <div class="provider-filter">
+            <label for="provider-select-epg">Filter nach Provider:</label>
+            <select id="provider-select-epg" class="form-select">
+                <option value="">Alle EPG Kanäle</option>
+                <!-- Options will be populated by JavaScript -->
+            </select>
+        </div>
         <div class="date-controls">
             <button class="btn-date" id="date-prev-btn" aria-label="Vorheriger Tag">
                 <span>←</span> Vorheriger Tag

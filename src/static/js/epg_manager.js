@@ -1,4 +1,4 @@
-// EPG Manager - With Infinite Scroll for Current Events
+// EPG Manager - With Provider Filtering and Infinite Scroll
 class EPGManager {
     constructor() {
         this.core = new EPGCore();
@@ -17,6 +17,7 @@ class EPGManager {
         this.handleClick = this.handleClick.bind(this);
         this.handleKeyboard = this.handleKeyboard.bind(this);
         this.loadMoreCurrentEvents = this.loadMoreCurrentEvents.bind(this);
+        this.handleProviderChange = this.handleProviderChange.bind(this);
     }
 
     async initialize() {
@@ -28,6 +29,9 @@ class EPGManager {
         this.setupEventListeners();
         this.setupDateNavigation();
         this.setupInfiniteScroll();
+        
+        // NEW: Load providers and setup provider dropdown
+        await this.setupProviderDropdown();
 
         await this.loadData();
 
@@ -39,7 +43,7 @@ class EPGManager {
         this.progressUpdateInterval = setInterval(() => this.updateProgressBars(), 30000);
 
         this.initialized = true;
-        console.log('EPGManager initialized successfully with 50-item chunks');
+        console.log('EPGManager initialized successfully with provider filtering');
     }
 
     loadConfiguration() {
@@ -54,6 +58,102 @@ class EPGManager {
             if (refreshInterval && !isNaN(refreshInterval)) {
                 this.core.config.refreshInterval = refreshInterval;
             }
+        }
+    }
+
+    // NEW: Setup provider dropdown
+    async setupProviderDropdown() {
+        const providerSelect = document.getElementById('provider-select-epg');
+        
+        if (!providerSelect) {
+            console.warn('Provider select element not found');
+            return;
+        }
+        
+        // Clear existing options
+        providerSelect.innerHTML = '<option value="">Alle EPG Kanäle</option>';
+        
+        try {
+            // Load providers
+            const providers = await this.core.loadProviders();
+            console.log('Loaded providers:', providers);
+            
+            // Add provider options
+            providers.forEach(provider => {
+                const option = document.createElement('option');
+                option.value = provider.name || provider.id;
+                option.textContent = provider.label || provider.name || `Provider ${provider.id}`;
+                providerSelect.appendChild(option);
+            });
+            
+            // Set up change event
+            providerSelect.addEventListener('change', this.handleProviderChange);
+            
+            console.log('Provider dropdown setup complete');
+            
+        } catch (error) {
+            console.error('Error setting up provider dropdown:', error);
+        }
+    }
+
+    // NEW: Handle provider selection change
+    async handleProviderChange(event) {
+        const providerId = event.target.value;
+        
+        console.log('Provider changed to:', providerId);
+        
+        if (window.showLoading) window.showLoading('Lade Kanäle...');
+        
+        try {
+            // Set active provider in core
+            await this.core.setActiveProvider(providerId);
+            
+            // Reset UI state
+            this.ui.closeDailyPrograms();
+            this.dailyProgramsData.clear();
+            this.removeSentinels();
+            
+            // Load data with new provider
+            await this.loadData();
+            
+            // Update UI to reflect provider change
+            this.updateProviderDisplay(providerId);
+            
+        } catch (error) {
+            console.error('Error switching provider:', error);
+            if (window.showToast) window.showToast(`Fehler beim Wechseln: ${error.message}`, 'error');
+        } finally {
+            if (window.hideLoading) window.hideLoading();
+        }
+    }
+
+    // NEW: Update UI based on selected provider
+    updateProviderDisplay(providerId) {
+        const dateNavigation = document.querySelector('.date-navigation');
+        const providerSelect = document.getElementById('provider-select-epg');
+        
+        if (dateNavigation) {
+            if (providerId) {
+                // Hide date navigation in provider mode
+                dateNavigation.classList.add('hidden');
+            } else {
+                // Show date navigation in "All EPG" mode
+                dateNavigation.classList.remove('hidden');
+            }
+        }
+        
+        // Update provider select value
+        if (providerSelect) {
+            providerSelect.value = providerId || '';
+        }
+        
+        // Update page title or indicator
+        const pageTitle = document.querySelector('.epg-header h1');
+        if (pageTitle && providerId) {
+            const providerName = providerSelect.options[providerSelect.selectedIndex]?.text || providerId;
+            pageTitle.textContent = `EPG - ${providerName}`;
+        } else if (pageTitle) {
+            pageTitle.textContent = 'EPG - Alle Kanäle';
         }
     }
 
@@ -169,6 +269,12 @@ class EPGManager {
             return;
         }
 
+        // In provider mode, no infinite scroll
+        if (this.core.activeProvider) {
+            console.log('Provider mode - no infinite scroll');
+            return;
+        }
+
         const beforeCount = this.core.channels.length;
         const success = await this.core.loadMoreChannels();
 
@@ -229,7 +335,7 @@ class EPGManager {
         if (e.target.closest('.expand-daily-btn')) {
             e.stopPropagation();
             const button = e.target.closest('.expand-daily-btn');
-            const channelId = parseInt(button.dataset.channelId, 10);
+            const channelId = button.dataset.channelId;
             console.log('Expand daily clicked for channel ID:', channelId, 'type:', typeof channelId);
             if (channelId) {
                 this.showDailyPrograms(channelId);
@@ -303,6 +409,12 @@ class EPGManager {
     }
 
     navigateDate(days) {
+        // Only navigate dates in "All EPG" mode
+        if (this.core.activeProvider) {
+            if (window.showToast) window.showToast('Datumsnavigation nicht verfügbar im Provider-Modus', 'info');
+            return;
+        }
+        
         this.core.navigateDate(days);
         this.ui.closeDailyPrograms();
         this.dailyProgramsData.clear();
@@ -313,6 +425,12 @@ class EPGManager {
     }
 
     goToToday() {
+        // Only go to today in "All EPG" mode
+        if (this.core.activeProvider) {
+            if (window.showToast) window.showToast('Heute-Button nicht verfügbar im Provider-Modus', 'info');
+            return;
+        }
+        
         this.core.goToToday();
         this.ui.closeDailyPrograms();
         this.dailyProgramsData.clear();
@@ -396,7 +514,7 @@ class EPGManager {
 
     showDailyPrograms(channelId) {
         console.log('showDailyPrograms called with channelId:', channelId, 'type:', typeof channelId);
-        console.log('Available channels:', this.core.channels.map(c => ({id: c.id, type: typeof c.id, name: c.display_name})));
+        console.log('Available channels:', this.core.channels.map(c => ({id: c.Id || c.id, type: typeof c.id, name: c.display_name || c.Name})));
         console.log('Daily programs keys:', Array.from(this.dailyProgramsData.keys()));
 
         const channel = this.core.getChannel(channelId);

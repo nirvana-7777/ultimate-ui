@@ -1,4 +1,4 @@
-// epg_ui.js - Updated with smart time badges and fixed infinite scroll
+// epg_ui.js - Updated for provider channel support
 class EPGUI {
     constructor(core) {
         this.core = core;
@@ -6,7 +6,7 @@ class EPGUI {
         this.currentModal = null;
         this.dailyProgramsInfiniteScroll = null;
         this.currentLoadingChannel = null;
-        this.isLoadingMorePrograms = false; // NEW: Track loading state
+        this.isLoadingMorePrograms = false;
         this.addTimeBadgeCSS();
     }
 
@@ -17,7 +17,9 @@ class EPGUI {
         container.innerHTML = '';
 
         channels.forEach(channel => {
-            const program = currentEvents.get(channel.id);
+            // For provider channels, use channel.Id; for EPG channels, use channel.id
+            const channelId = channel.Id || channel.id;
+            const program = currentEvents.get(channelId);
             const card = this.createCurrentEventCard(channel, program);
             container.appendChild(card);
         });
@@ -26,7 +28,10 @@ class EPGUI {
             container.innerHTML = `
                 <div class="empty-state">
                     <p>Keine Kanäle verfügbar</p>
-                    <p>Bitte überprüfen Sie die Konfiguration.</p>
+                    ${this.core.activeProvider ? 
+                        '<p>Dieser Provider hat keine Kanäle oder es wurden keine EPG-Daten gefunden.</p>' :
+                        '<p>Bitte überprüfen Sie die Konfiguration.</p>'
+                    }
                 </div>
             `;
         }
@@ -35,7 +40,10 @@ class EPGUI {
     createCurrentEventCard(channel, program) {
         const div = document.createElement('div');
         div.className = 'channel-now-card';
-        div.dataset.channelId = channel.id;
+        
+        // For provider channels, use channel.Id; for EPG channels, use channel.id
+        const channelId = channel.Id || channel.id;
+        div.dataset.channelId = channelId;
 
         if (program) {
             div.classList.add(program.is_live ? 'live' : 'upcoming');
@@ -50,31 +58,33 @@ class EPGUI {
         const logoContainer = document.createElement('div');
         logoContainer.className = 'channel-logo-container';
 
-        if (channel.icon_url) {
+        // Use LogoUrl for provider channels, icon_url for EPG channels
+        const logoUrl = channel.LogoUrl || channel.icon_url;
+        if (logoUrl) {
             const logo = document.createElement('img');
             logo.className = 'channel-logo';
-            logo.src = channel.icon_url;
-            logo.alt = channel.display_name;
+            logo.src = logoUrl;
+            logo.alt = channel.Name || channel.display_name;
             logo.onerror = () => {
-                this.addLogoFallback(logoContainer, channel.display_name);
+                this.addLogoFallback(logoContainer, channel.Name || channel.display_name);
             };
             logoContainer.appendChild(logo);
         } else {
-            this.addLogoFallback(logoContainer, channel.display_name);
+            this.addLogoFallback(logoContainer, channel.Name || channel.display_name);
         }
 
         logoSection.appendChild(logoContainer);
 
         const name = document.createElement('div');
         name.className = 'channel-name-compact';
-        name.textContent = channel.display_name;
+        name.textContent = channel.Name || channel.display_name;
         logoSection.appendChild(name);
 
         if (program && (program.stream_url || program.stream)) {
             const playBtn = document.createElement('button');
             playBtn.className = 'btn-play-tile';
             playBtn.innerHTML = '<span>▶</span> Play';
-            playBtn.dataset.channelId = channel.id;
+            playBtn.dataset.channelId = channelId;
             playBtn.dataset.programId = program.id;
             logoSection.appendChild(playBtn);
         }
@@ -127,7 +137,7 @@ class EPGUI {
         const expandBtn = document.createElement('button');
         expandBtn.className = 'expand-daily-btn';
         expandBtn.innerHTML = '▼ Vorschau anzeigen';
-        expandBtn.dataset.channelId = channel.id;
+        expandBtn.dataset.channelId = channelId;
         div.appendChild(expandBtn);
 
         return div;
@@ -149,17 +159,14 @@ class EPGUI {
             container.appendChild(subtitle);
         }
 
-        // UPDATED: Use smart time badge instead of simple time
         const timeInfo = document.createElement('div');
         timeInfo.className = 'event-time';
 
         if (program.time_badge) {
-            // Create time badge element
             const timeBadge = document.createElement('span');
             timeBadge.className = program.time_badge.class;
             timeBadge.textContent = program.time_badge.text;
 
-            // For live programs, show "LIVE" badge + time range
             if (program.time_badge.type === 'live') {
                 const timeRange = document.createElement('span');
                 timeRange.textContent = ` ${program.time_badge.timeRange}`;
@@ -168,11 +175,9 @@ class EPGUI {
                 timeInfo.appendChild(timeBadge);
                 timeInfo.appendChild(timeRange);
             } else {
-                // For non-live, just show the time badge
                 timeInfo.appendChild(timeBadge);
             }
         } else {
-            // Fallback to old format
             const timeRange = document.createElement('span');
             timeRange.textContent = `${program.start_time_local} - ${program.end_time_local}`;
             timeInfo.appendChild(timeRange);
@@ -233,7 +238,7 @@ class EPGUI {
         if (!container || !content) return;
 
         this.currentLoadingChannel = channel.id;
-        this.isLoadingMorePrograms = false; // Reset loading state
+        this.isLoadingMorePrograms = false;
 
         if (currentEventsGrid) {
             currentEventsGrid.classList.add('hiding');
@@ -252,23 +257,25 @@ class EPGUI {
 
         const logoContainer = document.createElement('div');
         logoContainer.className = 'channel-logo-container';
-        if (channel.icon_url) {
+        
+        const logoUrl = channel.LogoUrl || channel.icon_url;
+        if (logoUrl) {
             const logo = document.createElement('img');
             logo.className = 'channel-logo';
-            logo.src = channel.icon_url;
-            logo.alt = channel.display_name;
+            logo.src = logoUrl;
+            logo.alt = channel.Name || channel.display_name;
             logo.onerror = () => {
-                this.addLogoFallback(logoContainer, channel.display_name);
+                this.addLogoFallback(logoContainer, channel.Name || channel.display_name);
             };
             logoContainer.appendChild(logo);
         } else {
-            this.addLogoFallback(logoContainer, channel.display_name);
+            this.addLogoFallback(logoContainer, channel.Name || channel.display_name);
         }
         header.appendChild(logoContainer);
 
         const name = document.createElement('div');
         name.className = 'channel-daily-name';
-        name.textContent = channel.display_name;
+        name.textContent = channel.Name || channel.display_name;
         header.appendChild(name);
 
         channelCard.appendChild(header);
@@ -280,11 +287,10 @@ class EPGUI {
 
         content.appendChild(channelCard);
 
-        // NEW: Add "Load more" button for multi-day support
         const loadMoreBtn = document.createElement('button');
         loadMoreBtn.className = 'load-more-programs-btn';
         loadMoreBtn.innerHTML = '▼ Mehr Programme laden';
-        loadMoreBtn.dataset.channelId = channel.id; // Store channel ID
+        loadMoreBtn.dataset.channelId = channel.id;
         loadMoreBtn.style.cssText = `
             display: block;
             width: 100%;
@@ -321,170 +327,10 @@ class EPGUI {
         container.style.display = 'block';
         container.classList.add('active');
 
-        // Setup infinite scroll observer AFTER button is in DOM
         setTimeout(() => {
             this.setupDailyProgramsInfiniteScroll(channel.id);
             container.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }, 100);
-    }
-
-    // NEW: Load more daily programs for a channel
-    async loadMoreDailyPrograms(channelId) {
-        // Prevent multiple simultaneous loads
-        if (this.isLoadingMorePrograms) {
-            console.log('Already loading more programs, skipping...');
-            return;
-        }
-
-        const channel = this.core.getChannel(channelId);
-        if (!channel || this.currentLoadingChannel !== channelId) {
-            console.log('Channel not found or not current channel');
-            return;
-        }
-
-        const content = document.getElementById('daily-programs-content');
-        if (!content) return;
-
-        // Find the channel card and get the last program
-        const channelCard = content.querySelector('.channel-daily-expanded');
-        if (!channelCard) {
-            console.log('Channel card not found');
-            return;
-        }
-
-        const allProgramCards = channelCard.querySelectorAll('.daily-program-card-expanded');
-        if (allProgramCards.length === 0) {
-            console.log('No program cards found');
-            return;
-        }
-
-        const lastProgramCard = allProgramCards[allProgramCards.length - 1];
-        const lastProgramId = lastProgramCard.dataset.programId;
-
-        console.log('Last program card:', lastProgramCard);
-        console.log('Last program ID from dataset:', lastProgramId);
-
-        // Get all programs for this channel from core
-        const allPrograms = this.core.dailyPrograms.get(channelId);
-        console.log('Total programs in core for channel:', allPrograms ? allPrograms.length : 0);
-
-        // Find the last program by ID
-        let lastProgram = null;
-        if (allPrograms && allPrograms.length > 0) {
-            // Try to find by matching ID
-            lastProgram = allPrograms.find(p => String(p.id) === String(lastProgramId));
-
-            // If not found, use the last program in the array
-            if (!lastProgram) {
-                console.log('Program not found by ID, using last program in array');
-                lastProgram = allPrograms[allPrograms.length - 1];
-            }
-        }
-
-        if (!lastProgram) {
-            console.log('Could not find last program. Channel ID:', channelId, 'Program ID:', lastProgramId);
-            return;
-        }
-
-        console.log('Found last program:', lastProgram.title, 'End time:', lastProgram.end_time);
-
-        const loadMoreBtn = content.querySelector('.load-more-programs-btn');
-        if (!loadMoreBtn) return;
-
-        // Set loading state
-        this.isLoadingMorePrograms = true;
-        loadMoreBtn.disabled = true;
-        loadMoreBtn.innerHTML = 'Lädt mehr Programme...';
-        loadMoreBtn.style.cursor = 'wait';
-        loadMoreBtn.style.backgroundColor = 'var(--bg-tertiary)';
-
-        try {
-            console.log(`Loading next day after ${lastProgram.end_time}`);
-
-            // Load next day's programs
-            const newPrograms = await this.core.loadNextDayForChannel(
-                channelId,
-                lastProgram.end_time
-            );
-
-            console.log(`Loaded ${newPrograms.length} new programs`);
-
-            if (newPrograms.length > 0) {
-                // Insert new programs into the channel card
-                newPrograms.forEach(program => {
-                    const programElement = this.createDailyProgramCardExpanded(channel, program);
-                    channelCard.appendChild(programElement);
-                });
-
-                // Re-enable button
-                loadMoreBtn.disabled = false;
-                loadMoreBtn.innerHTML = '▼ Mehr Programme laden';
-                loadMoreBtn.style.cursor = 'pointer';
-            } else {
-                // No more programs available
-                loadMoreBtn.disabled = true;
-                loadMoreBtn.innerHTML = 'Keine weiteren Programme verfügbar';
-                loadMoreBtn.style.cursor = 'default';
-                loadMoreBtn.style.opacity = '0.6';
-
-                // Disconnect observer since there's nothing more to load
-                if (this.dailyProgramsInfiniteScroll) {
-                    this.dailyProgramsInfiniteScroll.disconnect();
-                }
-            }
-        } catch (error) {
-            console.error('Error loading more programs:', error);
-            loadMoreBtn.disabled = false;
-            loadMoreBtn.innerHTML = '▼ Mehr Programme laden (Erneut versuchen)';
-            loadMoreBtn.style.cursor = 'pointer';
-        } finally {
-            this.isLoadingMorePrograms = false;
-        }
-    }
-
-    // NEW: Setup infinite scroll for daily programs
-    setupDailyProgramsInfiniteScroll(channelId) {
-        // Disconnect existing observer
-        if (this.dailyProgramsInfiniteScroll) {
-            this.dailyProgramsInfiniteScroll.disconnect();
-            this.dailyProgramsInfiniteScroll = null;
-        }
-
-        // Wait for button to be in DOM
-        const loadMoreBtn = document.querySelector('.load-more-programs-btn');
-        if (!loadMoreBtn) {
-            console.warn('Load more button not found for infinite scroll setup');
-            return;
-        }
-
-        console.log('Setting up infinite scroll for channel', channelId);
-
-        // Create new observer
-        this.dailyProgramsInfiniteScroll = new IntersectionObserver(async (entries) => {
-            for (const entry of entries) {
-                if (entry.isIntersecting &&
-                    this.currentLoadingChannel === channelId &&
-                    !this.isLoadingMorePrograms) {
-
-                    const btn = entry.target;
-                    if (btn.disabled && btn.innerHTML === 'Keine weiteren Programme verfügbar') {
-                        console.log('No more programs to load, skipping');
-                        return;
-                    }
-
-                    console.log('Infinite scroll triggered for daily programs');
-                    await this.loadMoreDailyPrograms(channelId);
-                }
-            }
-        }, {
-            root: null,
-            rootMargin: '500px', // Trigger earlier
-            threshold: 0.1
-        });
-
-        // Observe the button
-        this.dailyProgramsInfiniteScroll.observe(loadMoreBtn);
-        console.log('Observing load more button for channel', channelId);
     }
 
     createDailyProgramCardExpanded(channel, program) {
@@ -495,7 +341,6 @@ class EPGUI {
         const div = document.createElement('div');
         div.className = 'daily-program-card-expanded';
 
-        // Ensure program ID is set - use string to avoid type issues
         const programId = program.id || program.program_id || `${channel.id}_${program.start_time}`;
         div.dataset.programId = String(programId);
         div.dataset.channelId = String(channel.id);
@@ -539,9 +384,7 @@ class EPGUI {
         return div;
     }
 
-    // UPDATED: Use smart time badges without LIVE/DEMNÄCHST text
     createDailyProgramDetailsExpandedHTML(program) {
-        // Use the smart time badge
         let timeDisplay = '';
         if (program.time_badge) {
             timeDisplay = `
@@ -550,7 +393,6 @@ class EPGUI {
                 </div>
             `;
         } else {
-            // Fallback
             const startTime = new Date(program.start_time);
             const now = new Date();
             let timeBadge = '';
@@ -610,7 +452,147 @@ class EPGUI {
         `;
     }
 
-    // Add CSS for yesterday badge
+    async loadMoreDailyPrograms(channelId) {
+        if (this.isLoadingMorePrograms) {
+            console.log('Already loading more programs, skipping...');
+            return;
+        }
+
+        const channel = this.core.getChannel(channelId);
+        if (!channel || this.currentLoadingChannel !== channelId) {
+            console.log('Channel not found or not current channel');
+            return;
+        }
+
+        const content = document.getElementById('daily-programs-content');
+        if (!content) return;
+
+        const channelCard = content.querySelector('.channel-daily-expanded');
+        if (!channelCard) {
+            console.log('Channel card not found');
+            return;
+        }
+
+        const allProgramCards = channelCard.querySelectorAll('.daily-program-card-expanded');
+        if (allProgramCards.length === 0) {
+            console.log('No program cards found');
+            return;
+        }
+
+        const lastProgramCard = allProgramCards[allProgramCards.length - 1];
+        const lastProgramId = lastProgramCard.dataset.programId;
+
+        console.log('Last program card:', lastProgramCard);
+        console.log('Last program ID from dataset:', lastProgramId);
+
+        const allPrograms = this.core.dailyPrograms.get(channelId);
+        console.log('Total programs in core for channel:', allPrograms ? allPrograms.length : 0);
+
+        let lastProgram = null;
+        if (allPrograms && allPrograms.length > 0) {
+            lastProgram = allPrograms.find(p => String(p.id) === String(lastProgramId));
+
+            if (!lastProgram) {
+                console.log('Program not found by ID, using last program in array');
+                lastProgram = allPrograms[allPrograms.length - 1];
+            }
+        }
+
+        if (!lastProgram) {
+            console.log('Could not find last program. Channel ID:', channelId, 'Program ID:', lastProgramId);
+            return;
+        }
+
+        console.log('Found last program:', lastProgram.title, 'End time:', lastProgram.end_time);
+
+        const loadMoreBtn = content.querySelector('.load-more-programs-btn');
+        if (!loadMoreBtn) return;
+
+        this.isLoadingMorePrograms = true;
+        loadMoreBtn.disabled = true;
+        loadMoreBtn.innerHTML = 'Lädt mehr Programme...';
+        loadMoreBtn.style.cursor = 'wait';
+        loadMoreBtn.style.backgroundColor = 'var(--bg-tertiary)';
+
+        try {
+            console.log(`Loading next day after ${lastProgram.end_time}`);
+
+            const newPrograms = await this.core.loadNextDayForChannel(
+                channelId,
+                lastProgram.end_time
+            );
+
+            console.log(`Loaded ${newPrograms.length} new programs`);
+
+            if (newPrograms.length > 0) {
+                newPrograms.forEach(program => {
+                    const programElement = this.createDailyProgramCardExpanded(channel, program);
+                    channelCard.appendChild(programElement);
+                });
+
+                loadMoreBtn.disabled = false;
+                loadMoreBtn.innerHTML = '▼ Mehr Programme laden';
+                loadMoreBtn.style.cursor = 'pointer';
+            } else {
+                loadMoreBtn.disabled = true;
+                loadMoreBtn.innerHTML = 'Keine weiteren Programme verfügbar';
+                loadMoreBtn.style.cursor = 'default';
+                loadMoreBtn.style.opacity = '0.6';
+
+                if (this.dailyProgramsInfiniteScroll) {
+                    this.dailyProgramsInfiniteScroll.disconnect();
+                }
+            }
+        } catch (error) {
+            console.error('Error loading more programs:', error);
+            loadMoreBtn.disabled = false;
+            loadMoreBtn.innerHTML = '▼ Mehr Programme laden (Erneut versuchen)';
+            loadMoreBtn.style.cursor = 'pointer';
+        } finally {
+            this.isLoadingMorePrograms = false;
+        }
+    }
+
+    setupDailyProgramsInfiniteScroll(channelId) {
+        if (this.dailyProgramsInfiniteScroll) {
+            this.dailyProgramsInfiniteScroll.disconnect();
+            this.dailyProgramsInfiniteScroll = null;
+        }
+
+        const loadMoreBtn = document.querySelector('.load-more-programs-btn');
+        if (!loadMoreBtn) {
+            console.warn('Load more button not found for infinite scroll setup');
+            return;
+        }
+
+        console.log('Setting up infinite scroll for channel', channelId);
+
+        this.dailyProgramsInfiniteScroll = new IntersectionObserver(async (entries) => {
+            for (const entry of entries) {
+                if (entry.isIntersecting &&
+                    this.currentLoadingChannel === channelId &&
+                    !this.isLoadingMorePrograms) {
+
+                    const btn = entry.target;
+                    if (btn.disabled && btn.innerHTML === 'Keine weiteren Programme verfügbar') {
+                        console.log('No more programs to load, skipping');
+                        return;
+                    }
+
+                    console.log('Infinite scroll triggered for daily programs');
+                    await this.loadMoreDailyPrograms(channelId);
+                }
+            }
+        }, {
+            root: null,
+            rootMargin: '500px',
+            threshold: 0.1
+        });
+
+        this.dailyProgramsInfiniteScroll.observe(loadMoreBtn);
+        console.log('Observing load more button for channel', channelId);
+    }
+
     addTimeBadgeCSS() {
         if (!document.querySelector('#time-badge-styles')) {
             const style = document.createElement('style');
@@ -734,7 +716,6 @@ class EPGUI {
     createProgramDetailsModalHTML(program) {
         const imageUrl = program.icon_url || program.image_url || '';
 
-        // Use smart time badge in modal
         let timeDisplay = '';
         if (program.time_badge) {
             timeDisplay = `

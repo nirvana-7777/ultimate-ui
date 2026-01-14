@@ -626,3 +626,88 @@
         transform: scale(1.05);
     }
 }
+
+/* Provider Filter Styles */
+.epg-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    margin-bottom: 30px;
+}
+
+.provider-filter {
+    padding: 20px;
+    background-color: var(--bg-secondary);
+    border-radius: var(--radius);
+    border: 1px solid var(--border-color);
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    flex-wrap: wrap;
+}
+
+.provider-filter label {
+    font-weight: 600;
+    color: var(--text-primary);
+    font-size: 14px;
+    white-space: nowrap;
+}
+
+.provider-filter .form-select {
+    min-width: 250px;
+    max-width: 400px;
+    padding: 10px 15px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius);
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    font-size: 14px;
+    cursor: pointer;
+    transition: border-color 0.2s;
+}
+
+.provider-filter .form-select:focus {
+    outline: none;
+    border-color: var(--accent-color);
+}
+
+.provider-filter .form-select:hover {
+    border-color: var(--accent-color);
+}
+
+/* Responsive design for provider filter */
+@media (max-width: 768px) {
+    .epg-controls {
+        gap: 15px;
+    }
+
+    .provider-filter {
+        flex-direction: column;
+        align-items: stretch;
+        padding: 15px;
+    }
+
+    .provider-filter label {
+        margin-bottom: 8px;
+    }
+
+    .provider-filter .form-select {
+        min-width: 100%;
+        max-width: 100%;
+    }
+
+    .date-navigation {
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .date-nav-btn,
+    .date-today-btn {
+        width: 100%;
+    }
+}
+
+/* Hide date navigation in provider mode */
+.date-navigation.hidden {
+    display: none;
+}
