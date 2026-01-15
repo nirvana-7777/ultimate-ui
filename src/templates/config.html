@@ -235,28 +235,30 @@
                         <div class="form-col">
                             <label for="ui_theme">Theme</label>
                             <select id="ui_theme" name="ui_theme" class="form-select">
-                                <option value="light" {% if config.ui.theme == 'light' %}selected{% endif %}>
+                                <option value="light" {{ 'selected' if config.ui.theme == 'light' }}>
                                     Hell
                                 </option>
-                                <option value="dark" {% if config.ui.theme == 'dark' %}selected{% endif %}>
+                                <option value="dark" {{ 'selected' if config.ui.theme == 'dark' }}>
                                     Dunkel
                                 </option>
-                                <option value="auto">System</option>
+                                <option value="auto" {{ 'selected' if config.ui.theme == 'auto' }}>
+                                    System
+                                </option>
                             </select>
                         </div>
                         <div class="form-col">
                             <label for="timezone">Zeitzone</label>
                             <select id="timezone" name="timezone" class="form-select">
-                                <option value="Europe/Berlin" {% if config.ui.timezone == 'Europe/Berlin' %}selected{% endif %}>
+                                <option value="Europe/Berlin" {{ 'selected' if config.ui.timezone == 'Europe/Berlin' }}>
                                     Europa/Berlin (MEZ)
                                 </option>
-                                <option value="UTC" {% if config.ui.timezone == 'UTC' %}selected{% endif %}>
+                                <option value="UTC" {{ 'selected' if config.ui.timezone == 'UTC' }}>
                                     UTC
                                 </option>
-                                <option value="America/New_York">
+                                <option value="America/New_York" {{ 'selected' if config.ui.timezone == 'America/New_York' }}>
                                     America/New_York (EST)
                                 </option>
-                                <option value="Asia/Tokyo">
+                                <option value="Asia/Tokyo" {{ 'selected' if config.ui.timezone == 'Asia/Tokyo' }}>
                                     Asia/Tokyo (JST)
                                 </option>
                             </select>
@@ -284,7 +286,7 @@
                         <div class="form-col">
                             <label class="checkbox-label">
                                 <input type="checkbox" id="show_icons" name="show_icons"
-                                       {% if config.ui.show_icons|default(true) %}checked{% endif %}>
+                                       {{ 'checked' if config.ui.show_icons|default(true) }}>
                                 <span class="checkmark"></span>
                                 Kanal-Icons anzeigen
                             </label>
@@ -292,7 +294,7 @@
                         <div class="form-col">
                             <label class="checkbox-label">
                                 <input type="checkbox" id="show_descriptions" name="show_descriptions"
-                                       {% if config.ui.show_descriptions|default(true) %}checked{% endif %}>
+                                       {{ 'checked' if config.ui.show_descriptions|default(true) }}>
                                 <span class="checkmark"></span>
                                 Beschreibungen anzeigen
                             </label>
@@ -312,13 +314,13 @@
                         <div class="form-col">
                             <label for="player_size">Standard-Größe</label>
                             <select id="player_size" name="player_size" class="form-select">
-                                <option value="small" {% if config.player.default_size == 'small' %}selected{% endif %}>
+                                <option value="small" {{ 'selected' if config.player.default_size == 'small' }}>
                                     Klein (480×270)
                                 </option>
-                                <option value="medium" {% if config.player.default_size == 'medium' %}selected{% endif %}>
+                                <option value="medium" {{ 'selected' if config.player.default_size == 'medium' }}>
                                     Mittel (720×405)
                                 </option>
-                                <option value="large" {% if config.player.default_size == 'large' %}selected{% endif %}>
+                                <option value="large" {{ 'selected' if config.player.default_size == 'large' }}>
                                     Groß (1080×608)
                                 </option>
                             </select>
@@ -326,19 +328,19 @@
                         <div class="form-col">
                             <label for="player_bitrate">Standard-Bitrate</label>
                             <select id="player_bitrate" name="player_bitrate" class="form-select">
-                                <option value="auto" {% if config.player.default_bitrate == 'auto' %}selected{% endif %}>
+                                <option value="auto" {{ 'selected' if config.player.default_bitrate == 'auto' }}>
                                     Automatisch
                                 </option>
-                                <option value="1000000" {% if config.player.default_bitrate == '1000000' %}selected{% endif %}>
+                                <option value="1000000" {{ 'selected' if config.player.default_bitrate == '1000000' }}>
                                     Bis 1 Mbit
                                 </option>
-                                <option value="3000000" {% if config.player.default_bitrate == '3000000' %}selected{% endif %}>
+                                <option value="3000000" {{ 'selected' if config.player.default_bitrate == '3000000' }}>
                                     Bis 3 Mbit
                                 </option>
-                                <option value="6000000" {% if config.player.default_bitrate == '6000000' %}selected{% endif %}>
+                                <option value="6000000" {{ 'selected' if config.player.default_bitrate == '6000000' }}>
                                     Bis 6 Mbit
                                 </option>
-                                <option value="10000000" {% if config.player.default_bitrate == '10000000' %}selected{% endif %}>
+                                <option value="10000000" {{ 'selected' if config.player.default_bitrate == '10000000' }}>
                                     Bis 10 Mbit
                                 </option>
                             </select>
@@ -352,7 +354,7 @@
                         <div class="form-col">
                             <label class="checkbox-label">
                                 <input type="checkbox" id="autoplay" name="autoplay"
-                                       {% if config.player.autoplay|default(true) %}checked{% endif %}>
+                                       {{ 'checked' if config.player.autoplay|default(true) }}>
                                 <span class="checkmark"></span>
                                 Autoplay aktivieren
                             </label>
@@ -363,7 +365,7 @@
                         <div class="form-col">
                             <label class="checkbox-label">
                                 <input type="checkbox" id="muted" name="muted"
-                                       {% if config.player.muted|default(false) %}checked{% endif %}>
+                                       {{ 'checked' if config.player.muted|default(false) }}>
                                 <span class="checkmark"></span>
                                 Standardmäßig stumm
                             </label>
@@ -413,7 +415,7 @@
                         <div class="form-col">
                             <label class="checkbox-label">
                                 <input type="checkbox" id="cache_enabled" name="cache_enabled"
-                                       {% if config.get('cache', {}).get('enabled', false) %}checked{% endif %}>
+                                       {{ 'checked' if config.get('cache', {}).get('enabled', false) }}>
                                 <span class="checkmark"></span>
                                 Cache aktivieren
                             </label>
@@ -433,16 +435,16 @@
                         <div class="form-col">
                             <label for="log_level">Log-Level</label>
                             <select id="log_level" name="log_level" class="form-select">
-                                <option value="DEBUG" {% if config.get('logging', {}).get('level', 'INFO') == 'DEBUG' %}selected{% endif %}>
+                                <option value="DEBUG" {{ 'selected' if config.get('logging', {}).get('level', 'INFO') == 'DEBUG' }}>
                                     DEBUG
                                 </option>
-                                <option value="INFO" {% if config.get('logging', {}).get('level', 'INFO') == 'INFO' %}selected{% endif %}>
+                                <option value="INFO" {{ 'selected' if config.get('logging', {}).get('level', 'INFO') == 'INFO' }}>
                                     INFO
                                 </option>
-                                <option value="WARNING" {% if config.get('logging', {}).get('level', 'INFO') == 'WARNING' %}selected{% endif %}>
+                                <option value="WARNING" {{ 'selected' if config.get('logging', {}).get('level', 'INFO') == 'WARNING' }}>
                                     WARNING
                                 </option>
-                                <option value="ERROR" {% if config.get('logging', {}).get('level', 'INFO') == 'ERROR' %}selected{% endif %}>
+                                <option value="ERROR" {{ 'selected' if config.get('logging', {}).get('level', 'INFO') == 'ERROR' }}>
                                     ERROR
                                 </option>
                             </select>
