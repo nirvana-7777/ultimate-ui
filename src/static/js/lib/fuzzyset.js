@@ -125,3 +125,8 @@ class FuzzySet {
         return matrix[b.length][a.length];
     }
 }
+
+// Make it globally available
+if (typeof window !== 'undefined') {
+    window.FuzzySet = FuzzySet;
+}

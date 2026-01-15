@@ -38,8 +38,8 @@ module.exports = [
         CustomEvent: "readonly",
 
         // DOM APIs
-        HTMLElement: "readonly", // Added for main.js
-        getComputedStyle: "readonly", // Added for monitoring.js
+        HTMLElement: "readonly",
+        getComputedStyle: "readonly",
 
         // Third-party libraries
         FuzzySet: "readonly",
@@ -65,13 +65,21 @@ module.exports = [
         baseTemplate: "readonly",
         CONFIG_DATA: "readonly",
         epgMappingManager: "readonly",
-        MONITORING_DATA: "readonly", // Added for monitoring.js
+        MONITORING_DATA: "readonly",
 
-        // EPG related globals
+        // EPG core globals
         EPGCore: "readonly",
         EPGUI: "readonly",
         EPGPlayer: "readonly",
-        EPGUIMain: "readonly" // Added for EPGUI.js
+        EPGUIMain: "readonly",
+
+        // EPG UI component globals (add these)
+        EPGUtilities: "readonly",
+        EPGRenderer: "readonly",
+        EPGModalManager: "readonly",
+        EPGInfiniteScroll: "readonly",
+        EPGDateManager: "readonly",
+        EPGEventHandler: "readonly"
       }
     },
 
