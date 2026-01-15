@@ -157,7 +157,7 @@ jobs:
 
       - name: Lint CSS
         run: |
-          npx stylelint "src/static/css/**/*.css"
+          npx stylelint "src/static/css/**/*.css" --fix
 
   codeql:
     name: CodeQL Security Analysis

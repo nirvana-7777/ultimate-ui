@@ -2,7 +2,7 @@
 
 /* Header */
 .header {
-    background-color: var(--bg-secondary);
+    background-color: rgba(var(--bg-secondary-rgb), 0.95); /* KEEP THIS ONE */
     border-bottom: 1px solid var(--border-color);
     position: fixed;
     top: 0;
@@ -12,7 +12,6 @@
     z-index: 1000;
     box-shadow: var(--shadow);
     backdrop-filter: blur(10px);
-    background-color: rgba(var(--bg-secondary-rgb), 0.95);
 }
 
 .header-content {

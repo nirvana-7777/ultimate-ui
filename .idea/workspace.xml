@@ -2,10 +2,11 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="26a67a20-b618-41a8-9b0d-40ca26281999" name="Changes" comment="Stricter Linting">
+      <change beforePath="$PROJECT_DIR$/.github/workflows/docker-build.yml" beforeDir="false" afterPath="$PROJECT_DIR$/.github/workflows/docker-build.yml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/eslint.config.cjs" beforeDir="false" afterPath="$PROJECT_DIR$/eslint.config.cjs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/static/js/main.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/static/js/main.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/static/js/monitoring.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/static/js/monitoring.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/static/css/epg_mapping.css" beforeDir="false" afterPath="$PROJECT_DIR$/src/static/css/epg_mapping.css" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/static/css/layout.css" beforeDir="false" afterPath="$PROJECT_DIR$/src/static/css/layout.css" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/static/css/providers.css" beforeDir="false" afterPath="$PROJECT_DIR$/src/static/css/providers.css" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -75,55 +76,7 @@
       <workItem from="1768318939572" duration="1013000" />
       <workItem from="1768386656720" duration="3543000" />
       <workItem from="1768399893477" duration="2236000" />
-      <workItem from="1768403116851" duration="9515000" />
-    </task>
-    <task id="LOCAL-00085" summary="Fix EPG Loading">
-      <option name="closed" value="true" />
-      <created>1767953605116</created>
-      <option name="number" value="00085" />
-      <option name="presentableId" value="LOCAL-00085" />
-      <option name="project" value="LOCAL" />
-      <updated>1767953605116</updated>
-    </task>
-    <task id="LOCAL-00086" summary="Fix EPG Loading">
-      <option name="closed" value="true" />
-      <created>1767954325518</created>
-      <option name="number" value="00086" />
-      <option name="presentableId" value="LOCAL-00086" />
-      <option name="project" value="LOCAL" />
-      <updated>1767954325518</updated>
-    </task>
-    <task id="LOCAL-00087" summary="Fix EPG Loading">
-      <option name="closed" value="true" />
-      <created>1767955442509</created>
-      <option name="number" value="00087" />
-      <option name="presentableId" value="LOCAL-00087" />
-      <option name="project" value="LOCAL" />
-      <updated>1767955442509</updated>
-    </task>
-    <task id="LOCAL-00088" summary="Fix EPG Loading">
-      <option name="closed" value="true" />
-      <created>1767964535769</created>
-      <option name="number" value="00088" />
-      <option name="presentableId" value="LOCAL-00088" />
-      <option name="project" value="LOCAL" />
-      <updated>1767964535769</updated>
-    </task>
-    <task id="LOCAL-00089" summary="Fix EPG Loading">
-      <option name="closed" value="true" />
-      <created>1767965223715</created>
-      <option name="number" value="00089" />
-      <option name="presentableId" value="LOCAL-00089" />
-      <option name="project" value="LOCAL" />
-      <updated>1767965223715</updated>
-    </task>
-    <task id="LOCAL-00090" summary="Fix EPG Loading">
-      <option name="closed" value="true" />
-      <created>1767971036217</created>
-      <option name="number" value="00090" />
-      <option name="presentableId" value="LOCAL-00090" />
-      <option name="project" value="LOCAL" />
-      <updated>1767971036217</updated>
+      <workItem from="1768403116851" duration="12309000" />
     </task>
     <task id="LOCAL-00091" summary="Fix EPG Loading">
       <option name="closed" value="true" />
@@ -469,7 +422,55 @@
       <option name="project" value="LOCAL" />
       <updated>1768423424179</updated>
     </task>
-    <option name="localTasksCounter" value="134" />
+    <task id="LOCAL-00134" summary="Stricter Linting">
+      <option name="closed" value="true" />
+      <created>1768465688281</created>
+      <option name="number" value="00134" />
+      <option name="presentableId" value="LOCAL-00134" />
+      <option name="project" value="LOCAL" />
+      <updated>1768465688281</updated>
+    </task>
+    <task id="LOCAL-00135" summary="Stricter Linting">
+      <option name="closed" value="true" />
+      <created>1768466023676</created>
+      <option name="number" value="00135" />
+      <option name="presentableId" value="LOCAL-00135" />
+      <option name="project" value="LOCAL" />
+      <updated>1768466023676</updated>
+    </task>
+    <task id="LOCAL-00136" summary="Stricter Linting">
+      <option name="closed" value="true" />
+      <created>1768466526936</created>
+      <option name="number" value="00136" />
+      <option name="presentableId" value="LOCAL-00136" />
+      <option name="project" value="LOCAL" />
+      <updated>1768466526937</updated>
+    </task>
+    <task id="LOCAL-00137" summary="Stricter Linting">
+      <option name="closed" value="true" />
+      <created>1768466923519</created>
+      <option name="number" value="00137" />
+      <option name="presentableId" value="LOCAL-00137" />
+      <option name="project" value="LOCAL" />
+      <updated>1768466923519</updated>
+    </task>
+    <task id="LOCAL-00138" summary="Stricter Linting">
+      <option name="closed" value="true" />
+      <created>1768467674760</created>
+      <option name="number" value="00138" />
+      <option name="presentableId" value="LOCAL-00138" />
+      <option name="project" value="LOCAL" />
+      <updated>1768467674760</updated>
+    </task>
+    <task id="LOCAL-00139" summary="Stricter Linting">
+      <option name="closed" value="true" />
+      <created>1768467930424</created>
+      <option name="number" value="00139" />
+      <option name="presentableId" value="LOCAL-00139" />
+      <option name="project" value="LOCAL" />
+      <updated>1768467930424</updated>
+    </task>
+    <option name="localTasksCounter" value="140" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">

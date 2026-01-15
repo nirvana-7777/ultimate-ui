@@ -162,8 +162,7 @@
     border: 1px solid var(--border-color);
     border-radius: var(--radius-sm);
     padding: 16px;
-    cursor: move;
-    cursor: grab;
+    cursor: grab; /* KEEP THIS ONE */
     transition: all 0.2s;
     position: relative;
     user-select: none;
@@ -559,20 +558,6 @@
     border: 1px solid var(--border-color);
 }
 
-.stat-label {
-    font-size: 12px;
-    color: var(--text-muted);
-    display: block;
-    margin-bottom: 2px;
-}
-
-.stat-value {
-    font-size: 16px;
-    font-weight: 600;
-    color: var(--text-primary);
-    font-family: 'SF Mono', Monaco, Consolas, monospace;
-}
-
 .streaming-channels.drag-active {
     background: rgba(var(--accent-color-rgb), 0.05);
     border: 2px dashed var(--accent-color);
@@ -590,15 +575,6 @@
     box-shadow: 0 4px 12px rgba(var(--accent-color-rgb), 0.3);
     border-color: var(--accent-color);
     z-index: 10;
-}
-
-/* Channel card drag feedback */
-.channel-card.drag-over {
-    background: rgba(var(--accent-color-rgb), 0.1);
-    border-color: var(--accent-color);
-    border-style: dashed;
-    transform: scale(1.02);
-    transition: all 0.2s;
 }
 
 /* Make the container a proper drop target */
