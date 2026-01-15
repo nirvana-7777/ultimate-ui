@@ -133,7 +133,7 @@ class MonitoringManager {
                 hour: '2-digit',
                 minute: '2-digit'
             });
-        } catch (e) {
+        } catch (_e) {
             return value;
         }
     }
@@ -156,7 +156,7 @@ class MonitoringManager {
             } else {
                 return `${seconds}s`;
             }
-        } catch (e) {
+        } catch (_e) {
             return '-';
         }
     }
@@ -427,7 +427,7 @@ class MonitoringManager {
             updateCountdown();
             this.importCountdownInterval = setInterval(updateCountdown, 1000);
 
-        } catch (e) {
+        } catch (_e) {
             countdownValue.textContent = '-';
         }
     }
@@ -524,7 +524,7 @@ class MonitoringManager {
             if (localStorageEl) {
                 localStorageEl.textContent = `${Math.round(localStorageSize / 1024)} KB`;
             }
-        } catch (e) {
+        } catch (_e) {
             const localStorageEl = document.getElementById('local-storage-usage');
             if (localStorageEl) localStorageEl.textContent = 'Unbekannt';
         }
@@ -542,7 +542,7 @@ class MonitoringManager {
             if (sessionStorageEl) {
                 sessionStorageEl.textContent = `${Math.round(sessionStorageSize / 1024)} KB`;
             }
-        } catch (e) {
+        } catch (_e) {
             const sessionStorageEl = document.getElementById('session-storage-usage');
             if (sessionStorageEl) sessionStorageEl.textContent = 'Unbekannt';
         }

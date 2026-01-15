@@ -37,9 +37,13 @@ module.exports = [
         Event: "readonly",
         CustomEvent: "readonly",
 
+        // DOM APIs
+        HTMLElement: "readonly", // Added for main.js
+        getComputedStyle: "readonly", // Added for monitoring.js
+
         // Third-party libraries
-        FuzzySet: "readonly", // Added for epg_mapping_fuzzy.js
-        shaka: "readonly",    // Added for epg_player.js (Shaka Player library)
+        FuzzySet: "readonly",
+        shaka: "readonly",
 
         // Browser objects
         location: "readonly",
@@ -47,6 +51,10 @@ module.exports = [
         localStorage: "readonly",
         history: "readonly",
         navigator: "readonly",
+        caches: "readonly",
+
+        // Service Worker API
+        serviceWorker: "readonly",
 
         // Your custom globals
         showToast: "readonly",
@@ -56,12 +64,14 @@ module.exports = [
         monitoringManager: "readonly",
         baseTemplate: "readonly",
         CONFIG_DATA: "readonly",
-        epgMappingManager: "readonly", // Added for epg_mapping_ui.js
+        epgMappingManager: "readonly",
+        MONITORING_DATA: "readonly", // Added for monitoring.js
 
         // EPG related globals
         EPGCore: "readonly",
         EPGUI: "readonly",
-        EPGPlayer: "readonly"
+        EPGPlayer: "readonly",
+        EPGUIMain: "readonly" // Added for EPGUI.js
       }
     },
 

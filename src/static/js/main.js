@@ -363,7 +363,7 @@ class Storage {
             }
 
             return item.value;
-        } catch (e) {
+        } catch (_e) {
             // If item is not valid JSON, return raw value
             return itemStr;
         }
