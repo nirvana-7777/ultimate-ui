@@ -673,6 +673,14 @@ class ProviderManager {
 
         const url = customUrl || provider.xmltv_url;
 
+        if (!url) {
+            if (window.showToast) {
+                window.showToast(
+                    `${provider.name}: kein XMLTV-Provider, Verbindungstest nicht anwendbar`, 'info');
+            }
+            return;
+        }
+
         if (!window.UTILS || !window.UTILS.UIComponents) {
             alert('Modal system nicht verfügbar. Bitte Seite neu laden.');
             return;
@@ -762,7 +770,8 @@ class ProviderManager {
         try {
             if (window.showLoading) window.showLoading('Teste alle Provider-Verbindungen...');
 
-            const enabledProviders = this.providers.filter(p => p.enabled);
+            const enabledProviders = this.providers.filter(p => p.enabled && p.xmltv_url);
+            const skipped = this.providers.filter(p => p.enabled && !p.xmltv_url).length;
             let successful = 0;
             let failed = 0;
 
@@ -780,7 +789,10 @@ class ProviderManager {
                 }
             }
 
-            const message = `Verbindungstest abgeschlossen: ${successful} erfolgreich, ${failed} fehlgeschlagen`;
+            let message = `Verbindungstest abgeschlossen: ${successful} erfolgreich, ${failed} fehlgeschlagen`;
+            if (skipped > 0) {
+                message += `, ${skipped} ohne XMLTV-URL übersprungen`;
+            }
             if (window.showToast) {
                 window.showToast(message,
                     failed === 0 ? 'success' : failed === enabledProviders.length ? 'error' : 'warning');
