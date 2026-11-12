@@ -72,6 +72,17 @@ class EPGRenderer {
         name.textContent = channel.Name || channel.display_name;
         logoSection.appendChild(name);
 
+        // Catchup badge — only when the channel supports catchup. The window
+        // is shown in hours (catchup_hours is the backend's unit).
+        const catchupInfo = channel.catchup;
+        if (catchupInfo && catchupInfo.enabled && catchupInfo.hours > 0) {
+            const badge = document.createElement('span');
+            badge.className = 'catchup-badge';
+            badge.textContent = `⏪ ${catchupInfo.hours}h`;
+            badge.title = `Catchup: bis zu ${catchupInfo.hours} Stunden verfügbar`;
+            logoSection.appendChild(badge);
+        }
+
         // Add play button for provider channels OR if program has stream
         const isProviderChannel = this.core.activeProvider && channel.StreamUrl;
         const hasStream = isProviderChannel || (program && (program.stream_url || program.stream));
@@ -85,11 +96,15 @@ class EPGRenderer {
                 playBtn.innerHTML = '<span>▶</span> Live';
                 playBtn.dataset.channelId = channelId;
             } else {
-                // Regular EPG - play the program stream
+                // Regular EPG - play the program stream. Canonical key via
+                // programKey() so id-less programs resolve; encodeURIComponent
+                // keeps arbitrary alias characters safe in an attribute.
                 playBtn.className = 'btn-play-tile';
                 playBtn.innerHTML = '<span>▶</span> Play';
-                playBtn.dataset.channelId = channelId;
-                playBtn.dataset.programId = program.id;
+                playBtn.dataset.channelId = encodeURIComponent(String(channelId));
+                playBtn.dataset.programId = encodeURIComponent(
+                    this.core.programKey(channelId, program)
+                );
             }
 
             logoSection.appendChild(playBtn);
@@ -257,6 +272,9 @@ class EPGRenderer {
 
         const channelCard = document.createElement('div');
         channelCard.className = 'channel-daily-expanded';
+        // Encoded channel id — date navigation reads this to reopen this
+        // channel's daily view on the newly selected date.
+        channelCard.dataset.channelId = encodeURIComponent(String(channel.id));
 
         const header = document.createElement('div');
         header.className = 'channel-daily-header-expanded';
@@ -347,14 +365,24 @@ class EPGRenderer {
         const div = document.createElement('div');
         div.className = 'daily-program-card-expanded';
 
-        const programId = program.id || program.program_id || `${channel.id}_${program.start_time}`;
-        div.dataset.programId = String(programId);
+        // Canonical key — same fallback chain as core.getProgram().
+        div.dataset.programId = this.core.programKey(channel.id, program);
         div.dataset.channelId = String(channel.id);
 
         if (startTime <= now && endTime >= now) {
             div.classList.add('live');
         } else if (startTime > now) {
             div.classList.add('upcoming');
+        } else if (endTime < now) {
+            // Past programme. Hourly eligibility mirrors the backend exactly:
+            // (now - start_time) / 3600 <= catchup_hours.
+            div.classList.add('past');
+            if (channel.catchup && channel.catchup.enabled) {
+                const ageHours = (now - startTime) / 3600000;
+                if (ageHours <= (channel.catchup.hours || 0)) {
+                    div.classList.add('past-with-catchup');
+                }
+            }
         }
 
         const imageContainer = document.createElement('div');
@@ -382,13 +410,14 @@ class EPGRenderer {
 
         const details = document.createElement('div');
         details.className = 'daily-program-details-expanded';
-        details.innerHTML = this.createDailyProgramDetailsExpandedHTML(program);
+        details.innerHTML = this.createDailyProgramDetailsExpandedHTML(program, channel);
         div.appendChild(details);
 
         return div;
     }
 
-    createDailyProgramDetailsExpandedHTML(program) {
+    // MODIFIED: takes the channel too — catchup eligibility lives on it.
+    createDailyProgramDetailsExpandedHTML(program, channel) {
         const utilities = this.epgUI.components.utilities;
 
         let timeDisplay = '';
@@ -445,7 +474,26 @@ class EPGRenderer {
         const streamUrl = program.stream_url || program.stream;
         let playButton = '';
         if (streamUrl) {
-            playButton = `<button class="btn-play" data-channel-id="${program.channel_id}" data-program-id="${program.id}">▶ Jetzt abspielen</button>`;
+            playButton = `<button class="btn-play" data-channel-id="${encodeURIComponent(String(program.channel_id))}" data-program-id="${encodeURIComponent(this.core.programKey(program.channel_id, program))}">▶ Jetzt abspielen</button>`;
+        }
+
+        // Past programme inside the hourly catchup window → the Replay
+        // button replaces the live-play button (a ended programme has no
+        // live stream to play). Hourly eligibility mirrors the backend:
+        // (now - start_time) / 3600 <= catchup_hours.
+        const now = new Date();
+        const startTime = new Date(program.start_time);
+        const endTime = new Date(program.end_time);
+        if (endTime < now && channel && channel.catchup && channel.catchup.enabled) {
+            const ageHours = (now - startTime) / 3600000;
+            if (ageHours <= (channel.catchup.hours || 0)) {
+                const cid = encodeURIComponent(String(channel.id));
+                const pid = encodeURIComponent(this.core.programKey(channel.id, program));
+                playButton = `<button class="btn-catchup" data-channel-id="${cid}" data-program-id="${pid}">⏪ Catchup abspielen</button>`;
+                if (channel.catchup.tsAvailable) {
+                    playButton += `<button class="btn-catchup-download" data-channel-id="${cid}" data-program-id="${pid}">⬇ Herunterladen</button>`;
+                }
+            }
         }
 
         return `

@@ -6,6 +6,8 @@ ui:
   theme: light
   timezone: Europe/Berlin
 ultimate_backend:
+  # Browser-reachable origin (reverse proxy with CORS for this UI). Required for catchup.
+  public_url: ""
   timeout: 20
   url: http://json-ultimate:3000
 webepg:

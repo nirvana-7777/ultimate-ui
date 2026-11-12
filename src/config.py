@@ -14,10 +14,17 @@ class Config:
 
     DEFAULT_CONFIG = {
         "webepg": {"url": "http://localhost:8080", "timeout": 10},
-        "ultimate_backend": {"url": "http://localhost:3000", "timeout": 10},
+        "ultimate_backend": {
+            "url": "http://localhost:3000",  # internal - used by Flask (download route)
+            # Browser-reachable origin used by the frontend for catchup manifests.
+            # Empty = catchup playback disabled (no silent localhost fallback).
+            "public_url": "",
+            "timeout": 10,
+        },
         "ui": {"theme": "dark", "refresh_interval": 300, "timezone": "Europe/Berlin"},
         "player": {"default_size": "medium", "default_bitrate": "auto"},
         "database": {"retention_days": 7},
+        "catchup": {"max_hours": 168},  # upper cap for per-channel catchup windows
     }
 
     def __init__(self, config_path: Optional[str] = None):
@@ -62,10 +69,19 @@ class Config:
         if "ULTIMATE_BACKEND_URL" in os.environ:
             self.config["ultimate_backend"]["url"] = os.environ["ULTIMATE_BACKEND_URL"]
 
+        if "ULTIMATE_BACKEND_PUBLIC_URL" in os.environ:
+            self.config["ultimate_backend"]["public_url"] = os.environ[
+                "ULTIMATE_BACKEND_PUBLIC_URL"
+            ]
+
         if "ULTIMATE_BACKEND_TIMEOUT" in os.environ:
             self.config["ultimate_backend"]["timeout"] = int(
                 os.environ["ULTIMATE_BACKEND_TIMEOUT"]
             )
+
+        # Catchup
+        if "CATCHUP_MAX_HOURS" in os.environ:
+            self.config["catchup"]["max_hours"] = int(os.environ["CATCHUP_MAX_HOURS"])
 
         # UI
         if "UI_THEME" in os.environ:

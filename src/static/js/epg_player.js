@@ -61,12 +61,14 @@ class EPGPlayer {
 
             await this.videoElement.play();
             this.isPlaying = true;
+            return true;
 
         } catch (error) {
             console.error('Error playing stream:', error);
             if (window.showToast) {
                 window.showToast(`Fehler beim Abspielen: ${error.message}`, 'error');
             }
+            return false;
         }
     }
 

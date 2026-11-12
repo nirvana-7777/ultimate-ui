@@ -4,6 +4,9 @@ Main Flask application for ultimate-ui - FIXED VERSION WITH PROVIDER PROXIES
 
 import logging
 import os
+import re
+import threading
+import time
 from datetime import datetime, timedelta, timezone
 
 import pytz
@@ -252,6 +255,12 @@ def configuration():
                 },
                 "ultimate_backend": {
                     "url": data.get("ultimate_backend_url"),
+                    # Not part of the config form: keep the stored value so a
+                    # save from the UI does not erase it from the YAML.
+                    "public_url": data.get(
+                        "ultimate_backend_public_url",
+                        config.get("ultimate_backend.public_url", ""),
+                    ),
                     "timeout": int(data.get("ultimate_backend_timeout", 10)),
                 },
                 "ui": {
@@ -262,6 +271,12 @@ def configuration():
                 "player": {
                     "default_size": data.get("player_size", "medium"),
                     "default_bitrate": data.get("player_bitrate", "auto"),
+                },
+                # Not in the config form: carry over so a UI save keeps it.
+                "catchup": {
+                    "max_hours": int(
+                        data.get("catchup_max_hours", config.get("catchup.max_hours", 168))
+                    ),
                 },
             }
 
@@ -671,6 +686,127 @@ def api_create_alias():
     except Exception as e:
         logger.error(f"Error creating alias: {e}")
         return jsonify({"success": False, "error": str(e)}), 500
+
+
+# ============================================================================
+# CATCHUP DOWNLOAD PROXY
+# ============================================================================
+#
+# The browser fetches catchup manifests directly from the Ultimate Backend
+# (ultimate_backend.public_url, CORS required). Only the .ts download goes
+# through Flask: it needs the internal URL and streams server-side.
+
+_manifest_cache = {}  # (provider, channel_id) -> (manifest_dict, expiry_ts)
+_manifest_cache_lock = threading.Lock()
+_MANIFEST_CACHE_TTL = 60  # seconds
+_IDENT_RE = re.compile(r"^[A-Za-z0-9._-]+$")
+
+
+def _get_manifest_cached(provider, channel_id):
+    """Server-side manifest fetch (internal URL, 60 s cache). Never returned
+    to the browser."""
+    key = (provider, str(channel_id))
+    with _manifest_cache_lock:
+        entry = _manifest_cache.get(key)
+        if entry and entry[1] > time.time():
+            return entry[0]
+
+    ultimate = get_ultimate_backend_client()
+    url = f"{ultimate.base_url}/api/providers/{provider}/channels/{channel_id}/manifest"
+    resp = ultimate.session.get(url, timeout=ultimate.timeout)
+    resp.raise_for_status()
+    data = resp.json()
+
+    with _manifest_cache_lock:
+        _manifest_cache[key] = (data, time.time() + _MANIFEST_CACHE_TTL)
+    return data
+
+
+@app.route("/api/proxy/catchup/download")
+def proxy_catchup_download():
+    """Stream a catchup recording as a downloadable .ts file.
+
+    The URL is rebuilt server-side from the manifest's TS template - the
+    client never supplies a URL (no SSRF surface). Flask answers HEAD for
+    GET routes automatically; HEAD is used by the frontend as a pre-flight.
+    """
+    import requests
+    from flask import Response, stream_with_context
+
+    provider = request.args.get("provider", "")
+    channel_id = request.args.get("channel", "")
+    start = request.args.get("start", type=int)
+    end = request.args.get("end", type=int)
+    filename = request.args.get("filename", "")
+
+    if not _IDENT_RE.match(provider):
+        return jsonify({"error": "invalid provider identifier"}), 400
+    if not _IDENT_RE.match(channel_id):
+        return jsonify({"error": "invalid channel identifier"}), 400
+    if start is None or end is None or end <= start:
+        return jsonify({"error": "invalid start/end"}), 400
+
+    try:
+        manifest = _get_manifest_cached(provider, channel_id)
+    except Exception as e:
+        logger.error(f"Download manifest lookup failed for {provider}/{channel_id}: {e}")
+        return jsonify({"error": f"manifest lookup failed: {e}"}), 502
+
+    template = manifest.get("ts_catchup_stream_url_template")
+    if not template:
+        return (
+            jsonify(
+                {
+                    "error": "catchup download not available for this channel",
+                    "hint": "TS_PROXY_URL is not configured on the Ultimate Backend",
+                }
+            ),
+            503,
+        )
+
+    if request.method == "HEAD":
+        return "", 200  # pre-flight only: template exists, no bytes streamed
+
+    stream_url = template.replace("{start_time}", str(start)).replace(
+        "{end_time}", str(end)
+    )
+
+    fwd_headers = {}
+    rng = request.headers.get("Range")
+    if rng:
+        fwd_headers["Range"] = rng
+
+    try:
+        upstream = requests.get(
+            stream_url, headers=fwd_headers, stream=True, timeout=(10, 300)
+        )
+    except Exception as e:
+        logger.error(f"Download upstream fetch failed: {e}")
+        return jsonify({"error": f"upstream fetch failed: {e}"}), 502
+
+    if upstream.status_code not in (200, 206):
+        code = upstream.status_code
+        upstream.close()
+        return jsonify({"error": f"upstream returned {code}"}), (
+            code if 400 <= code < 600 else 502
+        )
+
+    safe_name = re.sub(r"[^A-Za-z0-9._-]+", "_", filename or f"{channel_id}_{start}")[:100]
+    if not safe_name.endswith(".ts"):
+        safe_name += ".ts"
+
+    resp = Response(
+        stream_with_context(upstream.iter_content(65536)),
+        status=upstream.status_code,
+        content_type=upstream.headers.get("Content-Type", "video/mp2t"),
+    )
+    resp.call_on_close(upstream.close)
+    for h in ("Content-Length", "Content-Range", "Accept-Ranges"):
+        if h in upstream.headers:
+            resp.headers[h] = upstream.headers[h]
+    resp.headers["Content-Disposition"] = f'attachment; filename="{safe_name}"'
+    resp.headers["Cache-Control"] = "no-store"
+    return resp
 
 
 @app.route("/api/monitoring/status")

@@ -9,6 +9,7 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/layout.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/components.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/epg-specific.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/catchup.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/modals-player.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/utilities.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/responsive.css') }}">
@@ -123,7 +124,9 @@
          data-refresh-interval="{{ config.ui.refresh_interval if config and config.ui else 300 }}"
          data-current-time="{{ current_time }}"
          data-theme="{{ config.ui.theme if config and config.ui else 'dark' }}"
-         data-timezone="{{ config.ui.timezone if config and config.ui else 'Europe/Berlin' }}">
+         data-timezone="{{ config.ui.timezone if config and config.ui else 'Europe/Berlin' }}"
+         data-catchup-max-hours="{{ config.catchup.max_hours if config and config.catchup else 168 }}"
+         data-ultimate-backend-public-url="{{ (config.ultimate_backend.public_url if config and config.ultimate_backend else '') | default('', true) }}">
     </div>
 </body>
 </html>

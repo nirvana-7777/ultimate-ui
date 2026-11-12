@@ -42,53 +42,60 @@ class EPGInfiniteScroll {
     }
 
     async loadMoreDailyPrograms(channelId) {
-        if (this.epgUI.getIsLoadingMorePrograms()) {
-            console.log('Already loading more programs, skipping...');
-            return;
-        }
+        if (this.epgUI.getIsLoadingMorePrograms()) return;
 
         const channel = this.core.getChannel(channelId);
-        if (!channel || this.epgUI.getCurrentLoadingChannel() !== channelId) {
-            console.log('Channel not found or not current channel');
-            return;
-        }
+        if (!channel || this.epgUI.getCurrentLoadingChannel() !== channelId) return;
 
         const content = document.getElementById('daily-programs-content');
         if (!content) return;
 
         const channelCard = content.querySelector('.channel-daily-expanded');
-        if (!channelCard) {
-            console.log('Channel card not found');
-            return;
+        if (!channelCard) return;
+
+        const cards = channelCard.querySelectorAll('.daily-program-card-expanded');
+        if (cards.length === 0) return;
+
+        // NOTE: card dataset.programId is stored RAW by the renderer (only the
+        // button attributes are URI-encoded) - do not decode it here.
+        const lastKey = String(cards[cards.length - 1].dataset.programId);
+
+        // Search EVERY stored day of this channel (Map order is insertion order,
+        // not the order on screen), plus today's volatile store.
+        const prefix = `${channelId}|`;
+        const all = [];
+        for (const [key, arr] of this.core.pastProgramsByDay) {
+            if (key.startsWith(prefix)) all.push(...arr);
         }
+        all.push(...(this.core.dailyPrograms.get(channelId) || []));
 
-        const allProgramCards = channelCard.querySelectorAll('.daily-program-card-expanded');
-        if (allProgramCards.length === 0) {
-            console.log('No program cards found');
-            return;
+        let lastProgram = all.find(p => this.core.programKey(channelId, p) === lastKey);
+        if (!lastProgram && all.length > 0) {
+            lastProgram = all.reduce((m, p) =>
+                this.core.parseProgramTime(p.end_time) > this.core.parseProgramTime(m.end_time) ? p : m);
         }
-
-        const lastProgramCard = allProgramCards[allProgramCards.length - 1];
-        const lastProgramId = lastProgramCard.dataset.programId;
-
-        const allPrograms = this.core.dailyPrograms.get(channelId);
-
-        let lastProgram = null;
-        if (allPrograms && allPrograms.length > 0) {
-            lastProgram = allPrograms.find(p => String(p.id) === String(lastProgramId));
-
-            if (!lastProgram) {
-                lastProgram = allPrograms[allPrograms.length - 1];
-            }
-        }
-
-        if (!lastProgram) {
-            console.log('Could not find last program');
-            return;
-        }
+        if (!lastProgram) return;
 
         const loadMoreBtn = content.querySelector('.load-more-programs-btn');
         if (!loadMoreBtn) return;
+
+        const markNoMore = () => {
+            loadMoreBtn.disabled = true;
+            loadMoreBtn.innerHTML = 'Keine weiteren Programme verfügbar';
+            loadMoreBtn.style.cursor = 'default';
+            loadMoreBtn.style.opacity = '0.6';
+            if (this.dailyProgramsInfiniteScroll) this.dailyProgramsInfiniteScroll.disconnect();
+        };
+
+        // Next day after the last program. -1 ms: a program ending exactly at
+        // 00:00 belongs to the previous day. Ceiling = tomorrow (EPG horizon,
+        // same as navigateDate in epg_manager.js).
+        const lastEnd = this.core.parseProgramTime(lastProgram.end_time);
+        const nextDayStart = new Date(lastEnd.getTime() - 1);
+        nextDayStart.setHours(0, 0, 0, 0);
+        nextDayStart.setDate(nextDayStart.getDate() + 1);
+        const ceil = new Date(); ceil.setHours(0, 0, 0, 0); ceil.setDate(ceil.getDate() + 1);
+        if (nextDayStart > ceil) { markNoMore(); return; }
 
         this.epgUI.setIsLoadingMorePrograms(true);
         loadMoreBtn.disabled = true;
@@ -97,31 +104,18 @@ class EPGInfiniteScroll {
         loadMoreBtn.style.backgroundColor = 'var(--bg-tertiary)';
 
         try {
-            const newPrograms = await this.core.loadNextDayForChannel(
-                channelId,
-                lastProgram.end_time
-            );
+            const newPrograms = await this.core.loadDailyProgramsForChannel(channelId, nextDayStart);
 
             if (newPrograms.length > 0) {
-                // We need to access the renderer through epgUI
                 const renderer = this.epgUI.components.renderer;
                 newPrograms.forEach(program => {
-                    const programElement = renderer.createDailyProgramCardExpanded(channel, program);
-                    channelCard.appendChild(programElement);
+                    channelCard.appendChild(renderer.createDailyProgramCardExpanded(channel, program));
                 });
-
                 loadMoreBtn.disabled = false;
                 loadMoreBtn.innerHTML = '▼ Mehr Programme laden';
                 loadMoreBtn.style.cursor = 'pointer';
             } else {
-                loadMoreBtn.disabled = true;
-                loadMoreBtn.innerHTML = 'Keine weiteren Programme verfügbar';
-                loadMoreBtn.style.cursor = 'default';
-                loadMoreBtn.style.opacity = '0.6';
-
-                if (this.dailyProgramsInfiniteScroll) {
-                    this.dailyProgramsInfiniteScroll.disconnect();
-                }
+                markNoMore();
             }
         } catch (error) {
             console.error('Error loading more programs:', error);
