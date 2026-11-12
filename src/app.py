@@ -8,6 +8,7 @@ import re
 import threading
 import time
 from datetime import datetime, timedelta, timezone
+from typing import Any
 
 import pytz
 from flask import Flask, jsonify, render_template, request, send_from_directory
@@ -698,7 +699,7 @@ def api_create_alias():
 # (ultimate_backend.public_url, CORS required). Only the .ts download goes
 # through Flask: it needs the internal URL and streams server-side.
 
-_manifest_cache = {}  # (provider, channel_id) -> (manifest_dict, expiry_ts)
+_manifest_cache: dict[Any, Any] = {}  # (provider, channel_id) -> (manifest_dict, expiry_ts)
 _manifest_cache_lock = threading.Lock()
 _MANIFEST_CACHE_TTL = 60  # seconds
 _IDENT_RE = re.compile(r"^[A-Za-z0-9._-]+$")
