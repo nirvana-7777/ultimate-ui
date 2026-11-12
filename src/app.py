@@ -275,7 +275,9 @@ def configuration():
                 # Not in the config form: carry over so a UI save keeps it.
                 "catchup": {
                     "max_hours": int(
-                        data.get("catchup_max_hours", config.get("catchup.max_hours", 168))
+                        data.get(
+                            "catchup_max_hours", config.get("catchup.max_hours", 168)
+                        )
                     ),
                 },
             }
@@ -749,7 +751,9 @@ def proxy_catchup_download():
     try:
         manifest = _get_manifest_cached(provider, channel_id)
     except Exception as e:
-        logger.error(f"Download manifest lookup failed for {provider}/{channel_id}: {e}")
+        logger.error(
+            f"Download manifest lookup failed for {provider}/{channel_id}: {e}"
+        )
         return jsonify({"error": f"manifest lookup failed: {e}"}), 502
 
     template = manifest.get("ts_catchup_stream_url_template")
@@ -791,7 +795,9 @@ def proxy_catchup_download():
             code if 400 <= code < 600 else 502
         )
 
-    safe_name = re.sub(r"[^A-Za-z0-9._-]+", "_", filename or f"{channel_id}_{start}")[:100]
+    safe_name = re.sub(r"[^A-Za-z0-9._-]+", "_", filename or f"{channel_id}_{start}")[
+        :100
+    ]
     if not safe_name.endswith(".ts"):
         safe_name += ".ts"
 
