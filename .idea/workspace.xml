@@ -4,8 +4,8 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="26a67a20-b618-41a8-9b0d-40ca26281999" name="Changes" comment="linter">
-      <change beforePath="$PROJECT_DIR$/.github/workflows/docker-build.yml" beforeDir="false" afterPath="$PROJECT_DIR$/.github/workflows/docker-build.yml" afterDir="false" />
+    <list default="true" id="26a67a20-b618-41a8-9b0d-40ca26281999" name="Changes" comment="ubuntu version">
+      <change beforePath="$PROJECT_DIR$/src/static/js/epg_manager.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/static/js/epg_manager.js" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -79,14 +79,6 @@
       <workItem from="1768399893477" duration="2236000" />
       <workItem from="1768403116851" duration="13560000" />
       <workItem from="1768480467536" duration="685000" />
-    </task>
-    <task id="LOCAL-00097" summary="Fix EPG Loading">
-      <option name="closed" value="true" />
-      <created>1768051818653</created>
-      <option name="number" value="00097" />
-      <option name="presentableId" value="LOCAL-00097" />
-      <option name="project" value="LOCAL" />
-      <updated>1768051818653</updated>
     </task>
     <task id="LOCAL-00098" summary="Fix EPG Loading">
       <option name="closed" value="true" />
@@ -472,7 +464,15 @@
       <option name="project" value="LOCAL" />
       <updated>1794474668304</updated>
     </task>
-    <option name="localTasksCounter" value="146" />
+    <task id="LOCAL-00146" summary="ubuntu version">
+      <option name="closed" value="true" />
+      <created>1794477671450</created>
+      <option name="number" value="00146" />
+      <option name="presentableId" value="LOCAL-00146" />
+      <option name="project" value="LOCAL" />
+      <updated>1794477671450</updated>
+    </task>
+    <option name="localTasksCounter" value="147" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -486,6 +486,7 @@
     <MESSAGE value="Stricter Linting" />
     <MESSAGE value="Add download" />
     <MESSAGE value="linter" />
-    <option name="LAST_COMMIT_MESSAGE" value="linter" />
+    <MESSAGE value="ubuntu version" />
+    <option name="LAST_COMMIT_MESSAGE" value="ubuntu version" />
   </component>
 </project>

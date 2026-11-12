@@ -644,7 +644,7 @@ class EPGManager {
             const drmB64 = resp.headers.get('x-kodi-drm-configs');
             if (drmB64) {
                 try {
-                    const schemes = Object.keys(JSON.parse(atob(drmB64)));
+                    const schemes = Object.keys(JSON.parse(globalThis.atob(drmB64)));
                     if (schemes.some(s => s !== 'org.w3.clearkey' && s !== 'none')) {
                         return {
                             msg: 'Dieser Inhalt ist mit Widevine/PlayReady geschützt und kann im Browser nicht abgespielt werden',
