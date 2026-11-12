@@ -489,10 +489,13 @@ class EPGRenderer {
             if (ageHours <= (channel.catchup.hours || 0)) {
                 const cid = encodeURIComponent(String(channel.id));
                 const pid = encodeURIComponent(this.core.programKey(channel.id, program));
-                playButton = `<button class="btn-catchup" data-channel-id="${cid}" data-program-id="${pid}">⏪ Catchup abspielen</button>`;
-                if (channel.catchup.tsAvailable) {
-                    playButton += `<button class="btn-catchup-download" data-channel-id="${cid}" data-program-id="${pid}">⬇ Herunterladen</button>`;
+                // Download (.ts via Flask, server-side only) needs no browser-reachable
+                // backend. In-browser Replay does: shown only when public_url is set.
+                playButton = '';
+                if (this.core.config.ultimateBackendPublicUrl) {
+                    playButton += `<button class="btn-catchup" data-channel-id="${cid}" data-program-id="${pid}">⏪ Catchup abspielen</button>`;
                 }
+                playButton += `<button class="btn-catchup-download" data-channel-id="${cid}" data-program-id="${pid}">⬇ Herunterladen</button>`;
             }
         }
 

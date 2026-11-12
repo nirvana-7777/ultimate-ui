@@ -811,17 +811,6 @@ class EPGManager {
             return;
         }
 
-        // Lazily determine download availability once per channel. Only stored
-        // when the manifest was actually fetched (a transient failure must not
-        // hide the button permanently). channel.catchup is the shared object
-        // from core.providerChannels, so this persists.
-        if (channel.catchup && channel.catchup.enabled && channel.catchup.tsAvailable === undefined) {
-            const manifest = await this.core.getChannelManifest(channel.provider, channel.id);
-            if (manifest) {
-                channel.catchup.tsAvailable = Boolean(manifest.ts_catchup_stream_url_template);
-            }
-        }
-
         this.ui.showDailyPrograms(channel, programs);
     }
 

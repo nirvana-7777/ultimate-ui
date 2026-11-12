@@ -16,8 +16,8 @@ class Config:
         "webepg": {"url": "http://localhost:8080", "timeout": 10},
         "ultimate_backend": {
             "url": "http://localhost:3000",  # internal - used by Flask (download route)
-            # Browser-reachable origin used by the frontend for catchup manifests.
-            # Empty = catchup playback disabled (no silent localhost fallback).
+            # OPTIONAL browser-reachable origin for in-browser catchup Replay (needs CORS).
+            # Empty = Replay button hidden; catchup download is unaffected.
             "public_url": "",
             "timeout": 10,
         },
