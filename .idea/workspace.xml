@@ -4,9 +4,8 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="26a67a20-b618-41a8-9b0d-40ca26281999" name="Changes" comment="Stricter Linting">
-      <change beforePath="$PROJECT_DIR$/.idea/ultimate-ui.iml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/ultimate-ui.iml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+    <list default="true" id="26a67a20-b618-41a8-9b0d-40ca26281999" name="Changes" comment="linter">
+      <change beforePath="$PROJECT_DIR$/.github/workflows/docker-build.yml" beforeDir="false" afterPath="$PROJECT_DIR$/.github/workflows/docker-build.yml" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -80,46 +79,6 @@
       <workItem from="1768399893477" duration="2236000" />
       <workItem from="1768403116851" duration="13560000" />
       <workItem from="1768480467536" duration="685000" />
-    </task>
-    <task id="LOCAL-00092" summary="Fix EPG Loading">
-      <option name="closed" value="true" />
-      <created>1767989684174</created>
-      <option name="number" value="00092" />
-      <option name="presentableId" value="LOCAL-00092" />
-      <option name="project" value="LOCAL" />
-      <updated>1767989684174</updated>
-    </task>
-    <task id="LOCAL-00093" summary="Fix EPG Loading">
-      <option name="closed" value="true" />
-      <created>1767991503236</created>
-      <option name="number" value="00093" />
-      <option name="presentableId" value="LOCAL-00093" />
-      <option name="project" value="LOCAL" />
-      <updated>1767991503236</updated>
-    </task>
-    <task id="LOCAL-00094" summary="Fix EPG Loading">
-      <option name="closed" value="true" />
-      <created>1767992821256</created>
-      <option name="number" value="00094" />
-      <option name="presentableId" value="LOCAL-00094" />
-      <option name="project" value="LOCAL" />
-      <updated>1767992821256</updated>
-    </task>
-    <task id="LOCAL-00095" summary="Fix EPG Loading">
-      <option name="closed" value="true" />
-      <created>1767993448851</created>
-      <option name="number" value="00095" />
-      <option name="presentableId" value="LOCAL-00095" />
-      <option name="project" value="LOCAL" />
-      <updated>1767993448851</updated>
-    </task>
-    <task id="LOCAL-00096" summary="Fix EPG Loading">
-      <option name="closed" value="true" />
-      <created>1767993970557</created>
-      <option name="number" value="00096" />
-      <option name="presentableId" value="LOCAL-00096" />
-      <option name="project" value="LOCAL" />
-      <updated>1767993970557</updated>
     </task>
     <task id="LOCAL-00097" summary="Fix EPG Loading">
       <option name="closed" value="true" />
@@ -473,7 +432,47 @@
       <option name="project" value="LOCAL" />
       <updated>1768468482491</updated>
     </task>
-    <option name="localTasksCounter" value="141" />
+    <task id="LOCAL-00141" summary="Add download">
+      <option name="closed" value="true" />
+      <created>1794472392370</created>
+      <option name="number" value="00141" />
+      <option name="presentableId" value="LOCAL-00141" />
+      <option name="project" value="LOCAL" />
+      <updated>1794472392370</updated>
+    </task>
+    <task id="LOCAL-00142" summary="Add download">
+      <option name="closed" value="true" />
+      <created>1794473233369</created>
+      <option name="number" value="00142" />
+      <option name="presentableId" value="LOCAL-00142" />
+      <option name="project" value="LOCAL" />
+      <updated>1794473233369</updated>
+    </task>
+    <task id="LOCAL-00143" summary="Add download">
+      <option name="closed" value="true" />
+      <created>1794473319425</created>
+      <option name="number" value="00143" />
+      <option name="presentableId" value="LOCAL-00143" />
+      <option name="project" value="LOCAL" />
+      <updated>1794473319425</updated>
+    </task>
+    <task id="LOCAL-00144" summary="linter">
+      <option name="closed" value="true" />
+      <created>1794474602971</created>
+      <option name="number" value="00144" />
+      <option name="presentableId" value="LOCAL-00144" />
+      <option name="project" value="LOCAL" />
+      <updated>1794474602971</updated>
+    </task>
+    <task id="LOCAL-00145" summary="linter">
+      <option name="closed" value="true" />
+      <created>1794474668304</created>
+      <option name="number" value="00145" />
+      <option name="presentableId" value="LOCAL-00145" />
+      <option name="project" value="LOCAL" />
+      <updated>1794474668304</updated>
+    </task>
+    <option name="localTasksCounter" value="146" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -485,6 +484,8 @@
     <MESSAGE value="Add Streaming Channels EPG" />
     <MESSAGE value="Split epg_ui.js" />
     <MESSAGE value="Stricter Linting" />
-    <option name="LAST_COMMIT_MESSAGE" value="Stricter Linting" />
+    <MESSAGE value="Add download" />
+    <MESSAGE value="linter" />
+    <option name="LAST_COMMIT_MESSAGE" value="linter" />
   </component>
 </project>
