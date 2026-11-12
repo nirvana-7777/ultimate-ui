@@ -80,14 +80,6 @@
       <workItem from="1768403116851" duration="13560000" />
       <workItem from="1768480467536" duration="685000" />
     </task>
-    <task id="LOCAL-00099" summary="Fix EPG Loading">
-      <option name="closed" value="true" />
-      <created>1768056815679</created>
-      <option name="number" value="00099" />
-      <option name="presentableId" value="LOCAL-00099" />
-      <option name="project" value="LOCAL" />
-      <updated>1768056815679</updated>
-    </task>
     <task id="LOCAL-00100" summary="Fix EPG Loading">
       <option name="closed" value="true" />
       <created>1768141018471</created>
@@ -472,7 +464,15 @@
       <option name="project" value="LOCAL" />
       <updated>1794478031820</updated>
     </task>
-    <option name="localTasksCounter" value="148" />
+    <task id="LOCAL-00148" summary="linter">
+      <option name="closed" value="true" />
+      <created>1794480094832</created>
+      <option name="number" value="00148" />
+      <option name="presentableId" value="LOCAL-00148" />
+      <option name="project" value="LOCAL" />
+      <updated>1794480094832</updated>
+    </task>
+    <option name="localTasksCounter" value="149" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
