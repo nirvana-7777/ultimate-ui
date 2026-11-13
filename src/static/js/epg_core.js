@@ -18,7 +18,7 @@ class EPGCore {
         this.dailyPrograms = new Map();
         this.cache = new Map();
         // Immutable past-day program cache, keyed
-        // `programs|<channelId>|<startISO>|<endISO>` — filled only with
+        // `programs|<provider>|<channelId>|<startISO>|<endISO>` — filled only with
         // fully-past ranges. Survives auto-refresh and date navigation;
         // cleared only in resetEPGState()/clearCache().
         this.pastCache = new Map();
@@ -48,11 +48,11 @@ class EPGCore {
     async setActiveProvider(providerId) {
         this.activeProvider = providerId;
         this.providerChannels = [];
-        
+
         if (providerId) {
             await this.loadProviderChannels(providerId);
         }
-        
+
         // Clear cache and reset state
         this.resetEPGState();
     }
@@ -62,7 +62,7 @@ class EPGCore {
         try {
             const response = await fetch(`/api/mapping/channels/${providerId}`);
             const data = await response.json();
-            
+
             if (data.success && data.channels?.channels) {
                 // Attach the provider id and normalized catchup info (hours)
                 // so getChannel()/getProgram() can thread them through.
@@ -240,7 +240,7 @@ class EPGCore {
         try {
             const response = await fetch('/api/mapping/providers');
             const data = await response.json();
-            
+
             if (data.success) {
                 // The providers are in data.providers.providers or data.providers
                 this.providers = data.providers?.providers || data.providers || [];
@@ -308,12 +308,14 @@ class EPGCore {
     }
 
     // MODIFIED: dual-bucket cache, both-bounds key, timestamp normalization
-    async fetchProgramsForChannel(channelId, startDate, endDate) {
+    async fetchProgramsForChannel(channelId, startDate, endDate, provider = null) {
         try {
             // Cache key includes BOTH bounds — a day-only key collides between
             // the initial "now → tomorrow" window and an on-demand
             // "00:00 → 23:59" day fetch for the same date.
-            const cacheKey = `programs|${channelId}|${startDate.toISOString()}|${endDate.toISOString()}`;
+            // `provider` is part of the key: the same Ultimate channel id can exist
+            // under several providers and must not share cached programmes.
+            const cacheKey = `programs|${provider || ''}|${channelId}|${startDate.toISOString()}|${endDate.toISOString()}`;
 
             // Fully-past ranges are immutable — keep them in pastCache which
             // survives auto-refresh / navigation; everything else (today and
@@ -325,9 +327,14 @@ class EPGCore {
                 return cached;
             }
 
-            const response = await fetch(
-                `/api/channels/${channelId}/programs?start=${startDate.toISOString()}&end=${endDate.toISOString()}`
-            );
+            // Provider-native ids (Ultimate Backend channels.Id) are only
+            // unambiguous together with their provider; WebEPG resolves them
+            // provider-scoped when `provider` is sent.
+            let url = `/api/channels/${channelId}/programs?start=${startDate.toISOString()}&end=${endDate.toISOString()}`;
+            if (provider) {
+                url += `&provider=${encodeURIComponent(provider)}`;
+            }
+            const response = await fetch(url);
 
             if (!response.ok) {
                 console.warn(`HTTP ${response.status} for channel ${channelId} programs`);
@@ -513,10 +520,12 @@ class EPGCore {
             try {
                 // For provider channels, use channel.Id; for EPG channels, use channel.id
                 const channelId = channel.Id || channel.id;
+                // channel.provider is set for provider-mode channels only
                 const programs = await this.fetchProgramsForChannel(
                     channelId,
                     startDate,
-                    endDate
+                    endDate,
+                    channel.provider || null
                 );
 
                 channel.programs = programs;
@@ -546,7 +555,7 @@ class EPGCore {
     }
 
     // ... rest of the class remains the same (isSameDay, getSmartTimeBadge, etc.)
-    
+
     isSameDay(date1, date2) {
         return date1.getFullYear() === date2.getFullYear() &&
                date1.getMonth() === date2.getMonth() &&
@@ -772,7 +781,8 @@ class EPGCore {
             }
         }
 
-        const programs = await this.fetchProgramsForChannel(channelId, startDate, endDate);
+        const provider = (this.getChannel(channelId) || {}).provider || null;
+        const programs = await this.fetchProgramsForChannel(channelId, startDate, endDate, provider);
 
         this.pastProgramsByDay.set(
             `${channelId}|${this.localDateKey(startDate)}`,

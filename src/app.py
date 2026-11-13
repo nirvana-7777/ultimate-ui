@@ -1030,7 +1030,20 @@ def api_get_channel_programs(channel_id):
         if not end:
             end = (datetime.now(timezone.utc) + timedelta(days=1)).isoformat()
 
-        programs = webepg.get_channel_programs(channel_id, start, end)
+        # Optional provider hint: provider-native channel ids (Ultimate Backend)
+        # are only unambiguous together with their provider, so forward it to
+        # WebEPG's provider-scoped resolution instead of dropping it.
+        provider = request.args.get("provider")
+        if provider:
+            response = webepg.session.get(
+                f"{webepg.base_url}/api/v1/channels/{channel_id}/programs",
+                params={"start": start, "end": end, "provider": provider},
+                timeout=webepg.timeout,
+            )
+            response.raise_for_status()
+            programs = response.json()
+        else:
+            programs = webepg.get_channel_programs(channel_id, start, end)
 
         # Process programs to ensure consistent format
         processed_programs = []

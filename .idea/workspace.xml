@@ -4,12 +4,7 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="26a67a20-b618-41a8-9b0d-40ca26281999" name="Changes" comment="linter">
-      <change beforePath="$PROJECT_DIR$/config/config.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/config/config.yaml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/config.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/config.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/static/js/epg_manager.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/static/js/epg_manager.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/static/js/ui/EPGRenderer.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/static/js/ui/EPGRenderer.js" afterDir="false" />
-    </list>
+    <list default="true" id="26a67a20-b618-41a8-9b0d-40ca26281999" name="Changes" comment="use ts" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -82,14 +77,6 @@
       <workItem from="1768399893477" duration="2236000" />
       <workItem from="1768403116851" duration="13560000" />
       <workItem from="1768480467536" duration="685000" />
-    </task>
-    <task id="LOCAL-00101" summary="Fix EPG Loading">
-      <option name="closed" value="true" />
-      <created>1768141233050</created>
-      <option name="number" value="00101" />
-      <option name="presentableId" value="LOCAL-00101" />
-      <option name="project" value="LOCAL" />
-      <updated>1768141233050</updated>
     </task>
     <task id="LOCAL-00102" summary="Fix EPG Loading">
       <option name="closed" value="true" />
@@ -475,7 +462,15 @@
       <option name="project" value="LOCAL" />
       <updated>1794481387738</updated>
     </task>
-    <option name="localTasksCounter" value="150" />
+    <task id="LOCAL-00150" summary="use ts">
+      <option name="closed" value="true" />
+      <created>1794493358022</created>
+      <option name="number" value="00150" />
+      <option name="presentableId" value="LOCAL-00150" />
+      <option name="project" value="LOCAL" />
+      <updated>1794493358022</updated>
+    </task>
+    <option name="localTasksCounter" value="151" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -490,6 +485,7 @@
     <MESSAGE value="Add download" />
     <MESSAGE value="ubuntu version" />
     <MESSAGE value="linter" />
-    <option name="LAST_COMMIT_MESSAGE" value="linter" />
+    <MESSAGE value="use ts" />
+    <option name="LAST_COMMIT_MESSAGE" value="use ts" />
   </component>
 </project>
