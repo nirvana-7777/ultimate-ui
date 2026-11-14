@@ -5,7 +5,7 @@
 # ---------------------------------------------------------------------------
 # --platform=$BUILDPLATFORM: the SPA is platform-independent, so build it natively once
 # instead of under QEMU emulation for every target architecture.
-FROM --platform=$BUILDPLATFORM node:22-alpine AS frontend
+FROM --platform=$BUILDPLATFORM node:25-alpine AS frontend
 WORKDIR /build
 
 # package-lock.json MUST be committed or `npm ci` fails
