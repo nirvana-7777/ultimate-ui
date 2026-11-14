@@ -4,7 +4,7 @@ from unittest.mock import patch
 
 import yaml
 
-from config import Config
+from src.config import Config
 
 
 class TestConfig:
