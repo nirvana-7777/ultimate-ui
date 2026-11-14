@@ -5,6 +5,9 @@ on:
     tags:
       - 'v*'
 
+permissions:
+  contents: write   # create the GitHub release (the default token may be read-only)
+
 jobs:
   release:
     runs-on: ubuntu-latest
@@ -15,53 +18,66 @@ jobs:
       - name: Extract version
         id: get_version
         run: |
-          echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
-          echo "VERSION_NUMBER=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+          echo "VERSION=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
+          echo "VERSION_NUMBER=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
 
-      - name: Generate changelog
-        id: changelog
+      # Keeps the tag, the backend (/health, __version__) and the SPA package in sync.
+      - name: Verify tag matches package versions
+        env:
+          VERSION_NUMBER: ${{ steps.get_version.outputs.VERSION_NUMBER }}
         run: |
-          # Generate changelog from git history
-          CHANGELOG=$(git log --pretty=format:"- %s (%h)" $(git describe --tags --abbrev=0)..HEAD)
-          echo "CHANGELOG<<EOF" >> $GITHUB_ENV
-          echo "$CHANGELOG" >> $GITHUB_ENV
-          echo "EOF" >> $GITHUB_ENV
+          py_version=$(sed -n 's/^__version__ = "\(.*\)"/\1/p' src/__init__.py)
+          js_version=$(node -p "require('./ultimate-ui-react/package.json').version")
+          echo "tag=$VERSION_NUMBER  src/__init__.py=$py_version  package.json=$js_version"
+          if [ "$py_version" != "$VERSION_NUMBER" ] || [ "$js_version" != "$VERSION_NUMBER" ]; then
+            echo "::error::Tag v$VERSION_NUMBER does not match src/__init__.py ($py_version) / ultimate-ui-react/package.json ($js_version)"
+            exit 1
+          fi
 
+      # The changelog comes from GitHub's generated release notes (generate_release_notes
+      # below). The old step wrote `git log` output into $GITHUB_ENV with a fixed "EOF"
+      # delimiter and pasted it into a shell script and a JSON string; a commit subject
+      # containing quotes, $(...) or EOF could break out of both.
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
           name: Ultimate UI ${{ steps.get_version.outputs.VERSION }}
           body: |
             ## Ultimate UI ${{ steps.get_version.outputs.VERSION_NUMBER }}
-            
-            ### Changes
-            ${{ env.CHANGELOG }}
-            
+
             ### Docker Image
             ```bash
             docker pull nirvana777/ultimate-ui:${{ steps.get_version.outputs.VERSION_NUMBER }}
             docker pull nirvana777/ultimate-ui:latest
             ```
-            
+
             ### Quick Start
             ```bash
-            docker run -p 5000:5000 nirvana777/ultimate-ui:${{ steps.get_version.outputs.VERSION_NUMBER }}
+            mkdir -p config && sudo chown -R 10001:10001 config   # the container user must be able to write it
+            docker run -d --name ultimate-ui -p 7779:7779 \
+              -v "$(pwd)/config:/app/config" \
+              nirvana777/ultimate-ui:${{ steps.get_version.outputs.VERSION_NUMBER }}
+            # then open http://localhost:7779 and set the WebEPG / Ultimate Backend URLs on the Config page
             ```
+
+            The UI has no login of its own: run it on a trusted network or behind a reverse proxy with authentication.
           draft: false
           prerelease: false
           generate_release_notes: true
           files: |
             README.md
+            CHANGES.md
             LICENSE
             config/config.example.yaml
 
+      # Docker Hub's REST API needs a JWT from a username/password login; the old
+      # `Authorization: JWT <access token>` call was rejected. Use the maintained action
+      # (DOCKERHUB_TOKEN must be a personal access token with Read, Write, Delete scope).
       - name: Update Docker Hub description
-        run: |
-          # Update Docker Hub description using Docker Hub API
-          curl -X PATCH \
-            -H "Content-Type: application/json" \
-            -H "Authorization: JWT ${{ secrets.DOCKERHUB_TOKEN }}" \
-            -d '{
-              "full_description": "# Ultimate UI ${{ steps.get_version.outputs.VERSION_NUMBER }}\n\n${{ env.CHANGELOG }}\n\n## Quick Start\n\n```bash\ndocker run -p 5000:5000 nirvana777/ultimate-ui:${{ steps.get_version.outputs.VERSION_NUMBER }}\n```"
-            }' \
-            "https://hub.docker.com/v2/repositories/nirvana777/ultimate-ui/"
+        uses: peter-evans/dockerhub-description@v4
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          repository: nirvana777/ultimate-ui
+          short-description: "Web UI for EPG management: guide, catchup, channel mapping, providers, monitoring"
+          readme-filepath: ./README.md

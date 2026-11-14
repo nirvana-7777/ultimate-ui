@@ -1,6 +1,6 @@
 version: 2
 updates:
-  # Python dependencies
+  # Python dependencies (requirements.txt is fully pinned, so Dependabot proposes bumps)
   - package-ecosystem: "pip"
     directory: "/"
     schedule:
@@ -15,8 +15,30 @@ updates:
     commit-message:
       prefix: "pip"
       include: "scope"
+    groups:
+      python-minor-patch:
+        update-types: ["minor", "patch"]
 
-  # Docker dependencies
+  # Frontend dependencies (new: the React app was not covered before)
+  - package-ecosystem: "npm"
+    directory: "/ultimate-ui-react"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Europe/Berlin"
+    open-pull-requests-limit: 10
+    labels:
+      - "dependencies"
+      - "frontend"
+    commit-message:
+      prefix: "npm"
+      include: "scope"
+    groups:
+      npm-minor-patch:
+        update-types: ["minor", "patch"]
+
+  # Docker dependencies (python:3.11-slim and node:22-alpine base images)
   - package-ecosystem: "docker"
     directory: "/"
     schedule:

@@ -11,10 +11,18 @@ on:
     # Weekly security scan (Monday 3AM)
     - cron: '0 3 * * 1'
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  # Never cancel a running main/tag pipeline (it may be mid-deploy); do cancel superseded PR runs.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 env:
   DOCKER_IMAGE: nirvana777/ultimate-ui
   PYTHON_VERSION: '3.11'
-  NODE_VERSION: '18'
+  NODE_VERSION: '22'
+  # Publish on pushes to main/master AND on v* tags. (The old condition only matched
+  # branches, so tag builds were never pushed although the metadata step tags them.)
+  PUBLISH: ${{ github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags/v')) }}
 
 permissions:
   contents: read
@@ -33,40 +41,32 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
           cache: 'pip'
-
-      - name: Cache Python dependencies
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-${{ hashFiles('requirements*.txt') }}
-          restore-keys: |
-            ${{ runner.os }}-pip-
+          cache-dependency-path: requirements*.txt
 
       - name: Install linting tools
-        run: |
-          pip install -r requirements.dev.txt
+        run: pip install -r requirements.dev.txt
 
+      # black / isort / mypy settings live in pyproject.toml
       - name: Run Black (format check)
-        run: |
-          black --check src/ tests/
+        run: black --check src/ tests/
 
       - name: Run isort (import sorting check)
-        run: |
-          isort --check-only src/ tests/
+        run: isort --check-only src/ tests/
 
       - name: Run Flake8 (linting)
-        run: |
-          flake8 src/ tests/ --max-line-length=100 --exclude=__pycache__
+        run: flake8 src/ tests/ --max-line-length=100 --exclude=__pycache__
 
       - name: Run MyPy (type checking)
-        run: |
-          mypy src/ --ignore-missing-imports
+        run: mypy src/ --ignore-missing-imports
 
   test:
     runs-on: ubuntu-24.04
     strategy:
+      fail-fast: false
       matrix:
-        python-version: ['3.9', '3.10', '3.11']
+        # The pinned runtime deps (requests, gunicorn, click, urllib3) need Python >= 3.10;
+        # 3.9 cannot install them. The Docker image uses 3.11.
+        python-version: ['3.11', '3.12']
 
     steps:
       - name: Checkout code
@@ -77,36 +77,12 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
           cache: 'pip'
-
-      - name: Cache Python dependencies
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-${{ matrix.python-version }}-${{ hashFiles('requirements*.txt') }}
-          restore-keys: |
-            ${{ runner.os }}-pip-${{ matrix.python-version }}-
+          cache-dependency-path: requirements*.txt
 
       - name: Install dependencies
         run: |
           pip install -r requirements.txt
           pip install -r requirements.dev.txt
-          pip install pytest pytest-cov pytest-asyncio pytest-html
-
-      - name: Create test configuration
-        run: |
-          mkdir -p config
-          cat > config/config.test.yaml << EOF
-          webepg:
-            url: "http://localhost:8080"
-            timeout: 5
-          ultimate_backend:
-            url: "http://localhost:3000"
-            timeout: 5
-          ui:
-            theme: "dark"
-            refresh_interval: 300
-            timezone: "UTC"
-          EOF
 
       - name: Run tests
         run: |
@@ -127,63 +103,49 @@ jobs:
             htmlcov/
 
       - name: Upload coverage reports
-        uses: codecov/codecov-action@v3
+        uses: codecov/codecov-action@v5   # v3 runs on a runner GitHub no longer supports
         if: matrix.python-version == '3.11'
         with:
-          file: ./coverage.xml
+          files: ./coverage.xml
           flags: unittests
           name: ultimate-ui-python-${{ matrix.python-version }}
+          token: ${{ secrets.CODECOV_TOKEN }}
+          fail_ci_if_error: false
 
   frontend-check:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ultimate-ui-react
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: ultimate-ui-react/package-lock.json
 
-      - name: Install frontend linters
-        run: |
-          npm install --no-save eslint htmlhint stylelint stylelint-config-standard
+      - name: Install dependencies
+        run: npm ci
 
-      - name: Lint JavaScript
-        run: |
-          npx eslint "src/static/js/**/*.js"
+      - name: Type check
+        run: npm run typecheck
 
-      - name: Lint HTML
-        run: |
-          npx htmlhint "src/templates/**/*.html"
+      - name: Build
+        run: npm run build
 
-      - name: Lint CSS
-        run: |
-          npx stylelint "src/static/css/**/*.css" --fix
+      # Lazy shaka chunk, bundle size budget, key strings in the bundle, ...
+      - name: Verify build output
+        run: bash verify-build.sh
 
-  codeql:
-    name: CodeQL Security Analysis
-    runs-on: ubuntu-latest
-    permissions:
-      security-events: write
-      actions: read
-      contents: read
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      # Production dependencies only. Dev-tool advisories (vite/esbuild dev server) do
+      # not ship in the bundle; moderate prod advisories are tracked by Dependabot.
+      - name: Audit production dependencies
+        run: npm audit --omit=dev --audit-level=high
 
-      - name: Initialize CodeQL
-        uses: github/codeql-action/init@v4
-        with:
-          languages: python
-          # Use the default CodeQL query suite for security
-          queries: security-extended
-
-      - name: Autobuild
-        uses: github/codeql-action/autobuild@v4
-
-      - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@v4
-        with:
-          category: "/language:python"
+  # CodeQL runs in its own workflow (.github/workflows/codeql.yml). It used to run twice,
+  # once here and once there, both uploading to the same "/language:python" category.
 
   security:
     runs-on: ubuntu-latest
@@ -196,26 +158,22 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
           cache: 'pip'
+          cache-dependency-path: requirements*.txt
 
       - name: Install security tools
-        run: |
-          pip install safety bandit
+        run: pip install pip-audit bandit
 
-      - name: Run Safety (dependency vulnerability check)
-        run: |
-          safety check --json --output safety-report.json || true
-          if [ -f safety-report.json ]; then
-            echo "Safety report generated"
-            cat safety-report.json | jq '.vulnerabilities[] | "\(.package_name) \(.vulnerable_version): \(.advisory)"' || true
-          fi
+      # Replaces `safety check ... || true`, which never failed the build.
+      # Blocking: fails the job when a pinned runtime dependency has a known advisory.
+      - name: Run pip-audit (dependency vulnerabilities)
+        run: pip-audit -r requirements.txt
 
-      - name: Run Bandit (security linting)
-        run: |
-          bandit -r src/ -f json -o bandit-report.json || true
-          if [ -f bandit-report.json ]; then
-            echo "Bandit report generated"
-            cat bandit-report.json | jq '.results[] | "\(.filename):\(.line_number) \(.issue_confidence) \(.issue_severity): \(.issue_text)"' || true
-          fi
+      - name: Run Bandit (security linting, medium+ severity)
+        run: bandit -r src/ -ll
+
+      - name: Bandit JSON report
+        if: always()
+        run: bandit -r src/ -f json -o bandit-report.json || true
 
       - name: Run Semgrep (SAST)
         uses: semgrep/semgrep-action@v1
@@ -243,7 +201,7 @@ jobs:
           sarif_file: semgrep.sarif
           category: semgrep
 
-      - name: Run Trivy (container vulnerability scan)
+      - name: Run Trivy (filesystem scan)
         uses: aquasecurity/trivy-action@master
         with:
           scan-type: 'fs'
@@ -277,13 +235,12 @@ jobs:
         with:
           name: security-reports
           path: |
-            safety-report.json
             bandit-report.json
             semgrep.sarif
             dependency-check-report.html
 
   docker-build:
-    needs: [ lint, test, codeql, security ]
+    needs: [ lint, test, frontend-check, security ]
     runs-on: ubuntu-latest
 
     steps:
@@ -298,7 +255,7 @@ jobs:
 
       - name: Log in to Docker Hub
         uses: docker/login-action@v3
-        if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+        if: env.PUBLISH == 'true'
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
@@ -318,9 +275,9 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: .
-          file: ./docker/Dockerfile
-          platforms: linux/amd64,linux/arm64  # ✅ Build BOTH here
-          push: ${{ github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master') }}
+          file: ./Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: ${{ env.PUBLISH == 'true' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
@@ -357,7 +314,6 @@ jobs:
   docker-test:
     needs: docker-build
     runs-on: ubuntu-latest
-    # Remove matrix strategy here too
 
     steps:
       - name: Checkout code
@@ -370,7 +326,7 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: .
-          file: ./docker/Dockerfile
+          file: ./Dockerfile
           load: true
           tags: ultimate-ui:test
           platforms: linux/amd64  # Test only amd64 since CI runners are amd64
@@ -379,7 +335,8 @@ jobs:
       - name: Run container smoke test
         timeout-minutes: 3
         run: |
-          # Create minimal test config
+          # Minimal config; both upstreams are deliberately unreachable (nothing listens on
+          # these ports inside the container), which lets us test the error path too.
           mkdir -p test-config
           cat > test-config/config.yaml << 'EOF'
           webepg:
@@ -394,33 +351,54 @@ jobs:
             timezone: "UTC"
           EOF
 
-          # Start container
-          echo "Starting container..."
-          docker run -d --name ultimate-ui-test \
-            -p 7779:7779 \
-            -v $(pwd)/test-config:/app/config:ro \
-            ultimate-ui:test
-
-          # Give it time to start
-          sleep 10
-
-          # Simple check: Is container running and serving HTML?
-          if docker ps | grep -q ultimate-ui-test && \
-             curl -s --max-time 5 http://localhost:7779/ | grep -q "<html"; then
-            echo "✅ Container is running and serving HTML"
-            docker stop ultimate-ui-test 2>/dev/null || true
-            docker rm -f ultimate-ui-test 2>/dev/null || true
-            echo "Smoke test passed!"
-          else
-            echo "❌ Test failed"
-            echo "Container status:"
+          cleanup() {
+            docker stop ultimate-ui-test >/dev/null 2>&1 || true
+            docker rm -f ultimate-ui-test >/dev/null 2>&1 || true
+          }
+          fail() {
+            echo "❌ $1"
             docker ps -a | grep ultimate-ui-test || true
             echo "Container logs:"
-            docker logs ultimate-ui-test 2>/dev/null || true
-            docker stop ultimate-ui-test 2>/dev/null || true
-            docker rm -f ultimate-ui-test 2>/dev/null || true
+            docker logs ultimate-ui-test 2>&1 | tail -50 || true
+            cleanup
             exit 1
-          fi
+          }
+          code() { curl -s -o /dev/null -w '%{http_code}' --max-time 5 "$@"; }
+
+          docker run -d --name ultimate-ui-test \
+            -p 7779:7779 \
+            -v "$(pwd)/test-config:/app/config:ro" \
+            ultimate-ui:test
+
+          # Wait for the app (up to 30 s) instead of a blind sleep
+          for _ in $(seq 1 30); do
+            [ "$(code http://localhost:7779/health)" = "200" ] && break
+            sleep 1
+          done
+
+          [ "$(code http://localhost:7779/health)" = "200" ] || fail "/health did not return 200"
+
+          curl -s --max-time 5 http://localhost:7779/ | grep -q "__ULTIMATE_CONFIG__" \
+            || fail "/ does not serve the SPA shell"
+
+          # The SPA bundle must be baked into the image (a bind mount over /app/src/static
+          # or a broken frontend build stage would break exactly this)
+          [ "$(code http://localhost:7779/static/dist/assets/index.js)" = "200" ] \
+            || fail "SPA bundle missing from image"
+
+          # CSRF guard: a state-changing request without the custom header must be refused
+          [ "$(code -X POST -H 'Content-Type: application/json' -d '{}' http://localhost:7779/config)" = "403" ] \
+            || fail "POST /config without X-Requested-With was not rejected"
+
+          # Upstream down must surface as an error, never as an empty list
+          [ "$(code http://localhost:7779/api/epg/channels)" = "502" ] \
+            || fail "unreachable WebEPG did not produce a 502"
+
+          # Must not run as root
+          [ "$(docker exec ultimate-ui-test id -u)" != "0" ] || fail "container runs as root"
+
+          echo "✅ Smoke test passed"
+          cleanup
 
   deploy:
     needs: [docker-build, docker-test, docker-scout]
@@ -428,75 +406,61 @@ jobs:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v4
-
-      - name: Log in to Docker Hub
-        uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-
-      - name: Extract metadata
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.DOCKER_IMAGE }}
-          tags: |
-            type=ref,event=branch
-            type=ref,event=tag
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=sha,prefix={{branch}}-
-            type=raw,value=latest,enable={{is_default_branch}}
-
       - name: Deploy to staging
         env:
           DEPLOY_HOST: ${{ secrets.DEPLOY_HOST_STAGING }}
           DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
           DEPLOY_KEY: ${{ secrets.DEPLOY_KEY }}
+          # Optional but recommended: output of `ssh-keyscan -t ed25519 <host>`
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
         run: |
-          echo "$DEPLOY_KEY" > deploy_key
-          chmod 600 deploy_key
-          
-          ssh -o StrictHostKeyChecking=no -i deploy_key $DEPLOY_USER@$DEPLOY_HOST << 'EOF'
-            # Pull latest image
-            docker pull ${{ env.DOCKER_IMAGE }}:latest
-            
-            # Stop and remove old container
+          install -m 700 -d ~/.ssh
+          echo "$DEPLOY_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          if [ -n "$DEPLOY_KNOWN_HOSTS" ]; then
+            echo "$DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts
+            SSH_OPTS="-o StrictHostKeyChecking=yes"
+          else
+            echo "::warning::DEPLOY_KNOWN_HOSTS secret not set - the server host key is NOT verified"
+            SSH_OPTS="-o StrictHostKeyChecking=no"
+          fi
+
+          ssh $SSH_OPTS -i ~/.ssh/deploy_key "$DEPLOY_USER@$DEPLOY_HOST" bash -s <<'REMOTE'
+            set -e
+            IMAGE='${{ env.DOCKER_IMAGE }}:latest'
+            CONFIG_DIR=/opt/ultimate-ui/config
+
+            docker pull "$IMAGE"
+
+            # The image's user is uid 10001 (it used to be a dynamic uid). Run as whoever owns
+            # the config directory so the Config page can keep writing config.yaml.
+            OWNER="$(stat -c '%u:%g' "$CONFIG_DIR")"
+            if [ "$OWNER" = "0:0" ]; then
+              echo "WARNING: $CONFIG_DIR is owned by root; run: chown -R 10001:10001 $CONFIG_DIR"
+              OWNER="10001:10001"
+            fi
+
             docker stop ultimate-ui-staging || true
             docker rm ultimate-ui-staging || true
-            
-            # Run new container
+
             docker run -d \
               --name ultimate-ui-staging \
               --restart unless-stopped \
+              --user "$OWNER" \
               -p 7779:7779 \
-              -v /opt/ultimate-ui/config:/app/config \
-              -v /opt/ultimate-ui/logs:/app/logs \
-              -e FLASK_ENV=production \
-              ${{ env.DOCKER_IMAGE }}:latest
-          EOF
+              -v "$CONFIG_DIR":/app/config \
+              "$IMAGE"
+          REMOTE
 
       - name: Verify deployment
         env:
           DEPLOY_HOST: ${{ secrets.DEPLOY_HOST_STAGING }}
           DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
-          DEPLOY_KEY: ${{ secrets.DEPLOY_KEY }}
         run: |
-          echo "$DEPLOY_KEY" > deploy_key
-          chmod 600 deploy_key
-          
-          # Wait for deployment to be ready
-          sleep 10
-          
-          # Verify service is running
-          ssh -o StrictHostKeyChecking=no -i deploy_key $DEPLOY_USER@$DEPLOY_HOST \
-            "curl -f http://localhost:7779/health || exit 1"
-          
+          if [ -f ~/.ssh/known_hosts ]; then SSH_OPTS="-o StrictHostKeyChecking=yes"; else SSH_OPTS="-o StrictHostKeyChecking=no"; fi
+          # Wait for the app instead of a blind sleep; the image's own HEALTHCHECK also runs.
+          ssh $SSH_OPTS -i ~/.ssh/deploy_key "$DEPLOY_USER@$DEPLOY_HOST" \
+            'for i in $(seq 1 30); do curl -fsS http://localhost:7779/health && exit 0; sleep 1; done; docker logs --tail 50 ultimate-ui-staging; exit 1'
           echo "Deployment verified successfully!"
 
       - name: Notify deployment
@@ -507,7 +471,7 @@ jobs:
 
   notify:
     runs-on: ubuntu-latest
-    needs: [lint, test, frontend-check, codeql, security, docker-build, docker-scout, docker-test, deploy]
+    needs: [lint, test, frontend-check, security, docker-build, docker-scout, docker-test, deploy]
     if: always()
 
     steps:
@@ -519,9 +483,8 @@ jobs:
           echo "|-----|--------|---------|"
           echo "| Lint | ${{ needs.lint.result }} | Python code quality checks |"
           echo "| Test | ${{ needs.test.result }} | Unit tests across Python versions |"
-          echo "| Frontend Check | ${{ needs.frontend-check.result }} | HTML/JS/CSS validation |"
-          echo "| CodeQL | ${{ needs.codeql.result }} | GitHub security analysis |"
-          echo "| Security | ${{ needs.security.result }} | Semgrep, Bandit, Safety, Trivy |"
+          echo "| Frontend Check | ${{ needs.frontend-check.result }} | Typecheck, build, bundle checks, npm audit |"
+          echo "| Security | ${{ needs.security.result }} | pip-audit, Bandit, Semgrep, Trivy |"
           echo "| Docker Build | ${{ needs.docker-build.result }} | Multi-architecture builds |"
           echo "| Docker Test | ${{ needs.docker-test.result }} | Container smoke tests |"
           echo "| Deploy | ${{ needs.deploy.result }} | Staging deployment |"
@@ -529,7 +492,7 @@ jobs:
           echo "**Commit:** ${{ github.sha }}"
           echo "**Branch:** ${{ github.ref }}"
           echo "**Trigger:** ${{ github.event_name }}"
-          
+
           if [[ "${{ github.event_name }}" == "push" && "${{ github.ref }}" == "refs/heads/main" ]]; then
             echo ""
             echo "📦 Docker Image: ${{ env.DOCKER_IMAGE }}:latest"
@@ -547,12 +510,11 @@ jobs:
           echo "| Lint | ${{ needs.lint.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Test | ${{ needs.test.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Frontend Check | ${{ needs.frontend-check.result }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| CodeQL | ${{ needs.codeql.result }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Security (Semgrep) | ${{ needs.security.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Security | ${{ needs.security.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Docker Build | ${{ needs.docker-build.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Docker Test | ${{ needs.docker-test.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Deploy | ${{ needs.deploy.result }} |" >> $GITHUB_STEP_SUMMARY
-          
+
           if [[ "${{ github.event_name }}" == "push" && "${{ github.ref }}" == "refs/heads/main" ]]; then
             echo "" >> $GITHUB_STEP_SUMMARY
             echo "### Deployment Information" >> $GITHUB_STEP_SUMMARY
@@ -573,10 +535,10 @@ jobs:
             Branch: ${{ github.ref_name }}
             Commit: ${{ github.sha }}
             Workflow: ${{ github.workflow }}
-            Jobs: 
+            Jobs:
             - Lint: ${{ needs.lint.result }}
             - Test: ${{ needs.test.result }}
-            - CodeQL: ${{ needs.codeql.result }}
+            - Frontend: ${{ needs.frontend-check.result }}
             - Security: ${{ needs.security.result }}
             - Docker: ${{ needs.docker-build.result }}
             - Deploy: ${{ needs.deploy.result }}
@@ -587,7 +549,7 @@ jobs:
       - name: Fail if critical jobs failed
         if: |
           needs.test.result == 'failure' ||
-          needs.codeql.result == 'failure' ||
+          needs.frontend-check.result == 'failure' ||
           needs.security.result == 'failure' ||
           needs.docker-build.result == 'failure' ||
           needs.docker-test.result == 'failure'
@@ -596,7 +558,7 @@ jobs:
           echo ""
           echo "Failed jobs:"
           echo "- Test: ${{ needs.test.result }}"
-          echo "- CodeQL: ${{ needs.codeql.result }}"
+          echo "- Frontend: ${{ needs.frontend-check.result }}"
           echo "- Security: ${{ needs.security.result }}"
           echo "- Docker Build: ${{ needs.docker-build.result }}"
           echo "- Docker Test: ${{ needs.docker-test.result }}"
