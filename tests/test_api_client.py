@@ -6,6 +6,7 @@ import requests_mock
 
 from src.api_client import UltimateBackendClient, WebEPGClient
 
+
 class TestWebEPGClient:
     """Test WebEPGClient class."""
 
