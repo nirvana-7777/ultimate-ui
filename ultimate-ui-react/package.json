@@ -15,7 +15,7 @@
     "react-dom": "^18.3.1",
     "react-hook-form": "^7.53.0",
     "react-router-dom": "^6.27.0",
-    "shaka-player": "^4.6.0"
+    "shaka-player": "^5.3.4"
   },
   "devDependencies": {
     "@types/react": "^18.3.11",
