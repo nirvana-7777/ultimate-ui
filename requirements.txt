@@ -6,7 +6,7 @@ Werkzeug==3.1.9
 requests==2.32.5
 PyYAML==6.0.3
 pytz==2026.6
-gunicorn==23.0.0
+gunicorn==27.0.0
 
 # Transitive dependencies (pinned for reproducible builds)
 blinker==1.9.0
