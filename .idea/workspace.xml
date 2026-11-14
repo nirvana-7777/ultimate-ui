@@ -4,18 +4,7 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="26a67a20-b618-41a8-9b0d-40ca26281999" name="Changes" comment="change to react">
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/CHANGES.md" beforeDir="false" afterPath="$PROJECT_DIR$/CHANGES.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/README.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/pyproject.toml" beforeDir="false" afterPath="$PROJECT_DIR$/pyproject.toml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/requirements.txt" beforeDir="false" afterPath="$PROJECT_DIR$/requirements.txt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/config.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/config.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/static/dist/assets/index.css" beforeDir="false" afterPath="$PROJECT_DIR$/src/static/dist/assets/index.css" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/static/dist/assets/index.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/static/dist/assets/index.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ultimate-ui-react/package-lock.json" beforeDir="false" afterPath="$PROJECT_DIR$/ultimate-ui-react/package-lock.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ultimate-ui-react/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/ultimate-ui-react/package.json" afterDir="false" />
-    </list>
+    <list default="true" id="26a67a20-b618-41a8-9b0d-40ca26281999" name="Changes" comment="change to react" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -88,14 +77,6 @@
       <workItem from="1768399893477" duration="2236000" />
       <workItem from="1768403116851" duration="13560000" />
       <workItem from="1768480467536" duration="685000" />
-    </task>
-    <task id="LOCAL-00111" summary="Fix EPG Loading">
-      <option name="closed" value="true" />
-      <created>1768216006037</created>
-      <option name="number" value="00111" />
-      <option name="presentableId" value="LOCAL-00111" />
-      <option name="project" value="LOCAL" />
-      <updated>1768216006037</updated>
     </task>
     <task id="LOCAL-00112" summary="Fix EPG Loading">
       <option name="closed" value="true" />
@@ -481,7 +462,15 @@
       <option name="project" value="LOCAL" />
       <updated>1794659972616</updated>
     </task>
-    <option name="localTasksCounter" value="160" />
+    <task id="LOCAL-00160" summary="change to react">
+      <option name="closed" value="true" />
+      <created>1794660397697</created>
+      <option name="number" value="00160" />
+      <option name="presentableId" value="LOCAL-00160" />
+      <option name="project" value="LOCAL" />
+      <updated>1794660397697</updated>
+    </task>
+    <option name="localTasksCounter" value="161" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
