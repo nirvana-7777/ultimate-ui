@@ -4,7 +4,9 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="26a67a20-b618-41a8-9b0d-40ca26281999" name="Changes" comment="change to react" />
+    <list default="true" id="26a67a20-b618-41a8-9b0d-40ca26281999" name="Changes" comment="change to react">
+      <change beforePath="$PROJECT_DIR$/tests/test_templates.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/test_templates.py" afterDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -77,30 +79,6 @@
       <workItem from="1768399893477" duration="2236000" />
       <workItem from="1768403116851" duration="13560000" />
       <workItem from="1768480467536" duration="685000" />
-    </task>
-    <task id="LOCAL-00112" summary="Fix EPG Loading">
-      <option name="closed" value="true" />
-      <created>1768225802319</created>
-      <option name="number" value="00112" />
-      <option name="presentableId" value="LOCAL-00112" />
-      <option name="project" value="LOCAL" />
-      <updated>1768225802319</updated>
-    </task>
-    <task id="LOCAL-00113" summary="Fix EPG Loading">
-      <option name="closed" value="true" />
-      <created>1768226576128</created>
-      <option name="number" value="00113" />
-      <option name="presentableId" value="LOCAL-00113" />
-      <option name="project" value="LOCAL" />
-      <updated>1768226576129</updated>
-    </task>
-    <task id="LOCAL-00114" summary="Fix EPG Loading">
-      <option name="closed" value="true" />
-      <created>1768227114697</created>
-      <option name="number" value="00114" />
-      <option name="presentableId" value="LOCAL-00114" />
-      <option name="project" value="LOCAL" />
-      <updated>1768227114697</updated>
     </task>
     <task id="LOCAL-00115" summary="Fix EPG Loading">
       <option name="closed" value="true" />
@@ -470,7 +448,31 @@
       <option name="project" value="LOCAL" />
       <updated>1794660397697</updated>
     </task>
-    <option name="localTasksCounter" value="161" />
+    <task id="LOCAL-00161" summary="change to react">
+      <option name="closed" value="true" />
+      <created>1794660882536</created>
+      <option name="number" value="00161" />
+      <option name="presentableId" value="LOCAL-00161" />
+      <option name="project" value="LOCAL" />
+      <updated>1794660882536</updated>
+    </task>
+    <task id="LOCAL-00162" summary="change to react">
+      <option name="closed" value="true" />
+      <created>1794660951670</created>
+      <option name="number" value="00162" />
+      <option name="presentableId" value="LOCAL-00162" />
+      <option name="project" value="LOCAL" />
+      <updated>1794660951670</updated>
+    </task>
+    <task id="LOCAL-00163" summary="change to react">
+      <option name="closed" value="true" />
+      <created>1794661017138</created>
+      <option name="number" value="00163" />
+      <option name="presentableId" value="LOCAL-00163" />
+      <option name="project" value="LOCAL" />
+      <updated>1794661017138</updated>
+    </task>
+    <option name="localTasksCounter" value="164" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
