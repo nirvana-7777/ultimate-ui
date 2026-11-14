@@ -8,9 +8,13 @@
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/CHANGES.md" beforeDir="false" afterPath="$PROJECT_DIR$/CHANGES.md" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/README.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/pyproject.toml" beforeDir="false" afterPath="$PROJECT_DIR$/pyproject.toml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/requirements.txt" beforeDir="false" afterPath="$PROJECT_DIR$/requirements.txt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/app.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/app.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/test_api_client.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/test_api_client.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/config.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/config.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/static/dist/assets/index.css" beforeDir="false" afterPath="$PROJECT_DIR$/src/static/dist/assets/index.css" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/static/dist/assets/index.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/static/dist/assets/index.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/ultimate-ui-react/package-lock.json" beforeDir="false" afterPath="$PROJECT_DIR$/ultimate-ui-react/package-lock.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/ultimate-ui-react/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/ultimate-ui-react/package.json" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -84,38 +88,6 @@
       <workItem from="1768399893477" duration="2236000" />
       <workItem from="1768403116851" duration="13560000" />
       <workItem from="1768480467536" duration="685000" />
-    </task>
-    <task id="LOCAL-00107" summary="Fix EPG Loading">
-      <option name="closed" value="true" />
-      <created>1768210030277</created>
-      <option name="number" value="00107" />
-      <option name="presentableId" value="LOCAL-00107" />
-      <option name="project" value="LOCAL" />
-      <updated>1768210030277</updated>
-    </task>
-    <task id="LOCAL-00108" summary="Fix EPG Loading">
-      <option name="closed" value="true" />
-      <created>1768211707267</created>
-      <option name="number" value="00108" />
-      <option name="presentableId" value="LOCAL-00108" />
-      <option name="project" value="LOCAL" />
-      <updated>1768211707267</updated>
-    </task>
-    <task id="LOCAL-00109" summary="Fix EPG Loading">
-      <option name="closed" value="true" />
-      <created>1768213493131</created>
-      <option name="number" value="00109" />
-      <option name="presentableId" value="LOCAL-00109" />
-      <option name="project" value="LOCAL" />
-      <updated>1768213493131</updated>
-    </task>
-    <task id="LOCAL-00110" summary="Fix EPG Loading">
-      <option name="closed" value="true" />
-      <created>1768215646920</created>
-      <option name="number" value="00110" />
-      <option name="presentableId" value="LOCAL-00110" />
-      <option name="project" value="LOCAL" />
-      <updated>1768215646920</updated>
     </task>
     <task id="LOCAL-00111" summary="Fix EPG Loading">
       <option name="closed" value="true" />
@@ -477,7 +449,39 @@
       <option name="project" value="LOCAL" />
       <updated>1794658874360</updated>
     </task>
-    <option name="localTasksCounter" value="156" />
+    <task id="LOCAL-00156" summary="change to react">
+      <option name="closed" value="true" />
+      <created>1794659726590</created>
+      <option name="number" value="00156" />
+      <option name="presentableId" value="LOCAL-00156" />
+      <option name="project" value="LOCAL" />
+      <updated>1794659726590</updated>
+    </task>
+    <task id="LOCAL-00157" summary="change to react">
+      <option name="closed" value="true" />
+      <created>1794659757698</created>
+      <option name="number" value="00157" />
+      <option name="presentableId" value="LOCAL-00157" />
+      <option name="project" value="LOCAL" />
+      <updated>1794659757698</updated>
+    </task>
+    <task id="LOCAL-00158" summary="change to react">
+      <option name="closed" value="true" />
+      <created>1794659879057</created>
+      <option name="number" value="00158" />
+      <option name="presentableId" value="LOCAL-00158" />
+      <option name="project" value="LOCAL" />
+      <updated>1794659879057</updated>
+    </task>
+    <task id="LOCAL-00159" summary="change to react">
+      <option name="closed" value="true" />
+      <created>1794659972615</created>
+      <option name="number" value="00159" />
+      <option name="presentableId" value="LOCAL-00159" />
+      <option name="project" value="LOCAL" />
+      <updated>1794659972616</updated>
+    </task>
+    <option name="localTasksCounter" value="160" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">

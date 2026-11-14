@@ -21,7 +21,7 @@ config/config.example.yaml     copy to config/config.yaml (the Config page write
 src/                           Flask app: app.py, config.py, api_client.py, templates/spa.html
 src/static/dist/               built SPA (the Docker image rebuilds it; see "Development")
 ultimate-ui-react/             SPA source, lockfile, verify-build.sh
-tests/                         pytest suite for the Flask side
+tests/spa/                     pytest suite for the Flask side (own conftest; will not clash with other tests/)
 nginx/nginx.conf               optional reverse proxy (compose profile "proxy")
 ```
 
@@ -94,7 +94,7 @@ Ultimate Backend: `/api/providers`, `/api/providers/<p>/channels`, `/api/provide
 # backend
 python -m venv .venv && . .venv/bin/activate
 pip install -r requirements.txt -r requirements.dev.txt
-pytest -q                                   # 55 tests
+pytest -q                                   # 56 tests (tests/spa/)
 isort src tests && black src tests && flake8 src tests --max-line-length=100 && mypy src
 ULTIMATE_UI_CONFIG=config/config.yaml FLASK_DEBUG=true python -m src.app   # http://127.0.0.1:7779
 
@@ -130,10 +130,10 @@ Releasing: bump the version in **both** `src/__init__.py` and `ultimate-ui-react
 * Player behaviour (shaka teardown on A→B switch, minimize/restore, native fallback) has only
   manual tests – try these in a real browser with real streams: play DASH/HLS → switch to
   another stream without closing → minimize/restore → close and play again → native `.ts`/`.mp4`.
-* `npm audit`: 4 advisories (1 high, 3 moderate) in dev tooling (`vite`/`esbuild` dev-server)
-  and `react-router-dom` 6.x (open-redirect via user-controlled link targets; fixed only in
-  v7, which the UI does not need to pass user input to). They do not affect the served bundle's
-  attack surface in this app, but plan the v7 / Vite upgrade.
+* `npm audit`: 2 moderate advisories remain, both `react-router-dom` 6.x (open redirect via
+  user-controlled link targets, CVSS 6.1; fixed only in v7). The UI never passes user input to
+  `<Link>`/`navigate`, so plan the v7 upgrade but it is not urgent. (`vite` was upgraded 5 → 7.3.8,
+  which clears 8 dev-server advisories; it needs Node ≥ 20.19 / 22.12 – CI and the Dockerfile use 22.)
 * ProviderModal's "test connection" for a *new* provider does a browser `HEAD` to the URL
   (often blocked by CORS); existing providers are tested through WebEPG.
 * Accessibility pass (focus traps, dialog roles) and mapping-page touch support are open.

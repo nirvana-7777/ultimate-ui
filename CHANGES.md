@@ -36,6 +36,8 @@ messages to the browser, atomic config writes (keeps file mode), `X-Content-Type
 http(s)-only check on the manifest template.
 
 ## Dependencies
+Frontend: `vite` 5.4 → 7.3.8 and `@vitejs/plugin-react` → 4.7.0 (8 vite dev-server advisories, one CVSS 10.0, fail
+OWASP Dependency-Check at `--failOnCVSS 7`; they never shipped in the image, but they blocked the pipeline).
 Your pins had **27 known advisories** (Flask 2.3.3, Werkzeug 3.0.1, requests 2.31.0, gunicorn 21.2.0,
 python-dotenv 1.0.0). Now pinned to current releases (pip-audit clean on 2026-11-14);
 `python-dotenv` removed from runtime (never imported).
@@ -60,6 +62,26 @@ and a stale duplicate `spa.html` from the previous zip; README claims that had n
 (Prometheus `/metrics`, OpenTelemetry, Kubernetes manifests, `docker-compose.prod.yml`).
 The old config page had controls (cache, log level, show icons/descriptions, import/export)
 that the backend never persisted; they are not in the SPA.
+
+## Applying this zip to an existing checkout
+Copy over: `src/`, `ultimate-ui-react/`, `Dockerfile`, `docker-compose.yml`, `requirements*.txt`, `.dockerignore`,
+`nginx/`, `.github/`, and the new `tests/spa/`. Merge by hand if you already have them: `pyproject.toml`
+(isort needs `profile = "black"`), `.flake8`. Do **not** overwrite your own `tests/` files (the zip no longer
+contains `tests/conftest.py` or `pytest.ini`) or `config/config.yaml`.
+If you extracted the *previous* zip: delete the copies it put directly into `tests/`
+(`test_app_pages_and_config.py`, `test_app_proxy.py`, `test_config_and_client.py`,
+`test_template_filters.py`) – they now live in `tests/spa/`, and a leftover `tests/conftest.py` of mine would
+shadow yours (`git checkout -- tests/conftest.py` restores it).
+
+## Porting old tests
+| Old test expectation | Now |
+|---|---|
+| client `get_channels/get_providers/get_channel_programs/create_channel_alias/...` returns `[]`/`None` on HTTP or connection errors | raises `UpstreamError` → `with pytest.raises(UpstreamError):` |
+| route test accepts `[200, 500]` when WebEPG is unreachable | `[200, 502]` (504 on timeout) |
+| POST/PUT/DELETE without extra header | needs `X-Requested-With`; in the test client fixture: `client.environ_base["HTTP_X_REQUESTED_WITH"] = "pytest"` |
+| `POST /config` with form data | JSON body (`client.post("/config", json={...})`), validated server-side |
+| tests of the Jinja pages (`/epg`, `config.html` structure, `<link>`/`<script>` tags in `base.html`) | pages are the SPA now (`/epg` redirects to `/`); see `tests/spa/test_app_pages_and_config.py` – delete the old template tests |
+| `Config()` without a path | unchanged: defaults + env only (a first version of the rewrite wrongly loaded `./config/config.yaml`; fixed + regression test) |
 
 ## GitHub workflows (`.github/`)
 Adapted from the ones you sent; `actionlint` is clean, the lint chain and the smoke-test assertions were run locally.
@@ -86,7 +108,7 @@ Adapted from the ones you sent; `actionlint` is clean, the lint chain and the sm
 * Dev tools bumped: pytest 9.0.3, black 26.10.1 (advisories), `python-dotenv` dropped; code reformatted accordingly.
 
 ## Verified vs. not verified
-Verified: `tsc`, production build + `verify-build.sh`, 48 pytest tests, flake8/black, clean
+Verified: `tsc`, production build + `verify-build.sh` (vite 7.3.8), 56 pytest tests (also alongside a simulated foreign `tests/conftest.py`), flake8/black, clean
 `pip install` + `pip check` + `pip-audit` from `requirements.txt`, and a headless-Chromium run
 against gunicorn (2 workers) with fake WebEPG/Ultimate Backend: EPG renders, config save/validation/
 reset, theme, multi-worker reload, error banner when WebEPG is down, no JS errors.

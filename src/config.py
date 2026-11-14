@@ -82,7 +82,12 @@ class Config:
     # ------------------------------------------------------------------
     @property
     def path(self) -> str:
-        """File that is loaded and saved."""
+        """File that is SAVED to (explicit path, else $ULTIMATE_UI_CONFIG, else default).
+
+        A file is only LOADED/watched when a path was passed to the constructor
+        (or after the first save): ``Config()`` is "defaults + environment" and
+        must not pick up a stray ./config/config.yaml.
+        """
         return (
             self._config_path or os.getenv("ULTIMATE_UI_CONFIG") or "config/config.yaml"
         )
@@ -111,9 +116,9 @@ class Config:
         """Rebuild the effective config: defaults < YAML < environment."""
         with self._lock:
             cfg = copy.deepcopy(self.DEFAULT_CONFIG)
-            path = self.path
+            path = self._config_path
             mtime: Optional[int] = None
-            if os.path.exists(path):
+            if path and os.path.exists(path):
                 self._merge_config(cfg, self._read_yaml(path))
                 mtime = os.stat(path).st_mtime_ns
             self._apply_env_vars(cfg)
@@ -127,8 +132,10 @@ class Config:
         save only touches one of them, so every worker checks the file's
         mtime (one cheap stat) before handling a request.
         """
+        if not self._config_path:
+            return False
         try:
-            mtime: Optional[int] = os.stat(self.path).st_mtime_ns
+            mtime: Optional[int] = os.stat(self._config_path).st_mtime_ns
         except FileNotFoundError:
             mtime = None
         if mtime == self._mtime:
@@ -236,6 +243,7 @@ class Config:
                 with open(path, "w", encoding="utf-8") as f:
                     f.write(text)
 
+            self._config_path = self._config_path or path  # load/watch it from now on
             self.reload()
 
     def reset(self):
