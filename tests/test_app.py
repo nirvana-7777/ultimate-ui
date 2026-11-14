@@ -1,19 +1,27 @@
 import json
-import os
-import sys
 from datetime import datetime
+from unittest.mock import patch
 
-# Add src to path
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../src")))
+from src.api_client import UpstreamError
+
+# State-changing requests must carry a custom header (CSRF guard).
+CSRF = {"X-Requested-With": "pytest"}
+
+
+def post_json(client, url, data, headers=CSRF):
+    return client.post(
+        url, data=json.dumps(data), content_type="application/json", headers=headers
+    )
 
 
 class TestAppRoutes:
     """Test Flask application routes."""
 
-    def test_index_redirect(self, client):
-        """Test that index redirects to EPG page."""
+    def test_index_serves_spa(self, client):
+        """The EPG page is the SPA shell at '/'."""
         response = client.get("/")
         assert response.status_code == 200
+        assert b"__ULTIMATE_CONFIG__" in response.data
 
     def test_health_endpoint(self, client):
         """Test health endpoint."""
@@ -23,50 +31,35 @@ class TestAppRoutes:
         assert data["status"] == "healthy"
         assert data["service"] == "ultimate-ui"
 
-    def test_epg_display_page(
-        self, client, mock_get_webepg_client, sample_channels, sample_programs
+    def test_legacy_epg_route_redirects(self, client):
+        """The old server-rendered /epg page now lives at '/'."""
+        response = client.get("/epg")
+        assert response.status_code == 301
+        assert response.headers["Location"].endswith("/")
+
+    def test_epg_channels_upstream_error_is_not_an_empty_list(
+        self, client, mock_get_webepg_client
     ):
-        """Test EPG display page."""
+        """WebEPG failures reach the UI as errors so it can show its error banner."""
         mock_client = mock_get_webepg_client.return_value
-        mock_client.get_channels.return_value = sample_channels
-        mock_client.get_channel_programs.return_value = sample_programs
+        mock_client.get_channels.side_effect = UpstreamError(
+            "WebEPG", "WebEPG is not reachable", 502
+        )
 
-        response = client.get("/epg")
-        assert response.status_code == 200
+        response = client.get("/api/epg/channels")
 
-    def test_epg_display_error_handling(self, client, mock_get_webepg_client):
-        """Test EPG display error handling."""
-        mock_client = mock_get_webepg_client.return_value
-        mock_client.get_channels.side_effect = Exception("API Error")
-        response = client.get("/epg")
-        assert response.status_code == 200
+        assert response.status_code == 502
+        response_data = json.loads(response.data)
+        assert response_data["success"] is False
+        assert "error" in response_data
 
     def test_configuration_page_get(self, client):
         """Test configuration page GET request."""
         response = client.get("/config")
         assert response.status_code == 200
 
-    def test_configuration_page_post(self, client, mock_update_clients):
-        """Test configuration page POST request."""
-        data = {
-            "webepg_url": "http://new-webepg:8080",
-            "webepg_timeout": "15",
-            "ultimate_backend_url": "http://new-ultimate:3000",
-            "ultimate_backend_timeout": "15",
-            "ui_theme": "light",
-            "refresh_interval": "600",
-            "timezone": "Europe/Berlin",
-            "player_size": "medium",
-            "player_bitrate": "auto",
-        }
-        response = client.post("/config", data=data)
-        assert response.status_code == 200
-        response_data = json.loads(response.data)
-        assert response_data["success"] is True
-        mock_update_clients.assert_called_once()
-
     def test_configuration_page_post_json(self, client, mock_update_clients):
-        """Test configuration page POST with JSON."""
+        """Settings are posted as JSON, validated, saved, and the clients are rebuilt."""
         data = {
             "webepg_url": "http://json-webepg:8080",
             "webepg_timeout": 20,
@@ -78,46 +71,78 @@ class TestAppRoutes:
             "player_size": "medium",
             "player_bitrate": "auto",
         }
-        response = client.post(
-            "/config", data=json.dumps(data), content_type="application/json"
-        )
+        with patch("src.app.config.save") as mock_save:
+            response = post_json(client, "/config", data)
+
         assert response.status_code == 200
         response_data = json.loads(response.data)
         assert response_data["success"] is True
+        mock_save.assert_called_once()
+        saved = mock_save.call_args.args[0]
+        assert saved["webepg"] == {"url": "http://json-webepg:8080", "timeout": 20}
+        assert saved["ui"]["theme"] == "light"
         mock_update_clients.assert_called_once()
 
-    def test_mapping_page(
-        self,
-        client,
-        mock_get_webepg_client,
-        mock_get_ultimate_backend_client,
-        sample_channels,
-        sample_providers,
+    def test_configuration_page_post_numbers_as_strings(
+        self, client, mock_update_clients
     ):
-        """Test EPG mapping page."""
-        mock_webepg = mock_get_webepg_client.return_value
-        mock_ultimate = mock_get_ultimate_backend_client.return_value
+        """The form UI sends numbers as strings; they are coerced."""
+        with patch("src.app.config.save") as mock_save:
+            response = post_json(
+                client,
+                "/config",
+                {"webepg_url": "http://new-webepg:8080", "webepg_timeout": "15"},
+            )
 
-        mock_webepg.get_channels.return_value = sample_channels
-        mock_ultimate.get_providers.return_value = sample_providers
-        mock_ultimate.get_provider_channels.return_value = []
+        assert response.status_code == 200
+        assert mock_save.call_args.args[0]["webepg"]["timeout"] == 15
 
+    def test_configuration_page_post_rejects_invalid_values(
+        self, client, mock_update_clients
+    ):
+        """Invalid settings are refused with field errors and nothing is saved."""
+        with patch("src.app.config.save") as mock_save:
+            response = post_json(
+                client,
+                "/config",
+                {"webepg_url": "file:///etc/passwd", "refresh_interval": 5},
+            )
+
+        assert response.status_code == 400
+        response_data = json.loads(response.data)
+        assert set(response_data["errors"]) == {"webepg_url", "refresh_interval"}
+        mock_save.assert_not_called()
+        mock_update_clients.assert_not_called()
+
+    def test_configuration_page_post_refuses_form_data(self, client):
+        """POST /config takes a JSON object only."""
+        response = client.post("/config", data={"webepg_url": "x"}, headers=CSRF)
+        assert response.status_code == 400
+
+    def test_mutating_requests_need_the_csrf_header(self, client, mock_update_clients):
+        """Without X-Requested-With a cross-site page could change settings."""
+        response = client.post(
+            "/config", data=json.dumps({}), content_type="application/json"
+        )
+        assert response.status_code == 403
+        mock_update_clients.assert_not_called()
+
+    def test_configuration_reset(self, client, mock_update_clients):
+        """Reset overwrites the saved settings with the defaults."""
+        with patch("src.app.config.reset") as mock_reset:
+            response = client.post("/config/reset", headers=CSRF)
+
+        assert response.status_code == 200
+        mock_reset.assert_called_once()
+        mock_update_clients.assert_called_once()
+
+    def test_mapping_page(self, client):
+        """The mapping page is rendered by the SPA."""
         response = client.get("/mapping")
         assert response.status_code == 200
 
-    def test_monitoring_page(self, client, mock_get_webepg_client):
-        """Test monitoring page."""
-        mock_client = mock_get_webepg_client.return_value
-        mock_client.get_import_status.return_value = {
-            "recent_imports": [],
-            "next_scheduled_import": datetime.now().isoformat(),
-        }
-        mock_client.get_statistics.return_value = {
-            "total_channels": 10,
-            "total_programs": 1000,
-        }
-        mock_client.get_health.return_value = True
-
+    def test_monitoring_page(self, client):
+        """The monitoring page is rendered by the SPA; its data comes from the API."""
         response = client.get("/monitoring")
         assert response.status_code == 200
 
@@ -167,6 +192,12 @@ class TestAppRoutes:
         assert response_data["page"] == 0
         assert response_data["limit"] == 20
 
+    def test_api_get_channels_rejects_bad_paging(self, client, mock_get_webepg_client):
+        """Non-numeric or out-of-range paging is a 400, not a 500."""
+        for query in ("page=abc", "page=-1", "limit=0", "limit=201"):
+            response = client.get(f"/api/epg/channels?{query}")
+            assert response.status_code == 400, query
+
     def test_api_get_channel_programs(
         self, client, mock_get_webepg_client, sample_programs
     ):
@@ -204,6 +235,17 @@ class TestAppRoutes:
         assert response_data["success"] is True
         assert "programs" in response_data
 
+    def test_api_get_channel_programs_forwards_provider(
+        self, client, mock_get_webepg_client, sample_programs
+    ):
+        """The provider query parameter scopes provider-native channel ids."""
+        mock_client = mock_get_webepg_client.return_value
+        mock_client.get_channel_programs.return_value = sample_programs
+
+        client.get("/api/channels/channel1/programs?provider=joyn")
+
+        assert mock_client.get_channel_programs.call_args.kwargs["provider"] == "joyn"
+
     def test_api_create_alias_success(self, client, mock_get_webepg_client):
         """Test API endpoint for creating alias successfully."""
         mock_client = mock_get_webepg_client.return_value
@@ -218,29 +260,32 @@ class TestAppRoutes:
             "alias_type": "custom",
         }
 
-        response = client.post(
-            "/api/mapping/create-alias",
-            data=json.dumps(data),
-            content_type="application/json",
-        )
+        response = post_json(client, "/api/mapping/create-alias", data)
 
         assert response.status_code == 200
         response_data = json.loads(response.data)
         assert response_data["success"] is True
         assert "alias" in response_data
 
-    def test_api_get_channel_programs_missing_params(self, client):
-        """Test API endpoint for getting channel programs with missing parameters."""
-        # This should now work with default parameters
+    def test_api_get_channel_programs_upstream_down(
+        self, client, mock_get_webepg_client
+    ):
+        """An unreachable WebEPG answers 502 (it used to be an unspecific 500)."""
+        mock_client = mock_get_webepg_client.return_value
+        mock_client.get_channel_programs.side_effect = UpstreamError(
+            "WebEPG", "WebEPG is not reachable", 502
+        )
+
         response = client.get("/api/channels/channel1/programs")
-        # Should return 200 with defaults, not 400
-        assert response.status_code in [200, 500]  # 500 if mock not set up
+
+        assert response.status_code == 502
+        assert json.loads(response.data)["success"] is False
 
     def test_api_trigger_import(self, client, mock_get_webepg_client):
         """Test API endpoint for triggering import."""
         mock_client = mock_get_webepg_client.return_value
         mock_client.trigger_import.return_value = {"success": True}
-        response = client.post("/api/import/trigger")
+        response = client.post("/api/import/trigger", headers=CSRF)
         assert response.status_code == 200
 
     def test_api_get_providers(
@@ -257,11 +302,7 @@ class TestAppRoutes:
     def test_api_create_alias_missing_fields(self, client):
         """Test API endpoint for creating alias with missing fields."""
         data = {"channel_identifier": "channel1"}
-        response = client.post(
-            "/api/mapping/create-alias",
-            data=json.dumps(data),
-            content_type="application/json",
-        )
+        response = post_json(client, "/api/mapping/create-alias", data)
         assert response.status_code == 400
         response_data = json.loads(response.data)
         assert "error" in response_data
@@ -288,7 +329,7 @@ class TestAppRoutes:
         assert response.status_code in [200, 204, 404]
 
     def test_404_error_handler(self, client):
-        """Test 404 error handling."""
+        """Unknown browser URLs get the SPA shell with a 404 status."""
         response = client.get("/nonexistent-page")
         assert response.status_code == 404
 
@@ -300,11 +341,14 @@ class TestAppRoutes:
         assert "error" in response_data
 
     def test_500_error_handler(self, client, mock_get_webepg_client):
-        """Test 500 error handling."""
+        """Unexpected errors are answered with generic JSON, never exception text."""
         mock_client = mock_get_webepg_client.return_value
         mock_client.get_channels.side_effect = Exception("Internal Error")
-        response = client.get("/epg")
-        assert response.status_code == 200
+        response = client.get("/api/epg/channels")
+        assert response.status_code == 500
+        response_data = json.loads(response.data)
+        assert response_data["success"] is False
+        assert "Internal Error" not in response.get_data(as_text=True)
 
 
 class TestTemplateFilters:
