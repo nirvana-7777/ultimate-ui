@@ -24,6 +24,7 @@ import os
 import re
 import threading
 import time
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Optional, Tuple
 from urllib.parse import urlparse
 
@@ -176,14 +177,128 @@ def _asset_version(name: str) -> str:
 
 
 @app.context_processor
-def inject_spa_config():
+def inject_config():
+    """Template variables.
+
+    ``config`` / ``current_year`` / ``current_time`` / ``config_path`` are the
+    original (pre-SPA) variables; ``spa_config`` and ``asset_v`` are what
+    templates/spa.html uses. Only ``spa_config`` is ever sent to the browser.
+    """
+    cfg = config.to_dict()
     return {
-        "spa_config": _public_spa_config(config.to_dict()),
+        "config": cfg,
+        "current_year": datetime.now().year,
+        "current_time": datetime.now().strftime("%a, %d.%m %H:%M"),
+        "config_path": config_path,
+        "spa_config": _public_spa_config(cfg),
         "asset_v": {
             "js": _asset_version("index.js"),
             "css": _asset_version("index.css"),
         },
     }
+
+
+# ---------------------------------------------------------------------------
+# Jinja filters
+# ---------------------------------------------------------------------------
+# Unused by templates/spa.html; kept unchanged for existing tests and any custom
+# template that still relies on them.
+def _parse_iso(value):
+    """ISO string (with Z / offset / naive=UTC) or datetime -> aware datetime."""
+    if isinstance(value, str):
+        if "Z" in value:
+            date = datetime.fromisoformat(value.replace("Z", "+00:00"))
+        elif "+" in value or "-" in value[10:]:  # has timezone offset
+            date = datetime.fromisoformat(value)
+        else:
+            date = datetime.fromisoformat(value + "+00:00")  # assume UTC
+    else:
+        date = value
+    if date.tzinfo is None:
+        date = date.replace(tzinfo=timezone.utc)
+    return date
+
+
+@app.template_filter("format_time")
+def format_time(value):
+    """Format datetime to HH:MM time string with timezone conversion."""
+    if not value:
+        return ""
+
+    try:
+        ui_timezone = config.get("ui.timezone", "Europe/Berlin")
+        local_date = _parse_iso(value).astimezone(pytz.timezone(ui_timezone))
+        return local_date.strftime("%H:%M")
+
+    except Exception as e:
+        logger.warning(f"Could not format time {value}: {e}")
+        # Fallback: try to return just the time part if it's a string
+        if isinstance(value, str) and "T" in value:
+            try:
+                return value.split("T")[1][:5]  # Extract HH:MM from ISO string
+            except (IndexError, ValueError, AttributeError) as fallback_error:
+                logger.debug(f"Fallback formatting also failed: {fallback_error}")
+
+        # Return a safe representation
+        if isinstance(value, str):
+            return value[:16]  # Return first 16 chars of string
+        elif hasattr(value, "__str__"):
+            return str(value)
+        else:
+            return ""
+
+
+@app.template_filter("format_datetime")
+def format_datetime(value):
+    """Format datetime with date and time in local timezone."""
+    if not value:
+        return ""
+
+    try:
+        ui_timezone = config.get("ui.timezone", "Europe/Berlin")
+        local_date = _parse_iso(value).astimezone(pytz.timezone(ui_timezone))
+        return local_date.strftime("%d.%m.%Y %H:%M")
+
+    except Exception as e:
+        logger.warning(f"Could not format datetime {value}: {e}")
+        return str(value)
+
+
+@app.template_filter("truncate")
+def truncate_filter(text, length=100):
+    """Truncate text to specified length."""
+    if not text:
+        return ""
+    if len(text) <= length:
+        return text
+    return text[:length] + "..."
+
+
+@app.template_filter("time_diff")
+def time_diff_filter(start, end):
+    """Calculate time difference between two datetimes."""
+    if not start or not end:
+        return "-"
+    try:
+        if isinstance(start, str):
+            start = datetime.fromisoformat(start.replace("Z", "+00:00"))
+        if isinstance(end, str):
+            end = datetime.fromisoformat(end.replace("Z", "+00:00"))
+
+        diff = end - start
+        hours = diff.seconds // 3600
+        minutes = (diff.seconds % 3600) // 60
+        seconds = diff.seconds % 60
+
+        if hours > 0:
+            return f"{hours}h {minutes}m {seconds}s"
+        elif minutes > 0:
+            return f"{minutes}m {seconds}s"
+        else:
+            return f"{seconds}s"
+    except Exception as e:
+        logger.warning(f"Could not calculate time diff: {e}")
+        return "-"
 
 
 # ---------------------------------------------------------------------------
@@ -619,8 +734,6 @@ def api_get_channels():
 @app.route("/api/channels/<channel_id>/programs")
 def api_get_channel_programs(channel_id):
     """Programs for one channel; ``provider`` scopes provider-native ids."""
-    from datetime import datetime, timedelta, timezone
-
     start = request.args.get("start")
     end = request.args.get("end")
     if not start:
@@ -637,8 +750,6 @@ def api_get_channel_programs(channel_id):
 @app.route("/api/epg/refresh")
 def api_refresh_epg():
     """Fresh channel list."""
-    from datetime import datetime
-
     channels = get_webepg_client().get_channels()
     return jsonify(
         {
@@ -824,8 +935,6 @@ def proxy_catchup_download():
 @app.route("/api/monitoring/status")
 def api_get_monitoring_status():
     """Monitoring snapshot. Tolerant: renders even when WebEPG is down."""
-    from datetime import datetime
-
     webepg = get_webepg_client()
     import_status = webepg.get_import_status()
     import_status.setdefault("recent_imports", [])

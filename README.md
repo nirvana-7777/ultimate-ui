@@ -94,7 +94,7 @@ Ultimate Backend: `/api/providers`, `/api/providers/<p>/channels`, `/api/provide
 # backend
 python -m venv .venv && . .venv/bin/activate
 pip install -r requirements.txt -r requirements.dev.txt
-pytest -q                                   # 48 tests
+pytest -q                                   # 55 tests
 isort src tests && black src tests && flake8 src tests --max-line-length=100 && mypy src
 ULTIMATE_UI_CONFIG=config/config.yaml FLASK_DEBUG=true python -m src.app   # http://127.0.0.1:7779
 

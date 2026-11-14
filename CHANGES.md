@@ -25,7 +25,9 @@ page templates were replaced by the React SPA (`src/templates/spa.html`).
    string; `..` could traverse). Now percent-encoded / rejected.
 9. `?page=abc` and similar produced 500s; now 400.
 10. Duplicate `/static/<path>` route (dead code), `send_from_directory("static")` relative to
-    the CWD, hard-coded default `SECRET_KEY` (unused) – removed.
+    the CWD, hard-coded default `SECRET_KEY` (unused) – removed. The Jinja filters (`format_time`,
+    `format_datetime`, `truncate_filter`, `time_diff_filter`) and `inject_config` are kept unchanged
+    for existing tests, although `spa.html` does not use them.
 
 ## Security / hardening
 CSRF header on all mutating requests, server-side validation of every setting, generic error

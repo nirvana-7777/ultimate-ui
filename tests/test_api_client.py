@@ -4,8 +4,7 @@ import pytest
 import requests
 import requests_mock
 
-from api_client import UltimateBackendClient, WebEPGClient
-
+from src.api_client import UltimateBackendClient, WebEPGClient
 
 class TestWebEPGClient:
     """Test WebEPGClient class."""
