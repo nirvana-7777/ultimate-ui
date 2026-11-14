@@ -1,18 +1,54 @@
 """
 Configuration management for ultimate-ui.
+
+Precedence (lowest to highest): built-in defaults < YAML file < environment
+variables. Environment variables therefore win over values saved from the UI;
+:meth:`Config.overridden_by_env` lets the caller tell the user when that
+happens instead of silently ignoring their input.
 """
 
 import copy
+import logging
 import os
-from typing import Any, Dict, Optional
+import tempfile
+import threading
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 import yaml
+
+logger = logging.getLogger(__name__)
+
+
+class ConfigError(Exception):
+    """The configuration file or an environment variable is unusable."""
+
+
+def _int_env(name: str, value: str) -> int:
+    try:
+        return int(value)
+    except ValueError as e:
+        raise ConfigError(f"Environment variable {name} must be an integer") from e
+
+
+# env var -> (dotted config path, caster). Empty values are ignored so that
+# `FOO=${FOO:-}` style compose files do not blank out the YAML setting.
+ENV_VARS: List[Tuple[str, str, Callable[[str, str], Any]]] = [
+    ("WEBEPG_URL", "webepg.url", lambda n, v: v),
+    ("WEBEPG_TIMEOUT", "webepg.timeout", _int_env),
+    ("ULTIMATE_BACKEND_URL", "ultimate_backend.url", lambda n, v: v),
+    ("ULTIMATE_BACKEND_PUBLIC_URL", "ultimate_backend.public_url", lambda n, v: v),
+    ("ULTIMATE_BACKEND_TIMEOUT", "ultimate_backend.timeout", _int_env),
+    ("CATCHUP_MAX_HOURS", "catchup.max_hours", _int_env),
+    ("UI_THEME", "ui.theme", lambda n, v: v),
+    ("UI_REFRESH_INTERVAL", "ui.refresh_interval", _int_env),
+    ("UI_TIMEZONE", "ui.timezone", lambda n, v: v),
+]
 
 
 class Config:
     """Configuration manager with YAML and environment variable support."""
 
-    DEFAULT_CONFIG = {
+    DEFAULT_CONFIG: Dict[str, Any] = {
         "webepg": {"url": "http://localhost:8080", "timeout": 10},
         "ultimate_backend": {
             "url": "http://localhost:3000",  # internal - used by Flask (download route)
@@ -22,31 +58,46 @@ class Config:
             "timeout": 10,
         },
         "ui": {"theme": "dark", "refresh_interval": 300, "timezone": "Europe/Berlin"},
-        "player": {"default_size": "medium", "default_bitrate": "auto"},
+        "player": {
+            "default_size": "medium",
+            "default_bitrate": "auto",
+            "autoplay": True,
+            "muted": False,
+            "default_volume": 50,
+        },
         "database": {"retention_days": 7},
         "catchup": {"max_hours": 168},  # upper cap for per-channel catchup windows
     }
 
     def __init__(self, config_path: Optional[str] = None):
         """Initialize configuration."""
-        self.config = copy.deepcopy(self.DEFAULT_CONFIG)
-
-        # Store the config path for saving (use provided or default)
+        self._lock = threading.RLock()
         self._config_path = config_path
+        self._mtime: Optional[int] = None
+        self.config: Dict[str, Any] = {}
+        self.reload()
 
-        # Load from YAML if provided and file exists
-        if config_path and os.path.exists(config_path):
-            self._load_yaml(config_path)
+    # ------------------------------------------------------------------
+    # Paths / loading
+    # ------------------------------------------------------------------
+    @property
+    def path(self) -> str:
+        """File that is loaded and saved."""
+        return (
+            self._config_path or os.getenv("ULTIMATE_UI_CONFIG") or "config/config.yaml"
+        )
 
-        # Override with environment variables
-        self._load_env_vars()
-
-    def _load_yaml(self, path: str):
-        """Load configuration from YAML file."""
-        with open(path, "r") as f:
-            yaml_config = yaml.safe_load(f)
-            if yaml_config:
-                self._merge_config(self.config, yaml_config)
+    def _read_yaml(self, path: str) -> Dict[str, Any]:
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                data = yaml.safe_load(f)
+        except yaml.YAMLError as e:
+            raise ConfigError(f"{path} is not valid YAML: {e}") from e
+        if data is None:
+            return {}
+        if not isinstance(data, dict):
+            raise ConfigError(f"{path} must contain a YAML mapping at the top level")
+        return data
 
     def _merge_config(self, base: Dict, override: Dict):
         """Recursively merge override config into base config."""
@@ -56,45 +107,63 @@ class Config:
             else:
                 base[key] = value
 
-    def _load_env_vars(self):
-        """Load configuration from environment variables."""
-        # WebEPG
-        if "WEBEPG_URL" in os.environ:
-            self.config["webepg"]["url"] = os.environ["WEBEPG_URL"]
+    def reload(self):
+        """Rebuild the effective config: defaults < YAML < environment."""
+        with self._lock:
+            cfg = copy.deepcopy(self.DEFAULT_CONFIG)
+            path = self.path
+            mtime: Optional[int] = None
+            if os.path.exists(path):
+                self._merge_config(cfg, self._read_yaml(path))
+                mtime = os.stat(path).st_mtime_ns
+            self._apply_env_vars(cfg)
+            self.config = cfg  # atomic swap: readers never see a half-built dict
+            self._mtime = mtime
 
-        if "WEBEPG_TIMEOUT" in os.environ:
-            self.config["webepg"]["timeout"] = int(os.environ["WEBEPG_TIMEOUT"])
+    def reload_if_changed(self) -> bool:
+        """Reload when the file changed on disk (e.g. saved by another worker).
 
-        # Ultimate Backend
-        if "ULTIMATE_BACKEND_URL" in os.environ:
-            self.config["ultimate_backend"]["url"] = os.environ["ULTIMATE_BACKEND_URL"]
+        Gunicorn runs several workers, each with its own Config instance; a UI
+        save only touches one of them, so every worker checks the file's
+        mtime (one cheap stat) before handling a request.
+        """
+        try:
+            mtime: Optional[int] = os.stat(self.path).st_mtime_ns
+        except FileNotFoundError:
+            mtime = None
+        if mtime == self._mtime:
+            return False
+        try:
+            self.reload()
+        except ConfigError as e:
+            # Keep serving the last good config; do not retry until it changes again.
+            logger.error(f"Config reload failed, keeping previous values: {e}")
+            self._mtime = mtime
+            return False
+        return True
 
-        if "ULTIMATE_BACKEND_PUBLIC_URL" in os.environ:
-            self.config["ultimate_backend"]["public_url"] = os.environ[
-                "ULTIMATE_BACKEND_PUBLIC_URL"
-            ]
+    # ------------------------------------------------------------------
+    # Environment
+    # ------------------------------------------------------------------
+    def _apply_env_vars(self, cfg: Dict[str, Any]):
+        for env_name, dotted, cast in ENV_VARS:
+            raw = os.environ.get(env_name, "")
+            if raw.strip() == "":
+                continue
+            section, key = dotted.split(".")
+            cfg[section][key] = cast(env_name, raw.strip())
 
-        if "ULTIMATE_BACKEND_TIMEOUT" in os.environ:
-            self.config["ultimate_backend"]["timeout"] = int(
-                os.environ["ULTIMATE_BACKEND_TIMEOUT"]
-            )
+    def overridden_by_env(self) -> Dict[str, str]:
+        """Dotted config keys currently forced by an environment variable."""
+        return {
+            dotted: env_name
+            for env_name, dotted, _ in ENV_VARS
+            if os.environ.get(env_name, "").strip() != ""
+        }
 
-        # Catchup
-        if "CATCHUP_MAX_HOURS" in os.environ:
-            self.config["catchup"]["max_hours"] = int(os.environ["CATCHUP_MAX_HOURS"])
-
-        # UI
-        if "UI_THEME" in os.environ:
-            self.config["ui"]["theme"] = os.environ["UI_THEME"]
-
-        if "UI_REFRESH_INTERVAL" in os.environ:
-            self.config["ui"]["refresh_interval"] = int(
-                os.environ["UI_REFRESH_INTERVAL"]
-            )
-
-        if "UI_TIMEZONE" in os.environ:
-            self.config["ui"]["timezone"] = os.environ["UI_TIMEZONE"]
-
+    # ------------------------------------------------------------------
+    # Accessors
+    # ------------------------------------------------------------------
     def get(self, key_path: str, default: Any = None) -> Any:
         """Get configuration value by dot-notation path."""
         keys = key_path.split(".")
@@ -119,21 +188,56 @@ class Config:
         """Get complete configuration as dictionary."""
         return copy.deepcopy(self.config)
 
-    def save(self, config_data: Dict):
-        """Save configuration to file."""
-        # Use the stored path, or default if none was stored
-        save_path = self._config_path or os.getenv(
-            "ULTIMATE_UI_CONFIG", "config/config.yaml"
-        )
+    # ------------------------------------------------------------------
+    # Persistence
+    # ------------------------------------------------------------------
+    def save(self, config_data: Dict, merge: bool = True):
+        """Persist configuration to the YAML file, then reload.
 
-        # Ensure save_path is not None (should never happen with the default)
-        if save_path is None:
-            save_path = "config/config.yaml"
+        With ``merge=True`` (default) ``config_data`` is merged into what is
+        already in the file, so keys the UI does not know about survive a UI
+        save. The write is atomic (temp file + rename) so a crash or a
+        concurrent reader never sees a half-written file.
 
-        os.makedirs(os.path.dirname(save_path), exist_ok=True)
+        Raises OSError if the target is not writable.
+        """
+        with self._lock:
+            path = self.path
+            directory = os.path.dirname(os.path.abspath(path))
+            os.makedirs(directory, exist_ok=True)
 
-        with open(save_path, "w") as f:
-            yaml.dump(config_data, f, default_flow_style=False)
+            if merge and os.path.exists(path):
+                data = self._read_yaml(path)
+                self._merge_config(data, copy.deepcopy(config_data))
+            else:
+                data = copy.deepcopy(config_data)
 
-        # Reload configuration from the saved file
-        self._load_yaml(save_path)
+            text = yaml.safe_dump(data, default_flow_style=False, allow_unicode=True)
+
+            try:
+                mode = os.stat(path).st_mode & 0o777
+            except FileNotFoundError:
+                mode = 0o644
+
+            fd, tmp_path = tempfile.mkstemp(
+                dir=directory, prefix=".config-", suffix=".tmp"
+            )
+            try:
+                with os.fdopen(fd, "w", encoding="utf-8") as f:
+                    f.write(text)
+                os.chmod(tmp_path, mode)
+                os.replace(tmp_path, path)
+            except OSError:
+                # e.g. the file itself is a single-file bind mount (rename -> EBUSY)
+                try:
+                    os.unlink(tmp_path)
+                except OSError:
+                    pass
+                with open(path, "w", encoding="utf-8") as f:
+                    f.write(text)
+
+            self.reload()
+
+    def reset(self):
+        """Overwrite the YAML file with the built-in defaults."""
+        self.save(copy.deepcopy(self.DEFAULT_CONFIG), merge=False)

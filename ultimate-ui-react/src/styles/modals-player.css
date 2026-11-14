@@ -1,0 +1,234 @@
+.program-details-modal {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.7);
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  backdrop-filter: blur(8px);
+}
+
+.modal-content {
+  background-color: var(--surface-2);
+  border: 1px solid var(--surface-2-border);
+  border-radius: var(--radius-lg);
+  width: 100%;
+  max-width: 800px;
+  max-height: 90vh;
+  overflow: hidden;
+  box-shadow: var(--shadow-lg);
+  backdrop-filter: blur(24px) saturate(180%);
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--border-color);
+  background-color: var(--surface-1);
+}
+.modal-header h3 {
+  margin: 0;
+  font-size: var(--text-xl);
+  font-weight: 700;
+}
+.modal-close {
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: all var(--duration-fast);
+  color: var(--text-primary);
+}
+.modal-close:hover { background-color: var(--bg-tertiary); }
+.modal-close:active { transform: scale(0.9); }
+
+.modal-body {
+  overflow-y: auto;
+  max-height: calc(90vh - 88px);
+}
+.modal-body-content { padding: 24px; }
+
+.modal-program-header {
+  display: flex;
+  gap: 24px;
+  margin-bottom: 24px;
+}
+.modal-program-image {
+  width: 200px;
+  height: 300px;
+  border-radius: var(--radius);
+  object-fit: cover;
+  flex-shrink: 0;
+  background-color: var(--bg-tertiary);
+}
+.modal-program-info { flex: 1; }
+.modal-program-title {
+  font-size: var(--text-2xl);
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+.modal-program-subtitle {
+  font-size: var(--text-lg);
+  color: var(--text-secondary);
+  margin-bottom: 16px;
+  font-style: italic;
+}
+.modal-program-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+.modal-program-description {
+  font-size: var(--text-base);
+  line-height: 1.6;
+  color: var(--text-primary);
+  margin-bottom: 24px;
+}
+.modal-program-details {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+.detail-item { display: flex; flex-direction: column; gap: 4px; }
+.detail-label {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-weight: 500;
+}
+.detail-value {
+  font-size: var(--text-sm);
+  color: var(--text-primary);
+  font-weight: 500;
+}
+.modal-actions {
+  display: flex;
+  gap: 12px;
+  padding-top: 24px;
+  border-top: 1px solid var(--border-color);
+}
+.btn-reminder {
+  background-color: var(--surface-1);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+  padding: 10px 20px;
+  border-radius: var(--radius-sm);
+  font-size: var(--text-sm);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 500;
+  transition: all var(--duration-fast) var(--ease-out);
+}
+.btn-reminder:hover {
+  background-color: var(--accent-tint);
+  color: var(--accent-color);
+  border-color: var(--accent-color);
+}
+.btn-reminder:active { transform: scale(0.97); }
+
+/* Floating Player */
+.floating-player {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  width: 400px;
+  background-color: var(--surface-2);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--surface-2-border);
+  box-shadow: var(--shadow-lg);
+  backdrop-filter: blur(24px) saturate(180%);
+  z-index: 3000;
+  overflow: hidden;
+}
+.player-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 16px;
+  background-color: var(--surface-1);
+  border-bottom: 1px solid var(--border-color);
+  cursor: grab;
+}
+.player-header:active { cursor: grabbing; }
+.player-header h4 {
+  margin: 0;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.player-controls { display: flex; gap: 4px; }
+.player-minimize, .player-close {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--duration-fast);
+  font-size: 18px;
+}
+.player-minimize:hover, .player-close:hover {
+  background-color: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+#floating-video {
+  width: 100%;
+  height: 225px;
+  background-color: black;
+  display: block;
+}
+/* Minimized state: hide via CSS, never unmount the <video> —
+   playback keeps running and shaka's element stays attached. */
+.player-content--hidden { display: none; }
+.player-info { padding: 14px 16px; }
+.player-info-title {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  margin-bottom: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.player-info-subtitle {
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@media (max-width: 768px) {
+  .modal-program-header { flex-direction: column; }
+  .modal-program-image { width: 100%; height: 200px; }
+  .floating-player {
+    bottom: 0;
+    right: 0;
+    left: 0;
+    width: 100%;
+    border-radius: var(--radius) var(--radius) 0 0;
+  }
+  #floating-video { height: 200px; }
+  .modal-actions { flex-direction: column; }
+  .btn-play, .btn-reminder { width: 100%; justify-content: center; }
+}

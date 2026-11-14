@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="de" data-theme="{{ spa_config.ui.theme if spa_config.ui.theme in ('light', 'dark') else 'dark' }}">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Ultimate UI</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%93%BA%3C/text%3E%3C/svg%3E" />
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='dist/assets/index.css') }}?v={{ asset_v.css }}"
+    />
+    <script>
+      window.__ULTIMATE_CONFIG__ = {{ spa_config|tojson }};
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script
+      type="module"
+      src="{{ url_for('static', filename='dist/assets/index.js') }}?v={{ asset_v.js }}"
+    ></script>
+  </body>
+</html>

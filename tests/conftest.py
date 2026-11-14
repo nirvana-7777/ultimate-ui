@@ -1,362 +1,55 @@
-import os
+import importlib
 import sys
-from contextlib import contextmanager
-from unittest.mock import Mock, patch
 
 import pytest
-from flask import template_rendered
 
-# Add src to path (if needed for other imports)
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../src"))
+from src.config import ENV_VARS
 
-# Global mocks storage
-_GLOBAL_MOCKS = {
-    "config": None,
-    "webepg": None,
-    "ultimate": None,
-    "get_webepg_client": None,
-    "get_ultimate_backend_client": None,
-    "update_clients": None,
-}
+CSRF = {"X-Requested-With": "ultimate-ui"}
 
-
-@pytest.fixture(scope="session", autouse=True)
-def mock_config_for_app_import():
-    """Mock config before app.py is imported to prevent initialization errors."""
-    # Mock the config class
-    with patch("src.app.Config") as MockConfig:
-        mock_config = Mock()
-        mock_config.get = Mock(
-            side_effect=lambda key, default=None: {
-                "webepg.url": "http://test-webepg:8080",
-                "webepg.timeout": 10,
-                "ultimate_backend.url": "http://test-ultimate:3000",
-                "ultimate_backend.timeout": 10,
-                "ui.theme": "dark",
-                "ui.refresh_interval": 300,
-                "ui.timezone": "UTC",
-                "player.default_size": "medium",
-                "player.default_bitrate": "auto",
-                "database.retention_days": 7,
-                "cache.enabled": False,
-                "ui.show_icons": True,
-                "ui.show_descriptions": True,
-                "player.autoplay": True,
-                "player.muted": False,
-                "player.default_volume": 50,
-                "cache.ttl": 300,
-                "logging.level": "INFO",
-            }.get(key, default)
-        )
-        mock_config.to_dict = Mock(
-            return_value={
-                "webepg": {"url": "http://test-webepg:8080", "timeout": 10},
-                "ultimate_backend": {"url": "http://test-ultimate:3000", "timeout": 10},
-                "ui": {
-                    "theme": "dark",
-                    "refresh_interval": 300,
-                    "timezone": "UTC",
-                    "show_icons": True,
-                    "show_descriptions": True,
-                },
-                "player": {
-                    "default_size": "medium",
-                    "default_bitrate": "auto",
-                    "autoplay": True,
-                    "muted": False,
-                    "default_volume": 50,
-                },
-                "database": {"retention_days": 7},
-                "cache": {"enabled": False, "ttl": 300},
-                "logging": {"level": "INFO"},
-            }
-        )
-        mock_config.save = Mock(return_value=True)
-        mock_config.load = Mock(return_value=True)
-        mock_config.merge = Mock(return_value=None)
-        mock_config.config = mock_config.to_dict.return_value
-
-        MockConfig.return_value = mock_config
-        _GLOBAL_MOCKS["config"] = mock_config
-
-        # Mock the getter functions
-        with patch("src.app.get_webepg_client") as MockGetWebEPG:
-            mock_webepg = Mock()
-            mock_webepg.get_channels = Mock(return_value=[])
-            mock_webepg.get_channel_programs = Mock(return_value=[])
-            mock_webepg.create_channel_alias = Mock(
-                return_value={"id": "alias1", "status": "created"}
-            )
-            mock_webepg.get_import_status = Mock(
-                return_value={
-                    "recent_imports": [],
-                    "next_scheduled_import": "2024-01-01T12:00:00Z",
-                }
-            )
-            mock_webepg.get_statistics = Mock(
-                return_value={
-                    "total_channels": 10,
-                    "total_programs": 1000,
-                    "total_providers": 2,
-                    "total_aliases": 5,
-                    "earliest_program": "2024-01-01T00:00:00Z",
-                    "latest_program": "2024-01-07T23:59:59Z",
-                    "days_covered": 7,
-                }
-            )
-            mock_webepg.get_health = Mock(return_value=True)  # Changed to boolean
-            mock_webepg.trigger_import = Mock(
-                return_value={"status": "started", "import_id": "123"}
-            )
-            MockGetWebEPG.return_value = mock_webepg
-            _GLOBAL_MOCKS["webepg"] = mock_webepg
-            _GLOBAL_MOCKS["get_webepg_client"] = MockGetWebEPG
-
-            with patch("src.app.get_ultimate_backend_client") as MockGetUltimate:
-                mock_ultimate = Mock()
-                mock_ultimate.get_providers = Mock(
-                    return_value=[
-                        {"id": "provider1", "name": "IPTV Provider 1"},
-                        {"id": "provider2", "name": "IPTV Provider 2"},
-                    ]
-                )
-                mock_ultimate.get_provider_channels = Mock(
-                    return_value=[
-                        {"id": "ultimate_channel1", "name": "Ultimate Channel 1"},
-                        {"id": "ultimate_channel2", "name": "Ultimate Channel 2"},
-                    ]
-                )
-                MockGetUltimate.return_value = mock_ultimate
-                _GLOBAL_MOCKS["ultimate"] = mock_ultimate
-                _GLOBAL_MOCKS["get_ultimate_backend_client"] = MockGetUltimate
-
-                with patch("src.app.update_clients") as MockUpdateClients:
-                    MockUpdateClients.return_value = None
-                    _GLOBAL_MOCKS["update_clients"] = MockUpdateClients
-
-                    yield _GLOBAL_MOCKS
-
-
-@pytest.fixture(autouse=True)
-def setup_mocks():
-    """Apply mocks for each test."""
-    # Reset mock calls before each test
-    for mock_name, mock in _GLOBAL_MOCKS.items():
-        if mock and hasattr(mock, "reset_mock"):
-            mock.reset_mock()
-
-    yield
+BASE_YAML = """\
+webepg:
+  url: http://epg.internal:8080
+  timeout: 5
+ultimate_backend:
+  url: http://backend.internal:7777
+  public_url: ""
+  timeout: 5
+ui:
+  theme: light
+  refresh_interval: 600
+  timezone: Europe/Berlin
+secret_section:
+  api_token: do-not-leak
+"""
 
 
 @pytest.fixture
-def app():
-    """Create and configure a Flask app for testing."""
-    from src.app import app as flask_app
-
-    flask_app.config["TESTING"] = True
-    flask_app.config["SECRET_KEY"] = "test-secret-key"
-    flask_app.config["WTF_CSRF_ENABLED"] = False
-    flask_app.config["SERVER_NAME"] = "localhost.localdomain"  # For URL generation
-
-    # Create a test client context
-    with flask_app.app_context():
-        yield flask_app
+def cfg_path(tmp_path, monkeypatch):
+    for env_name, _, _ in ENV_VARS:
+        monkeypatch.delenv(env_name, raising=False)
+    path = tmp_path / "config" / "config.yaml"
+    path.parent.mkdir()
+    path.write_text(BASE_YAML, encoding="utf-8")
+    monkeypatch.setenv("ULTIMATE_UI_CONFIG", str(path))
+    return path
 
 
 @pytest.fixture
-def client(app):
-    """Create a test client."""
-    return app.test_client()
+def appmod(cfg_path):
+    """Fresh src.app module (module-level Config is built at import time)."""
+    sys.modules.pop("src.app", None)
+    module = importlib.import_module("src.app")
+    module.app.config["TESTING"] = False  # exercise the real error handlers
+    yield module
+    sys.modules.pop("src.app", None)
 
 
 @pytest.fixture
-def runner(app):
-    """Create a CLI runner."""
-    return app.test_cli_runner()
+def client(appmod):
+    return appmod.app.test_client()
 
 
 @pytest.fixture
-def mock_get_webepg_client():
-    """Mock the get_webepg_client function."""
-    # Return the global mock that's already set up
-    return _GLOBAL_MOCKS["get_webepg_client"]
-
-
-@pytest.fixture
-def mock_get_ultimate_backend_client():
-    """Mock the get_ultimate_backend_client function."""
-    # Return the global mock that's already set up
-    return _GLOBAL_MOCKS["get_ultimate_backend_client"]
-
-
-@pytest.fixture
-def mock_update_clients():
-    """Mock the update_clients function."""
-    # Return the global mock that's already set up
-    return _GLOBAL_MOCKS["update_clients"]
-
-
-# Legacy fixtures for backward compatibility (optional)
-@pytest.fixture
-def mock_webepg_client():
-    """Legacy mock for backward compatibility."""
-    return _GLOBAL_MOCKS["webepg"]
-
-
-@pytest.fixture
-def mock_ultimate_backend_client():
-    """Legacy mock for backward compatibility."""
-    return _GLOBAL_MOCKS["ultimate"]
-
-
-@pytest.fixture
-def test_config():
-    """Create a test configuration."""
-    config = Mock()
-    config.config = {
-        "webepg": {"url": "http://test-webepg:8080", "timeout": 5},
-        "ultimate_backend": {"url": "http://test-ultimate:3000", "timeout": 5},
-        "ui": {"theme": "dark", "refresh_interval": 300, "timezone": "Europe/Berlin"},
-        "player": {"default_size": "medium", "default_bitrate": "auto"},
-        "database": {"retention_days": 7},
-        "cache": {"enabled": False},
-    }
-    config.get = Mock(
-        side_effect=lambda key, default=None: {
-            "webepg.url": "http://test-webepg:8080",
-            "webepg.timeout": 5,
-            "ultimate_backend.url": "http://test-ultimate:3000",
-            "ultimate_backend.timeout": 5,
-            "ui.theme": "dark",
-            "ui.refresh_interval": 300,
-            "ui.timezone": "UTC",
-            "player.default_size": "medium",
-            "player.default_bitrate": "auto",
-            "database.retention_days": 7,
-            "cache.enabled": False,
-        }.get(key, default)
-    )
-    config.to_dict = Mock(
-        return_value={
-            "webepg": {"url": "http://test-webepg:8080", "timeout": 5},
-            "ultimate_backend": {"url": "http://test-ultimate:3000", "timeout": 5},
-            "ui": {
-                "theme": "dark",
-                "refresh_interval": 300,
-                "timezone": "UTC",
-            },
-            "player": {"default_size": "medium", "default_bitrate": "auto"},
-            "database": {"retention_days": 7},
-            "cache": {"enabled": False},
-        }
-    )
-    config.save = Mock(return_value=True)
-    return config
-
-
-@contextmanager
-def captured_templates(app):
-    """Capture templates rendered during a request."""
-    recorded = []
-
-    def record(sender, template, context, **extra):
-        recorded.append((template, context))
-
-    template_rendered.connect(record, app)
-    try:
-        yield recorded
-    finally:
-        template_rendered.disconnect(record, app)
-
-
-@pytest.fixture
-def sample_channels():
-    """Sample channel data for testing."""
-    return [
-        {
-            "id": "channel1",
-            "name": "ARD",
-            "display_name": "Das Erste",
-            "icon_url": "http://example.com/ard.png",
-        },
-        {
-            "id": "channel2",
-            "name": "ZDF",
-            "display_name": "ZDF",
-            "icon_url": "http://example.com/zdf.png",
-        },
-    ]
-
-
-@pytest.fixture
-def sample_programs():
-    """Sample program data for testing with UTC timezone."""
-    from datetime import datetime, timedelta, timezone
-
-    # Use current UTC time for realistic testing
-    now = datetime.now(timezone.utc)
-
-    return [
-        {
-            "id": "program1",
-            "title": "Tagesschau",
-            "subtitle": "20:00 Uhr",
-            "description": "Nachrichtensendung",
-            "start_time": now.isoformat(),
-            "end_time": (now + timedelta(minutes=15)).isoformat(),
-            "category": "news",
-            "stream": "http://example.com/stream1.m3u8",
-        },
-        {
-            "id": "program2",
-            "title": "Sportschau",
-            "subtitle": "Fußball",
-            "description": "Sportsendung",
-            "start_time": (now + timedelta(minutes=15)).isoformat(),
-            "end_time": (now + timedelta(hours=1)).isoformat(),
-            "category": "sport",
-            "stream": "http://example.com/stream2.m3u8",
-        },
-    ]
-
-
-@pytest.fixture
-def sample_providers():
-    """Sample provider data for testing."""
-    return [
-        {"id": "provider1", "name": "IPTV Provider 1"},
-        {"id": "provider2", "name": "IPTV Provider 2"},
-    ]
-
-
-@pytest.fixture
-def sample_import_status():
-    """Sample import status data for testing."""
-    return {
-        "recent_imports": [
-            {
-                "id": "import1",
-                "provider_id": "provider1",
-                "started_at": "2024-01-01T10:00:00Z",
-                "completed_at": "2024-01-01T10:05:00Z",
-                "status": "success",
-                "programs_imported": 100,
-                "programs_skipped": 5,
-            }
-        ],
-        "next_scheduled_import": "2024-01-01T12:00:00Z",
-    }
-
-
-@pytest.fixture
-def sample_statistics():
-    """Sample statistics data for testing."""
-    return {
-        "total_channels": 10,
-        "total_programs": 1000,
-        "total_providers": 2,
-        "total_aliases": 5,
-        "earliest_program": "2024-01-01T00:00:00Z",
-        "latest_program": "2024-01-07T23:59:59Z",
-        "days_covered": 7,
-    }
+def csrf():
+    return dict(CSRF)

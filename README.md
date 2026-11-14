@@ -1,240 +1,139 @@
-# Ultimate UI - EPG Management Interface
+# Ultimate UI
 
-A modern, responsive web interface for managing Electronic Program Guide (EPG) data with integration to multiple backends.
+Web UI for the EPG stack: browse the programme guide, play live/catchup streams,
+download catchup recordings, map streaming channels to EPG channels, manage XMLTV
+providers and watch import status.
 
-## Features
+* **Frontend** – React 18 + TypeScript SPA (`ultimate-ui-react/`, built with Vite)
+* **Backend** – Flask app (`src/`) that serves the SPA and proxies **WebEPG** and the
+  **Ultimate Backend**, so the browser needs no CORS access to either
 
-- **Four-tab Interface**: EPG Display, Configuration, EPG Mapping, and Monitoring
-- **Responsive Design**: Works on desktop and mobile devices
-- **Multiple Backend Support**: Integrates with WebEPG and Ultimate Backend
-- **Channel Mapping**: Map channels between different EPG sources
-- **Real-time Monitoring**: Track import jobs and system health
-- **Docker Support**: Easy deployment with Docker and Docker Compose
+```
+Browser ──► Ultimate UI (Flask + SPA, :7779) ──► WebEPG            (EPG data, providers, aliases)
+                                              └─► Ultimate Backend (providers, channels, catchup manifests)
+```
 
-## Architecture
-┌─────────────────┐ ┌─────────────────┐ ┌─────────────────┐
-│ Ultimate UI │────│ WebEPG │────│ XMLTV Sources │
-│ (Flask App) │ │ (Backend) │ │ │
-└─────────────────┘ └─────────────────┘ └─────────────────┘
-│ │
-│ ┌─────────────────┐
-└──────────────│ Ultimate Backend│
-│ (Channels) │
-└─────────────────┘
+## Layout
 
-text
+```
+Dockerfile, docker-compose.yml, requirements*.txt
+config/config.example.yaml     copy to config/config.yaml (the Config page writes it)
+src/                           Flask app: app.py, config.py, api_client.py, templates/spa.html
+src/static/dist/               built SPA (the Docker image rebuilds it; see "Development")
+ultimate-ui-react/             SPA source, lockfile, verify-build.sh
+tests/                         pytest suite for the Flask side
+nginx/nginx.conf               optional reverse proxy (compose profile "proxy")
+```
 
-## Quick Start
+## Run with Docker
 
-### Using Docker Compose (Recommended)
-
-1. Clone the repository:
 ```bash
-git clone https://github.com/yourusername/ultimate-ui.git
-cd ultimate-ui
-Create configuration files:
+mkdir -p config && cp config/config.example.yaml config/config.yaml
+sudo chown -R 10001:10001 config        # container user must be able to write it
+docker compose up -d --build
+# http://localhost:7779
+```
 
-bash
-mkdir -p config
-cp config/config.example.yaml config/config.yaml
-Update the configuration:
+Set the WebEPG / Ultimate Backend URLs on the Config page, or via environment
+variables in `docker-compose.yml`. Do **not** bind-mount `./static` or `./templates`
+over `/app` – that hides the built SPA.
 
-yaml
-# config/config.yaml
-webepg:
-  url: "http://localhost:8080"
-ultimate_backend:
-  url: "http://localhost:3000"
-Start the services:
+### Configuration precedence
 
-bash
-docker-compose up -d
-Open your browser:
+`built-in defaults < config.yaml < environment variables`
 
-Ultimate UI: http://localhost:5000
+| Variable | Setting |
+|---|---|
+| `ULTIMATE_UI_CONFIG` | path of the YAML file (default `config/config.yaml`) |
+| `WEBEPG_URL`, `WEBEPG_TIMEOUT` | WebEPG base URL (no `/api/v1`), timeout in s |
+| `ULTIMATE_BACKEND_URL`, `ULTIMATE_BACKEND_TIMEOUT` | internal Ultimate Backend URL (used by Flask) |
+| `ULTIMATE_BACKEND_PUBLIC_URL` | optional browser-reachable origin (needs CORS) for in-browser catchup replay; empty = replay hidden, **downloads still work** |
+| `CATCHUP_MAX_HOURS`, `UI_THEME`, `UI_REFRESH_INTERVAL`, `UI_TIMEZONE` | see Config page |
+| `LOG_LEVEL` | `INFO` (default) |
 
-WebEPG Backend: http://localhost:8080
+Empty variables are ignored. If a variable overrides something you save on the Config
+page, the UI shows a warning instead of silently ignoring your input.
 
-Ultimate Backend: http://localhost:3000
+## Security model – read before exposing it
 
-Manual Installation
-Install Python dependencies:
+* **There is no login.** Run it on a trusted network or behind a reverse proxy with auth
+  (`nginx/nginx.conf` has an `auth_basic` stub).
+* State-changing requests need an `X-Requested-With` header (CSRF defence). The SPA sends
+  it; for `curl` add `-H 'X-Requested-With: curl'`.
+* Settings are validated server-side; errors returned to the browser never contain
+  upstream hostnames or exception text (details go to the log).
+* The browser only receives a whitelist of settings (`SPA_CONFIG_KEYS` in `src/app.py`).
+  Note that includes the internal backend URLs shown on the Config page.
+* The catchup download route never accepts a URL from the client; it rebuilds it from the
+  backend's manifest.
+* No Content-Security-Policy is set yet (see below).
 
-bash
-pip install -r requirements.txt
-Set environment variables:
+## HTTP API (what the SPA uses)
 
-bash
-export FLASK_APP=src.app
-export FLASK_ENV=development
-export ULTIMATE_UI_CONFIG=config/config.yaml
-Run the application:
+| Endpoint | |
+|---|---|
+| `GET /health` | liveness (does not call upstreams) |
+| `GET/POST /config`, `POST /config/reset` | page / save settings (JSON) / reset to defaults |
+| `GET /api/epg/channels?page&limit`, `GET /api/channels/<id>/programs?start&end&provider` | EPG |
+| `GET /api/mapping/providers`, `GET /api/mapping/channels/<provider>`, `POST /api/mapping/create-alias` | channel mapping |
+| `GET/POST /api/providers`, `GET/PUT/DELETE /api/providers/<id>`, `…/test`, `…/import/trigger` | XMLTV providers |
+| `GET /api/import/status`, `POST /api/import/trigger`, `GET /api/monitoring/status` | imports / monitoring |
+| `GET /api/aliases[...]`, `DELETE /api/aliases/<id>`, `GET /api/channels` | aliases |
+| `GET /api/proxy/catchup/download?provider&channel&start&end&filename` | streams a `.ts` recording |
+| `GET /api/test/webepg`, `GET /api/test/ultimate-backend` | connection tests |
 
-bash
-python -m flask run --host=0.0.0.0 --port=5000
-Configuration
-Backend URLs
-Configure the backend URLs in config/config.yaml:
+Upstream failures are answered with 502/504 and `{"success": false, "error": …}` – never
+with an empty list – so the UI can show its error banner.
 
-yaml
-webepg:
-  url: "http://your-webepg-server:8080"
-  timeout: 10
+WebEPG endpoints used: `/api/v1/{health,channels,channels/<id>/programs,providers,providers/<id>[/test|/import/trigger],aliases[...],channels/<id>/aliases,import/status,import/trigger,statistics}`.
+Ultimate Backend: `/api/providers`, `/api/providers/<p>/channels`, `/api/providers/<p>/channels/<c>/manifest`.
 
-ultimate_backend:
-  url: "http://your-ultimate-backend:3000"
-  timeout: 10
-Environment Variables
-Variable	Description	Default
-ULTIMATE_UI_CONFIG	Path to config file	config/config.yaml
-WEBEPG_URL	WebEPG backend URL	http://localhost:8080
-ULTIMATE_BACKEND_URL	Ultimate backend URL	http://localhost:3000
-UI_THEME	UI theme (dark/light)	dark
-UI_REFRESH_INTERVAL	Auto-refresh interval (seconds)	300
-API Endpoints
-Ultimate UI API
-Endpoint	Method	Description
-/api/epg/refresh	GET	Refresh EPG data
-/api/import/trigger	POST	Trigger import job
-/api/mapping/providers	GET	Get providers from ultimate backend
-/api/mapping/channels/{id}	GET	Get channels for a provider
-/api/mapping/create-alias	POST	Create channel alias
-/api/monitoring/status	GET	Get monitoring status
-Integration with WebEPG
-Ultimate UI requires the following WebEPG endpoints:
+## Development
 
-GET /api/v1/channels - List all channels
+```bash
+# backend
+python -m venv .venv && . .venv/bin/activate
+pip install -r requirements.txt -r requirements.dev.txt
+pytest -q                                   # 48 tests
+isort src tests && black src tests && flake8 src tests --max-line-length=100 && mypy src
+ULTIMATE_UI_CONFIG=config/config.yaml FLASK_DEBUG=true python -m src.app   # http://127.0.0.1:7779
 
-GET /api/v1/channels/{id}/programs - Get programs for a channel
+# frontend
+cd ultimate-ui-react
+npm ci
+npm run dev            # Vite on :5173, proxies /api and /config to :7779
+npm run typecheck
+npm run build          # writes ../src/static/dist
+bash verify-build.sh   # post-build checks (lazy shaka chunk, bundle size, …)
+```
 
-GET /api/v1/providers - List EPG providers
+`src/static/dist` is committed in this archive so `python -m src.app` works out of the box;
+the Docker build ignores it and builds its own.
 
-POST /api/v1/import/trigger - Trigger import
+## CI/CD (`.github/`)
 
-GET /api/v1/import/status - Get import status
+| Workflow | What it does |
+|---|---|
+| `docker.yml` | lint (black/isort/flake8/mypy) → tests (py 3.11, 3.12) → frontend (typecheck, build, `verify-build.sh`, `npm audit` prod) → security (pip-audit, Bandit, Semgrep, Trivy, OWASP DC) → multi-arch image build/push → container smoke test → staging deploy over SSH |
+| `codeql.yml` | CodeQL for TypeScript and Python |
+| `release.yml` | on `v*` tags: checks the tag equals `src/__init__.py` and `package.json` versions, creates the GitHub release, updates the Docker Hub description |
+| `dependabot.yml` | pip, npm (`ultimate-ui-react/`), docker, github-actions |
 
-POST /api/v1/channels/{id}/aliases - Create channel alias
+Secrets: `DOCKERHUB_USERNAME`, `DOCKERHUB_TOKEN` (access token with Read/Write/Delete), `DEPLOY_HOST_STAGING`,
+`DEPLOY_USER`, `DEPLOY_KEY`; optional `DEPLOY_KNOWN_HOSTS` (`ssh-keyscan -t ed25519 <host>`), `CODECOV_TOKEN`,
+`SLACK_CHANNEL_ID`, `SLACK_BOT_TOKEN`.
+Releasing: bump the version in **both** `src/__init__.py` and `ultimate-ui-react/package.json`, then `git tag vX.Y.Z`.
 
-Integration with Ultimate Backend
-Ultimate UI requires the following Ultimate Backend endpoints:
+## Known gaps
 
-GET /api/providers - List available providers
-
-GET /api/providers/{id}/channels - Get channels for a provider
-
-Development
-Setup Development Environment
-Install development dependencies:
-
-bash
-pip install -r requirements.dev.txt
-Start development services:
-
-bash
-docker-compose -f docker-compose.dev.yml up -d
-Run the application in development mode:
-
-bash
-python -m flask run --host=0.0.0.0 --port=5000 --reload
-Running Tests
-bash
-pytest tests/ -v
-Code Quality
-bash
-# Format code
-black src/
-
-# Check code style
-flake8 src/
-
-# Type checking
-mypy src/
-Deployment
-Production with Docker
-Build the production image:
-
-bash
-docker build -t ultimate-ui:latest .
-Run with Docker Compose:
-
-bash
-docker-compose -f docker-compose.prod.yml up -d
-Production with Kubernetes
-Example deployment configuration in kubernetes/ directory:
-
-bash
-kubectl apply -f kubernetes/namespace.yaml
-kubectl apply -f kubernetes/config.yaml
-kubectl apply -f kubernetes/deployment.yaml
-kubectl apply -f kubernetes/service.yaml
-kubectl apply -f kubernetes/ingress.yaml
-Monitoring
-Ultimate UI includes built-in monitoring:
-
-Health Checks: All services have health check endpoints
-
-Metrics: Prometheus metrics available at /metrics
-
-Logging: Structured JSON logging for production
-
-Tracing: Distributed tracing with OpenTelemetry
-
-Troubleshooting
-Common Issues
-Backend connection errors:
-
-Check backend URLs in configuration
-
-Verify network connectivity
-
-Check backend service health
-
-EPG data not loading:
-
-Verify WebEPG backend is running
-
-Check import job status
-
-Verify database connectivity
-
-Mobile display issues:
-
-Clear browser cache
-
-Check responsive CSS
-
-Test on different screen sizes
-
-Logs
-bash
-# Docker Compose logs
-docker-compose logs -f ultimate-ui
-
-# Application logs
-tail -f logs/ultimate-ui.log
-
-# Access logs
-tail -f logs/access.log
-Contributing
-Fork the repository
-
-Create a feature branch
-
-Make your changes
-
-Add tests
-
-Run the test suite
-
-Submit a pull request
-
-License
-MIT License - see LICENSE file for details.
-
-Support
-Documentation: docs.ultimate-ui.local
-
-Issues: GitHub Issues
-
-Discussions: GitHub Discussions
-
+* No authentication / CSP; no automated frontend tests or ESLint; no CI.
+* Player behaviour (shaka teardown on A→B switch, minimize/restore, native fallback) has only
+  manual tests – try these in a real browser with real streams: play DASH/HLS → switch to
+  another stream without closing → minimize/restore → close and play again → native `.ts`/`.mp4`.
+* `npm audit`: 4 advisories (1 high, 3 moderate) in dev tooling (`vite`/`esbuild` dev-server)
+  and `react-router-dom` 6.x (open-redirect via user-controlled link targets; fixed only in
+  v7, which the UI does not need to pass user input to). They do not affect the served bundle's
+  attack surface in this app, but plan the v7 / Vite upgrade.
+* ProviderModal's "test connection" for a *new* provider does a browser `HEAD` to the URL
+  (often blocked by CORS); existing providers are tested through WebEPG.
+* Accessibility pass (focus traps, dialog roles) and mapping-page touch support are open.

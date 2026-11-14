@@ -1,0 +1,87 @@
+/* catchup.css — styles for the v1 hourly catchup window.
+   Include from the EPG page template:
+   <link rel="stylesheet" href="catchup.css">
+   (or @import it at the end of the existing EPG stylesheet). */
+
+/* ── Catchup badge on channel cards ───────────────────────────────────── */
+
+.catchup-badge {
+    display: inline-block;
+    padding: 3px 8px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 700;
+    background: linear-gradient(135deg, #6a5acd, #9370db);
+    color: #fff;
+    letter-spacing: 0.3px;
+    margin-top: 4px;
+}
+
+/* ── Past programme cards ─────────────────────────────────────────────── */
+
+.daily-program-card-expanded.past {
+    opacity: 0.85;
+}
+
+.daily-program-card-expanded.past-with-catchup {
+    border-left: 4px solid #9370db;
+    background: rgba(147, 112, 219, 0.05);
+}
+
+.daily-program-card-expanded.past-with-catchup:hover {
+    background: rgba(147, 112, 219, 0.1);
+}
+
+/* ── Replay button ────────────────────────────────────────────────────── */
+
+.btn-catchup {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    margin-top: 8px;
+    transition: all 0.2s;
+    background: linear-gradient(135deg, #6a5acd, #9370db);
+    color: #fff;
+    box-shadow: 0 2px 8px rgba(106, 90, 205, 0.3);
+}
+
+.btn-catchup:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(106, 90, 205, 0.4);
+}
+
+/* ── Download button (.ts via Flask proxy) ───────────────────────────── */
+
+.btn-catchup-download {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    margin-top: 8px;
+    margin-left: 8px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    border: 1px solid #9370db;
+    background: transparent;
+    color: #9370db;
+    transition: all 0.2s;
+}
+
+.btn-catchup-download:hover {
+    background: rgba(147, 112, 219, 0.12);
+}
+
+/* ── Past time badge — previously fell through into "future" styling ──── */
+
+.time-badge.past {
+    background: linear-gradient(135deg, #6a5acd, #9370db);
+    color: #fff;
+}

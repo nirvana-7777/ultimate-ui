@@ -1,0 +1,56 @@
+services:
+  ultimate-ui:
+    build: .
+    image: ${ULTIMATE_UI_IMAGE:-ultimate-ui:latest}
+    container_name: ultimate-ui
+    restart: unless-stopped
+    ports:
+      - "7779:7779" # remove when you front it with the nginx profile below
+    volumes:
+      # config.yaml is created/updated by the Config page. The directory must be
+      # writable for uid 10001:  sudo chown -R 10001:10001 ./config
+      # NOTE: do NOT mount ./static or ./templates - that would hide the built SPA.
+      - ./config:/app/config
+    environment:
+      - ULTIMATE_UI_CONFIG=/app/config/config.yaml
+      - TZ=Europe/Berlin
+      # Optional. Environment variables WIN over config.yaml and over values saved
+      # on the Config page (the UI warns when that happens). Leave unset to manage
+      # everything from the UI.
+      # - WEBEPG_URL=http://ultimate-epg:8080
+      # - ULTIMATE_BACKEND_URL=http://ultimate:7777
+      # - ULTIMATE_BACKEND_PUBLIC_URL=
+      # - UI_THEME=dark
+      # - UI_REFRESH_INTERVAL=300
+      # - LOG_LEVEL=INFO
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:7779/health"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+    # To reach WebEPG / Ultimate Backend running in another compose project,
+    # join their network:
+    # networks:
+    #   - ultimate-network
+
+  # Optional reverse proxy: `docker compose --profile proxy up -d`
+  # The UI has no login of its own - enable auth_basic in nginx/nginx.conf
+  # (or use your own proxy) before exposing it beyond a trusted network.
+  nginx:
+    profiles: ["proxy"]
+    image: nginx:1.27-alpine
+    container_name: ultimate-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      # - ./nginx/.htpasswd:/etc/nginx/.htpasswd:ro
+    depends_on:
+      ultimate-ui:
+        condition: service_healthy
+
+# networks:
+#   ultimate-network:
+#     external: true

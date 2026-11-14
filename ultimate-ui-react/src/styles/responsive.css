@@ -1,0 +1,229 @@
+/* Mobile menu toggle */
+.mobile-menu-toggle {
+  display: none;
+  position: fixed;
+  top: 16px;
+  left: 16px;
+  background: var(--surface-2);
+  border: 1px solid var(--surface-2-border);
+  border-radius: var(--radius-sm);
+  padding: 10px;
+  z-index: 1001;
+  cursor: pointer;
+  box-shadow: var(--shadow-md);
+  flex-direction: column;
+  gap: 4px;
+}
+
+.hamburger {
+  display: block;
+  width: 20px;
+  height: 2px;
+  background-color: var(--text-primary);
+  border-radius: 1px;
+  transition: 0.3s;
+}
+
+.mobile-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 899;
+  backdrop-filter: blur(2px);
+}
+.mobile-overlay.active {
+  display: block;
+}
+
+@media (max-width: 768px) {
+  .mobile-menu-toggle {
+    display: flex;
+  }
+  .logo-text {
+    display: none;
+  }
+  .header {
+    height: 60px;
+  }
+  .header-content {
+    padding: 0 16px;
+  }
+  .main-container {
+    margin-top: 60px;
+  }
+  .sidebar {
+    top: 60px;
+    height: calc(100vh - 60px);
+    transform: translateX(-100%);
+    transition: transform var(--duration-normal) var(--ease-out);
+  }
+  .sidebar.active {
+    transform: translateX(0);
+  }
+  .content {
+    margin-left: 0;
+    width: 100%;
+  }
+  .date-navigation {
+    flex-direction: column;
+    gap: 12px;
+    padding: 16px;
+  }
+  .date-controls {
+    flex-direction: column;
+    width: 100%;
+  }
+  .btn-date {
+    width: 100%;
+    justify-content: center;
+  }
+  .date-display {
+    min-width: auto;
+    font-size: var(--text-base);
+  }
+  .current-events-grid {
+    grid-template-columns: 1fr;
+    padding: 16px;
+    gap: 16px;
+  }
+  .daily-programs {
+    padding: 16px;
+  }
+  .daily-program-card-expanded {
+    flex-direction: column;
+    padding: 16px;
+  }
+  .daily-program-image-expanded,
+  .daily-program-image-fallback {
+    width: 100%;
+    height: 160px;
+  }
+  .modal-program-header {
+    flex-direction: column;
+  }
+  .modal-program-image {
+    width: 100%;
+    height: 200px;
+  }
+  .modal-actions {
+    flex-direction: column;
+  }
+  .btn-play,
+  .btn-reminder {
+    width: 100%;
+    justify-content: center;
+  }
+  .floating-player {
+    bottom: 0;
+    right: 0;
+    left: 0;
+    width: 100%;
+    border-radius: var(--radius) var(--radius) 0 0;
+  }
+  #floating-video {
+    height: 200px;
+  }
+  .config-container,
+  .providers-container,
+  .monitoring-container {
+    padding: 16px;
+  }
+  .config-section {
+    padding: 20px;
+  }
+  .form-row {
+    flex-direction: column;
+  }
+  .form-col {
+    min-width: 100%;
+  }
+  .config-actions {
+    flex-direction: column;
+  }
+  .btn-save,
+  .btn-reset,
+  .btn-export,
+  .btn-import {
+    width: 100%;
+  }
+  .stats-container {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .providers-actions {
+    flex-direction: column;
+  }
+  .providers-actions button {
+    width: 100%;
+    justify-content: center;
+  }
+  .table-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .table-controls {
+    flex-direction: column;
+  }
+  .search-input {
+    width: 100%;
+  }
+  .cards-grid {
+    grid-template-columns: 1fr;
+  }
+  .mapping-area {
+    flex-direction: column;
+  }
+  .column {
+    min-height: 300px;
+  }
+  .channels-container {
+    grid-template-columns: 1fr;
+  }
+  .status-bar {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .charts-grid {
+    grid-template-columns: 1fr;
+  }
+  .provider-filter {
+    flex-direction: column;
+    align-items: stretch;
+    width: 100%;
+  }
+  .provider-filter select {
+    min-width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .date-navigation h2 {
+    font-size: var(--text-lg);
+  }
+  .modal-program-title {
+    font-size: var(--text-lg);
+  }
+  .stats-container {
+    grid-template-columns: 1fr;
+  }
+  .card-details {
+    grid-template-columns: 1fr;
+  }
+  .provider-actions {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+}
+
+@media (min-width: 769px) and (max-width: 1024px) {
+  .current-events-grid {
+    grid-template-columns: repeat(2, 1fr);
+    padding: 24px;
+  }
+  .floating-player {
+    width: 300px;
+  }
+  #floating-video {
+    height: 180px;
+  }
+}
