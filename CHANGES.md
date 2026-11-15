@@ -4,6 +4,12 @@
 - **`Control server error: [Errno 13] Permission denied: '/home/ultimate'` on start.** gunicorn >= 25
   opens a control socket under `$HOME/.gunicorn/`; the `ultimate` user has no home directory. The
   Dockerfile now starts gunicorn with `--no-control-socket` (we never use `gunicornc`).
+- **"Kein Stream verfügbar" when clicking "Live ansehen" (no request sent).** The channel list from the
+  mapping endpoint carries no `StreamUrl` for providers like magenta2, so the click was rejected before any
+  request. Live playback now resolves the stream via `GET /api/providers/<p>/channels/<id>/manifest` on the
+  public backend URL and prefers `manifest_url` (DASH/HLS); `ts_stream_url` is only the last resort. Live
+  programs in the timeline use the same resolution. The toast now only appears if the manifest cannot be
+  fetched either.
 - **`verify-build.sh` failed: "user-facing string present: Keine Kanäle verfügbar".** The channel
   column's empty state said only "Keine Kanäle", but the reviewed set-5 checklist (and therefore
   the CI grep) expects the full phrase. The title is now "Keine Kanäle verfügbar" and the

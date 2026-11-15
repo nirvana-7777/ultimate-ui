@@ -13,27 +13,31 @@ export function usePlayback(service: EPGService) {
   const closePlayer = useCallback(() => setPlayer(null), []);
 
   const playChannel = useCallback(
-    (channel: Channel) => {
-      const url = channel.StreamUrl || channel.streamUrl;
+    async (channel: Channel) => {
+      const url = await service.resolveLiveStreamUrl(channel);
       if (!url) {
         showToast('Kein Stream verfügbar', 'warning');
         return;
       }
       setPlayer({ url, title: channel.display_name, subtitle: 'Live Stream' });
     },
-    [showToast]
+    [service, showToast]
   );
 
   const playProgram = useCallback(
-    (channel: Channel, program: Program) => {
-      const url = program.stream_url || program.stream || channel.StreamUrl || channel.streamUrl;
+    async (channel: Channel, program: Program) => {
+      // Live programs play the channel's live stream; the manifest is preferred
+      // over any static URL because it points at the native (MPD) stream.
+      const url = program.is_live
+        ? await service.resolveLiveStreamUrl(channel)
+        : program.stream_url || program.stream || (await service.resolveLiveStreamUrl(channel));
       if (!url) {
         showToast('Kein Stream verfügbar', 'warning');
         return;
       }
       setPlayer({ url, title: program.title, subtitle: program.subtitle });
     },
-    [showToast]
+    [service, showToast]
   );
 
   const playCatchup = useCallback(
