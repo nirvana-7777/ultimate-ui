@@ -276,48 +276,6 @@ export class EPGService {
 
   /**
    * Fetch (and cache) the backend manifest of one channel directly from the
-   * public Ultimate Backend URL. Returns null if the URL is not configured,
-   * the channel has no provider, or the backend does not answer.
-   */
-  private async fetchManifest(channel: Channel): Promise<any | null> {
-    const base = this.config.ultimateBackendPublicUrl;
-    if (!base || !channel?.provider) return null;
-
-    const cached = this.cache.getManifest(channel.provider, channel.id);
-    if (cached) return cached;
-
-    try {
-      const resp = await fetch(
-        `${base.replace(/\/+$/, '')}/api/providers/${encodeURIComponent(
-          channel.provider
-        )}/channels/${encodeURIComponent(String(channel.id))}/manifest`,
-        { credentials: 'omit' }
-      );
-      if (!resp.ok) return null;
-      const manifest = await resp.json();
-      this.cache.setManifest(channel.provider, channel.id, manifest);
-      return manifest;
-    } catch {
-      return null;
-    }
-  }
-
-  /**
-   * Live stream URL for a channel. Order of preference:
-   *   1. manifest_url (DASH/HLS - the native stream, preferred)
-   *   2. a StreamUrl the channel list already carried
-   *   3. ts_stream_url (converted MPEG-TS, last resort)
-   */
-  async resolveLiveStreamUrl(channel: Channel): Promise<string | null> {
-    const manifest = await this.fetchManifest(channel);
-    if (manifest?.manifest_url) return manifest.manifest_url;
-    const direct = channel?.StreamUrl || channel?.streamUrl;
-    if (direct) return direct;
-    return manifest?.ts_stream_url || null;
-  }
-
-  /**
-   * Fetch (and cache) the backend manifest of one channel directly from the
    * browser-facing Ultimate Backend URL. `error` says why it failed so the UI
    * can show something more useful than "no stream".
    */
