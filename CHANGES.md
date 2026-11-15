@@ -4,6 +4,10 @@
 - **`Control server error: [Errno 13] Permission denied: '/home/ultimate'` on start.** gunicorn >= 25
   opens a control socket under `$HOME/.gunicorn/`; the `ultimate` user has no home directory. The
   Dockerfile now starts gunicorn with `--no-control-socket` (we never use `gunicornc`).
+- **`verify-build.sh` failed: "user-facing string present: Keine Kanäle verfügbar".** The channel
+  column's empty state said only "Keine Kanäle", but the reviewed set-5 checklist (and therefore
+  the CI grep) expects the full phrase. The title is now "Keine Kanäle verfügbar" and the
+  committed `src/static/dist` bundle was rebuilt accordingly.
 
 ## Changed
 - **Navigation is a tab bar in the header** instead of a 280 px sidebar. WebEPG status and clock moved

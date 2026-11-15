@@ -79,7 +79,7 @@ export function ChannelColumn({
             }
           />
         ) : channels.length === 0 ? (
-          <ColumnState icon="📭" title="Keine Kanäle" hint="Dieser Provider liefert keine Kanäle." />
+          <ColumnState icon="📭" title="Keine Kanäle verfügbar" hint="Dieser Provider liefert keine Kanäle." />
         ) : visible.length === 0 ? (
           <ColumnState icon="🔍" title="Kein Treffer" hint={`Kein Kanal passt zu „${query}“.`} />
         ) : (
