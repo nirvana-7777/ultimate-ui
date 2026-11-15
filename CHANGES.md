@@ -9,7 +9,7 @@
   request. Live playback now resolves the stream via `GET /api/providers/<p>/channels/<id>/manifest` on the
   public backend URL and prefers `manifest_url` (DASH/HLS); `ts_stream_url` is only the last resort. Live
   programs in the timeline use the same resolution. The toast now only appears if the manifest cannot be
-  fetched either.
+  fetched either, says why (no backend URL vs. manifest not reachable) and the console logs the reason.
 - **`verify-build.sh` failed: "user-facing string present: Keine Kanäle verfügbar".** The channel
   column's empty state said only "Keine Kanäle", but the reviewed set-5 checklist (and therefore
   the CI grep) expects the full phrase. The title is now "Keine Kanäle verfügbar" and the

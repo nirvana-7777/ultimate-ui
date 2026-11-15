@@ -316,6 +316,74 @@ export class EPGService {
     return manifest?.ts_stream_url || null;
   }
 
+  /**
+   * Fetch (and cache) the backend manifest of one channel directly from the
+   * browser-facing Ultimate Backend URL. `error` says why it failed so the UI
+   * can show something more useful than "no stream".
+   */
+  private async loadManifest(
+    channel: Channel
+  ): Promise<{ manifest: any | null; error?: string }> {
+    const base = this.config.ultimateBackendPublicUrl;
+    if (!base) return { manifest: null, error: 'no-backend-url' };
+    if (!channel?.provider) return { manifest: null, error: 'no-provider' };
+
+    const cached = this.cache.getManifest(channel.provider, channel.id);
+    if (cached) return { manifest: cached };
+
+    const url = `${base.replace(/\/+$/, '')}/api/providers/${encodeURIComponent(
+      channel.provider
+    )}/channels/${encodeURIComponent(String(channel.id))}/manifest`;
+    try {
+      const resp = await fetch(url, { credentials: 'omit' });
+      if (!resp.ok) {
+        console.error(`Manifest request failed: HTTP ${resp.status} ${url}`);
+        return { manifest: null, error: `http-${resp.status}` };
+      }
+      const manifest = await resp.json();
+      this.cache.setManifest(channel.provider, channel.id, manifest);
+      return { manifest };
+    } catch (e) {
+      console.error(`Manifest request failed (network/CORS): ${url}`, e);
+      return { manifest: null, error: 'network' };
+    }
+  }
+
+  private async fetchManifest(channel: Channel): Promise<any | null> {
+    return (await this.loadManifest(channel)).manifest;
+  }
+
+  /**
+   * Live stream URL for a channel. Order of preference:
+   *   1. manifest_url (DASH/HLS - the native stream, preferred)
+   *   2. a StreamUrl the channel list already carried
+   *   3. ts_stream_url (converted MPEG-TS, last resort)
+   */
+  async resolveLiveStreamUrl(
+    channel: Channel
+  ): Promise<{ url: string | null; error?: string }> {
+    const { manifest, error } = await this.loadManifest(channel);
+    const url =
+      manifest?.manifest_url ||
+      channel?.StreamUrl ||
+      channel?.streamUrl ||
+      manifest?.ts_stream_url ||
+      null;
+    return { url, error: url ? undefined : error || 'no-stream' };
+  }
+
+  /** Short German explanation for a resolveLiveStreamUrl() error code. */
+  describeLiveError(error?: string): string {
+    const base = this.config.ultimateBackendPublicUrl;
+    if (error === 'no-backend-url')
+      return 'Kein Stream: Backend-URL fehlt (ULTIMATE_BACKEND_URL bzw. ULTIMATE_BACKEND_PUBLIC_URL)';
+    if (error === 'network')
+      return `Backend ${base} aus dem Browser nicht erreichbar (Erreichbarkeit/CORS prüfen)`;
+    if (error?.startsWith('http-'))
+      return `Backend hat die Stream-Anfrage abgelehnt (HTTP ${error.slice(5)})`;
+    return 'Kein Stream verfügbar';
+  }
+
   async buildCatchupStreamUrl(
     channel: Channel,
     program: Program

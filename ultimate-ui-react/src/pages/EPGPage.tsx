@@ -24,7 +24,9 @@ export function EPGPage() {
       new EPGService({
         timezone: cfg.ui.timezone,
         catchupMaxHours: cfg.catchup.max_hours,
-        ultimateBackendPublicUrl: cfg.ultimate_backend.public_url,
+        // Live playback falls back to the backend URL when no separate public
+        // URL is set (catchup replay still requires public_url, see below).
+        ultimateBackendPublicUrl: cfg.ultimate_backend.public_url || cfg.ultimate_backend.url,
       }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     []

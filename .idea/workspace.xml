@@ -4,9 +4,12 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="26a67a20-b618-41a8-9b0d-40ca26281999" name="Changes" comment="change layout">
+    <list default="true" id="26a67a20-b618-41a8-9b0d-40ca26281999" name="Changes" comment="fix playback">
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/CHANGES.md" beforeDir="false" afterPath="$PROJECT_DIR$/CHANGES.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ultimate-ui-react/src/components/epg/ChannelColumn.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/ultimate-ui-react/src/components/epg/ChannelColumn.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/ultimate-ui-react/src/hooks/usePlayback.ts" beforeDir="false" afterPath="$PROJECT_DIR$/ultimate-ui-react/src/hooks/usePlayback.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/ultimate-ui-react/src/pages/EPGPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/ultimate-ui-react/src/pages/EPGPage.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/ultimate-ui-react/src/services/epgService.ts" beforeDir="false" afterPath="$PROJECT_DIR$/ultimate-ui-react/src/services/epgService.ts" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -80,22 +83,6 @@
       <workItem from="1768399893477" duration="2236000" />
       <workItem from="1768403116851" duration="13560000" />
       <workItem from="1768480467536" duration="685000" />
-    </task>
-    <task id="LOCAL-00122" summary="Add Streaming Channels EPG">
-      <option name="closed" value="true" />
-      <created>1768390689512</created>
-      <option name="number" value="00122" />
-      <option name="presentableId" value="LOCAL-00122" />
-      <option name="project" value="LOCAL" />
-      <updated>1768390689512</updated>
-    </task>
-    <task id="LOCAL-00123" summary="Add Streaming Channels EPG">
-      <option name="closed" value="true" />
-      <created>1768414715082</created>
-      <option name="number" value="00123" />
-      <option name="presentableId" value="LOCAL-00123" />
-      <option name="project" value="LOCAL" />
-      <updated>1768414715082</updated>
     </task>
     <task id="LOCAL-00124" summary="Split epg_ui.js">
       <option name="closed" value="true" />
@@ -473,7 +460,23 @@
       <option name="project" value="LOCAL" />
       <updated>1794750512617</updated>
     </task>
-    <option name="localTasksCounter" value="171" />
+    <task id="LOCAL-00171" summary="change layout">
+      <option name="closed" value="true" />
+      <created>1794751911180</created>
+      <option name="number" value="00171" />
+      <option name="presentableId" value="LOCAL-00171" />
+      <option name="project" value="LOCAL" />
+      <updated>1794751911180</updated>
+    </task>
+    <task id="LOCAL-00172" summary="fix playback">
+      <option name="closed" value="true" />
+      <created>1794763134839</created>
+      <option name="number" value="00172" />
+      <option name="presentableId" value="LOCAL-00172" />
+      <option name="project" value="LOCAL" />
+      <updated>1794763134839</updated>
+    </task>
+    <option name="localTasksCounter" value="173" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -492,6 +495,7 @@
     <MESSAGE value="add provider parameter" />
     <MESSAGE value="change to react" />
     <MESSAGE value="change layout" />
-    <option name="LAST_COMMIT_MESSAGE" value="change layout" />
+    <MESSAGE value="fix playback" />
+    <option name="LAST_COMMIT_MESSAGE" value="fix playback" />
   </component>
 </project>

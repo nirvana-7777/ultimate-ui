@@ -14,9 +14,9 @@ export function usePlayback(service: EPGService) {
 
   const playChannel = useCallback(
     async (channel: Channel) => {
-      const url = await service.resolveLiveStreamUrl(channel);
+      const { url, error } = await service.resolveLiveStreamUrl(channel);
       if (!url) {
-        showToast('Kein Stream verfügbar', 'warning');
+        showToast(service.describeLiveError(error), 'warning');
         return;
       }
       setPlayer({ url, title: channel.display_name, subtitle: 'Live Stream' });
@@ -28,11 +28,13 @@ export function usePlayback(service: EPGService) {
     async (channel: Channel, program: Program) => {
       // Live programs play the channel's live stream; the manifest is preferred
       // over any static URL because it points at the native (MPD) stream.
-      const url = program.is_live
-        ? await service.resolveLiveStreamUrl(channel)
-        : program.stream_url || program.stream || (await service.resolveLiveStreamUrl(channel));
+      let url: string | null | undefined = program.is_live
+        ? null
+        : program.stream_url || program.stream;
+      let error: string | undefined;
+      if (!url) ({ url, error } = await service.resolveLiveStreamUrl(channel));
       if (!url) {
-        showToast('Kein Stream verfügbar', 'warning');
+        showToast(service.describeLiveError(error), 'warning');
         return;
       }
       setPlayer({ url, title: program.title, subtitle: program.subtitle });
