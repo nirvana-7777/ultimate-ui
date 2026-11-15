@@ -117,6 +117,14 @@ export function FloatingPlayer({ state, onClose }: Props) {
           });
           playerRef.current = player; // instance, not namespace
           await player.load(state.url);
+          if (!cancelled) {
+            // shaka's load() never starts playback by itself (the native
+            // path below calls play() explicitly). Autoplay can still be
+            // refused by the browser; the controls stay available then.
+            try {
+              await video.play();
+            } catch {}
+          }
           if (cancelled) {
             // Only untrack OUR instance — a newer init may have already
             // installed its own. The effect cleanup's destroyPlayer()
