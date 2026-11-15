@@ -102,3 +102,46 @@ export function calculateTimeRemaining(endTime: string | Date): string {
   const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
   return hours > 0 ? `noch ${hours}h ${minutes} min` : `noch ${minutes} min`;
 }
+
+/** YYYY-MM-DD of `date` as seen in `timezone` (not the browser's zone). */
+export function dayKeyInTz(date: Date, timezone?: string): string {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: timezone || Intl.DateTimeFormat().resolvedOptions().timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(date);
+}
+
+/** "Heute" / "Morgen" / "Gestern" or e.g. "Mo, 16.11.". */
+export function formatDayHeader(
+  date: Date,
+  timezone?: string,
+  now: Date = new Date()
+): { label: string; full: string; relative: 'today' | 'tomorrow' | 'yesterday' | null } {
+  const key = dayKeyInTz(date, timezone);
+  const rel =
+    key === dayKeyInTz(now, timezone)
+      ? 'today'
+      : key === dayKeyInTz(new Date(now.getTime() + 86_400_000), timezone)
+      ? 'tomorrow'
+      : key === dayKeyInTz(new Date(now.getTime() - 86_400_000), timezone)
+      ? 'yesterday'
+      : null;
+  const tz = timezone || undefined;
+  const short = date.toLocaleDateString('de-DE', {
+    timeZone: tz,
+    weekday: 'short',
+    day: '2-digit',
+    month: '2-digit',
+  });
+  const full = date.toLocaleDateString('de-DE', {
+    timeZone: tz,
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  });
+  const word = { today: 'Heute', tomorrow: 'Morgen', yesterday: 'Gestern' } as const;
+  return { label: rel ? word[rel] : short, full, relative: rel };
+}

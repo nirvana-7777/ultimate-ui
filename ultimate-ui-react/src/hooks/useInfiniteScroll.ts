@@ -1,10 +1,19 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, type RefObject } from 'react';
 
 export function useInfiniteScroll(
   callback: () => void,
-  { enabled = true, rootMargin = '400px' }: { enabled?: boolean; rootMargin?: string } = {}
+  {
+    enabled = true,
+    rootMargin = '400px',
+    rootRef,
+  }: {
+    enabled?: boolean;
+    rootMargin?: string;
+    /** Scroll container to observe against; defaults to the viewport. */
+    rootRef?: RefObject<Element | null>;
+  } = {}
 ) {
-  const sentinelRef = useRef<HTMLDivElement | null>(null);
+  const sentinelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!enabled || !sentinelRef.current) return;
@@ -12,11 +21,11 @@ export function useInfiniteScroll(
       (entries) => {
         if (entries[0].isIntersecting) callback();
       },
-      { root: null, rootMargin, threshold: 0 }
+      { root: rootRef?.current ?? null, rootMargin, threshold: 0 }
     );
     observer.observe(sentinelRef.current);
     return () => observer.disconnect();
-  }, [callback, enabled, rootMargin]);
+  }, [callback, enabled, rootMargin, rootRef]);
 
   return sentinelRef;
 }

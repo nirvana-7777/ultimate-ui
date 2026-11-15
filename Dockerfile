@@ -60,5 +60,8 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
 
 # gthread workers: a long catchup download occupies one thread, not a worker.
 # Each worker re-reads config.yaml when it changes, so UI saves reach all of them.
+# --no-control-socket: gunicorn >= 25 opens a control socket under $HOME/.gunicorn,
+# but the `ultimate` user has no home directory (-> "Errno 13 Permission denied:
+# '/home/ultimate'"). We don't use gunicornc, so the socket is simply disabled.
 CMD ["gunicorn", "--bind", "0.0.0.0:7779", "--workers", "2", "--threads", "8", \
-     "--timeout", "120", "--access-logfile", "-", "src.app:app"]
+     "--timeout", "120", "--no-control-socket", "--access-logfile", "-", "src.app:app"]

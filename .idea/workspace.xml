@@ -5,15 +5,24 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="26a67a20-b618-41a8-9b0d-40ca26281999" name="Changes" comment="change to react">
-      <change beforePath="$PROJECT_DIR$/.github/dependabot.yml" beforeDir="false" afterPath="$PROJECT_DIR$/.github/dependabot.yml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.github/workflows/codeql.yml" beforeDir="false" afterPath="$PROJECT_DIR$/.github/workflows/codeql.yml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.github/workflows/docker-build.yml" beforeDir="false" afterPath="$PROJECT_DIR$/.github/workflows/docker.yml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.github/workflows/release.yml" beforeDir="false" afterPath="$PROJECT_DIR$/.github/workflows/release.yml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/test_app_pages_and_config.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/test_app_proxy.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/test_config_and_client.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/test_template_filters.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/CHANGES.md" beforeDir="false" afterPath="$PROJECT_DIR$/CHANGES.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Dockerfile" beforeDir="false" afterPath="$PROJECT_DIR$/Dockerfile" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/requirements.dev.txt" beforeDir="false" afterPath="$PROJECT_DIR$/requirements.dev.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/static/dist/assets/index.css" beforeDir="false" afterPath="$PROJECT_DIR$/src/static/dist/assets/index.css" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/static/dist/assets/index.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/static/dist/assets/index.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/ultimate-ui-react/package-lock.json" beforeDir="false" afterPath="$PROJECT_DIR$/ultimate-ui-react/package-lock.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/ultimate-ui-react/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/ultimate-ui-react/package.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/ultimate-ui-react/src/components/layout/Header.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/ultimate-ui-react/src/components/layout/Header.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/ultimate-ui-react/src/components/layout/Layout.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/ultimate-ui-react/src/components/layout/Layout.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/ultimate-ui-react/src/hooks/useInfiniteScroll.ts" beforeDir="false" afterPath="$PROJECT_DIR$/ultimate-ui-react/src/hooks/useInfiniteScroll.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/ultimate-ui-react/src/lib/time.ts" beforeDir="false" afterPath="$PROJECT_DIR$/ultimate-ui-react/src/lib/time.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/ultimate-ui-react/src/pages/EPGPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/ultimate-ui-react/src/pages/EPGPage.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/ultimate-ui-react/src/styles/components.css" beforeDir="false" afterPath="$PROJECT_DIR$/ultimate-ui-react/src/styles/components.css" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/ultimate-ui-react/src/styles/epg-specific.css" beforeDir="false" afterPath="$PROJECT_DIR$/ultimate-ui-react/src/styles/epg-specific.css" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/ultimate-ui-react/src/styles/index.css" beforeDir="false" afterPath="$PROJECT_DIR$/ultimate-ui-react/src/styles/index.css" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/ultimate-ui-react/src/styles/layout.css" beforeDir="false" afterPath="$PROJECT_DIR$/ultimate-ui-react/src/styles/layout.css" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/ultimate-ui-react/src/styles/responsive.css" beforeDir="false" afterPath="$PROJECT_DIR$/ultimate-ui-react/src/styles/responsive.css" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -87,30 +96,6 @@
       <workItem from="1768399893477" duration="2236000" />
       <workItem from="1768403116851" duration="13560000" />
       <workItem from="1768480467536" duration="685000" />
-    </task>
-    <task id="LOCAL-00118" summary="Fix EPG Loading">
-      <option name="closed" value="true" />
-      <created>1768248916906</created>
-      <option name="number" value="00118" />
-      <option name="presentableId" value="LOCAL-00118" />
-      <option name="project" value="LOCAL" />
-      <updated>1768248916906</updated>
-    </task>
-    <task id="LOCAL-00119" summary="Fix EPG Loading">
-      <option name="closed" value="true" />
-      <created>1768299108755</created>
-      <option name="number" value="00119" />
-      <option name="presentableId" value="LOCAL-00119" />
-      <option name="project" value="LOCAL" />
-      <updated>1768299108755</updated>
-    </task>
-    <task id="LOCAL-00120" summary="Fix EPG Loading">
-      <option name="closed" value="true" />
-      <created>1768319222071</created>
-      <option name="number" value="00120" />
-      <option name="presentableId" value="LOCAL-00120" />
-      <option name="project" value="LOCAL" />
-      <updated>1768319222071</updated>
     </task>
     <task id="LOCAL-00121" summary="Fix EPG Loading">
       <option name="closed" value="true" />
@@ -480,7 +465,31 @@
       <option name="project" value="LOCAL" />
       <updated>1794677410188</updated>
     </task>
-    <option name="localTasksCounter" value="167" />
+    <task id="LOCAL-00167" summary="change to react">
+      <option name="closed" value="true" />
+      <created>1794681211481</created>
+      <option name="number" value="00167" />
+      <option name="presentableId" value="LOCAL-00167" />
+      <option name="project" value="LOCAL" />
+      <updated>1794681211481</updated>
+    </task>
+    <task id="LOCAL-00168" summary="change to react">
+      <option name="closed" value="true" />
+      <created>1794681345291</created>
+      <option name="number" value="00168" />
+      <option name="presentableId" value="LOCAL-00168" />
+      <option name="project" value="LOCAL" />
+      <updated>1794681345291</updated>
+    </task>
+    <task id="LOCAL-00169" summary="change to react">
+      <option name="closed" value="true" />
+      <created>1794681984219</created>
+      <option name="number" value="00169" />
+      <option name="presentableId" value="LOCAL-00169" />
+      <option name="project" value="LOCAL" />
+      <updated>1794681984219</updated>
+    </task>
+    <option name="localTasksCounter" value="170" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">

@@ -2,6 +2,7 @@
 @import './layout.css';
 @import './components.css';
 @import './epg-specific.css';
+@import './epg-browser.css';
 @import './catchup.css';
 @import './modals-player.css';
 @import './monitoring.css';

@@ -1,4 +1,25 @@
-# What changed relative to the files you sent
+# 2.3.0 - tabs navigation, 3-column EPG, container fix
+
+## Fixed
+- **`Control server error: [Errno 13] Permission denied: '/home/ultimate'` on start.** gunicorn >= 25
+  opens a control socket under `$HOME/.gunicorn/`; the `ultimate` user has no home directory. The
+  Dockerfile now starts gunicorn with `--no-control-socket` (we never use `gunicornc`).
+
+## Changed
+- **Navigation is a tab bar in the header** instead of a 280 px sidebar. WebEPG status and clock moved
+  to the header's right side. On phones the tabs collapse to icons (active tab keeps its label).
+- **EPG page is a 3-column browser:** Provider -> Channels -> Programme.
+  - Channels show what is on right now (loaded lazily for visible rows only) and have a search box.
+  - The programme column is one continuous list with inline, sticky day headers. It scrolls without
+    limit into the past and the future (one day is fetched at a time; an end is declared after
+    3 consecutive empty days). Rows show basics; the selected row expands in place with the full
+    information and the play / catchup / download actions.
+  - Selection lives in the URL (`/?provider=zdf&channel=123`) and is remembered for a bare `/`.
+  - Below 900 px the columns become a drill-down (one column at a time, back buttons).
+- Removed: card grid, "Alle EPG Kanaele" aggregate view, day-by-day navigation, program details
+  modal (incl. its placeholder "Erinnerung setzen" button), `useEPG`, and the CSS only they used.
+
+# Earlier: what changed relative to the files you originally sent
 
 Layout: your `src/app.py`, `config.py`, `api_client.py`, `__init__.py`, `Dockerfile`,
 `docker-compose.yml`, `config.yaml`, `requirements*.txt`, README were taken over; the Jinja
