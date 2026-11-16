@@ -4,6 +4,7 @@
 - **`Control server error: [Errno 13] Permission denied: '/home/ultimate'` on start.** gunicorn >= 25
   opens a control socket under `$HOME/.gunicorn/`; the `ultimate` user has no home directory. The
   Dockerfile now starts gunicorn with `--no-control-socket` (we never use `gunicornc`).
+- **`crypto.randomUUID is not a function` broke DASH playback over plain HTTP.** `randomUUID` only exists in secure contexts; shaka-player calls it from its video event handlers and in `load()`. A small polyfill (`src/lib/polyfills.ts`, imported first in `main.tsx`) now provides it via `getRandomValues`.
 - **Player started paused for DASH/HLS streams.** The shaka path never called `video.play()` after `load()`; it now does (if the browser refuses unmuted autoplay, e.g. Safari after the async manifest fetch, it retries muted; unmute via the controls).
 - **"Kein Stream verfügbar" when clicking "Live ansehen" (no request sent).** The channel list from the
   mapping endpoint carries no `StreamUrl` for providers like magenta2, so the click was rejected before any
