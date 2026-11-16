@@ -47,6 +47,26 @@ export function FloatingPlayer({ state, onClose }: Props) {
   const [shakaReady, setShakaReady] = useState(false);
   const reduced = useReducedMotion();
 
+  // TEMP DEBUG ([live-debug]): trace what happens on "Live ansehen".
+  useEffect(() => {
+    console.info('[live-debug] FloatingPlayer state ->', state ? state.url : null);
+    if (!state) return;
+    const t = setTimeout(() => {
+      const fp = document.querySelector('.floating-player') as HTMLElement | null;
+      const v = document.getElementById('floating-video') as HTMLVideoElement | null;
+      console.info('[live-debug] +1.5s', {
+        exists: !!fp,
+        opacity: fp ? getComputedStyle(fp).opacity : null,
+        transform: fp ? getComputedStyle(fp).transform : null,
+        rect: fp ? JSON.stringify(fp.getBoundingClientRect()) : null,
+        paused: v ? v.paused : null,
+        readyState: v ? v.readyState : null,
+        muted: v ? v.muted : null,
+      });
+    }, 1500);
+    return () => clearTimeout(t);
+  }, [state]);
+
   // Load shaka lazily the first time the player mounts. Keeps the main
   // bundle small (shaka is ~800 KB raw) and makes it optional — a user
   // who never plays a stream never downloads it.
@@ -116,14 +136,19 @@ export function FloatingPlayer({ state, onClose }: Props) {
             streaming: { bufferingGoal: 30, rebufferingGoal: 2 },
           });
           playerRef.current = player; // instance, not namespace
+          console.info('[live-debug] shaka load start');
           await player.load(state.url);
+          console.info('[live-debug] shaka load done, cancelled =', cancelled);
           if (!cancelled) {
             // shaka's load() never starts playback by itself (the native
             // path below calls play() explicitly). Autoplay can still be
             // refused by the browser; the controls stay available then.
             try {
+              console.info('[live-debug] play() call');
               await video.play();
+              console.info('[live-debug] play() resolved');
             } catch (e) {
+              console.info('[live-debug] play() rejected', (e as any)?.name);
               // Safari (and Chrome when the click is too old) refuse
               // unmuted autoplay once async work has passed since the
               // click. Muted autoplay is always allowed: start muted and
@@ -169,9 +194,11 @@ export function FloatingPlayer({ state, onClose }: Props) {
       }
     };
 
+    console.info('[live-debug] init() start, shakaReady =', shakaReady);
     init();
 
     return () => {
+      console.info('[live-debug] init cleanup (effect re-ran or unmounted)');
       cancelled = true;
       destroyPlayer();
       if (video.src) {
@@ -190,6 +217,8 @@ export function FloatingPlayer({ state, onClose }: Props) {
           animate={{ opacity: 1, y: 0 }}
           exit={reduced ? undefined : { opacity: 0, y: 100 }}
           transition={{ type: 'spring', stiffness: 320, damping: 30 }}
+          onAnimationStart={() => console.info('[live-debug] enter animation start')}
+          onAnimationComplete={() => console.info('[live-debug] animation complete')}
           drag={!minimized}
           dragMomentum={false}
           dragElastic={0.05}
