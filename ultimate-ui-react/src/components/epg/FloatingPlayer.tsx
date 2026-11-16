@@ -123,7 +123,19 @@ export function FloatingPlayer({ state, onClose }: Props) {
             // refused by the browser; the controls stay available then.
             try {
               await video.play();
-            } catch {}
+            } catch (e) {
+              // Safari (and Chrome when the click is too old) refuse
+              // unmuted autoplay once async work has passed since the
+              // click. Muted autoplay is always allowed: start muted and
+              // let the user unmute via the controls.
+              if (!cancelled && (e as any)?.name === 'NotAllowedError') {
+                console.warn('[player] autoplay refused, starting muted');
+                video.muted = true;
+                try {
+                  await video.play();
+                } catch {}
+              }
+            }
           }
           if (cancelled) {
             // Only untrack OUR instance — a newer init may have already

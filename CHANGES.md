@@ -4,7 +4,7 @@
 - **`Control server error: [Errno 13] Permission denied: '/home/ultimate'` on start.** gunicorn >= 25
   opens a control socket under `$HOME/.gunicorn/`; the `ultimate` user has no home directory. The
   Dockerfile now starts gunicorn with `--no-control-socket` (we never use `gunicornc`).
-- **Player started paused for DASH/HLS streams.** The shaka path never called `video.play()` after `load()`; it now does (autoplay refusal by the browser is tolerated, controls stay usable).
+- **Player started paused for DASH/HLS streams.** The shaka path never called `video.play()` after `load()`; it now does (if the browser refuses unmuted autoplay, e.g. Safari after the async manifest fetch, it retries muted; unmute via the controls).
 - **"Kein Stream verfügbar" when clicking "Live ansehen" (no request sent).** The channel list from the
   mapping endpoint carries no `StreamUrl` for providers like magenta2, so the click was rejected before any
   request. Live playback now resolves the stream via `GET /api/providers/<p>/channels/<id>/manifest` on the
