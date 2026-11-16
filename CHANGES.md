@@ -4,6 +4,7 @@
 - **`Control server error: [Errno 13] Permission denied: '/home/ultimate'` on start.** gunicorn >= 25
   opens a control socket under `$HOME/.gunicorn/`; the `ultimate` user has no home directory. The
   Dockerfile now starts gunicorn with `--no-control-socket` (we never use `gunicornc`).
+- **First click on "Live ansehen" wiped the page (player invisible, stream playing in the background).** The lazy shaka chunk imported `./index.js` while the page loads the entry as `index.js?v=<hash>`; the browser treated them as two modules and ran the whole app a second time, mounting a second React app over `#root`. The shared CommonJS helpers now live in their own chunk (`vite.config.ts` `manualChunks`) so lazy chunks no longer import the entry, and `main.tsx` refuses a second mount.
 - **`crypto.randomUUID is not a function` broke DASH playback over plain HTTP.** `randomUUID` only exists in secure contexts; shaka-player calls it from its video event handlers and in `load()`. A small polyfill (`src/lib/polyfills.ts`, imported first in `main.tsx`) now provides it via `getRandomValues`.
 - **Player started paused for DASH/HLS streams.** The shaka path never called `video.play()` after `load()`; it now does (if the browser refuses unmuted autoplay, e.g. Safari after the async manifest fetch, it retries muted; unmute via the controls).
 - **"Kein Stream verfügbar" when clicking "Live ansehen" (no request sent).** The channel list from the

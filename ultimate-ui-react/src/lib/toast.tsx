@@ -7,7 +7,6 @@ import {
   useEffect,
 } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { useLifecycleLog } from './liveDebug';
 
 type ToastType = 'success' | 'error' | 'warning' | 'info';
 
@@ -30,7 +29,6 @@ export function useToast() {
 let toastId = 0;
 
 export function ToastProvider({ children }: { children: ReactNode }) {
-  useLifecycleLog('ToastProvider');
   const [toasts, setToasts] = useState<ToastItem[]>([]);
 
   const showToast = useCallback(

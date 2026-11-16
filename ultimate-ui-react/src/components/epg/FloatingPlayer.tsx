@@ -38,8 +38,6 @@ interface Props {
  *   - If shaka fails to load the stream, we fall back to video.src —
  *     native <video> still plays HLS in Safari and plain files elsewhere.
  */
-import { useLifecycleLog } from '@/lib/liveDebug';
-
 export function FloatingPlayer({ state, onClose }: Props) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const shakaRef = useRef<any>(null); // shaka namespace
@@ -48,61 +46,6 @@ export function FloatingPlayer({ state, onClose }: Props) {
   const [minimized, setMinimized] = useState(false);
   const [shakaReady, setShakaReady] = useState(false);
   const reduced = useReducedMotion();
-
-  useLifecycleLog('FloatingPlayer');
-  // TEMP DEBUG ([live-debug]): trace what happens on "Live ansehen".
-  useEffect(() => {
-    console.info('[live-debug] FloatingPlayer state ->', state ? state.url : null);
-    if (!state) return;
-    // Report if the player DOM is removed from the document by anything.
-    const mo = new MutationObserver((muts) => {
-      for (const m of muts) {
-        m.removedNodes.forEach((n) => {
-          if (
-            n instanceof Element &&
-            (n.matches('.floating-player, video') || n.querySelector('.floating-player, video'))
-          ) {
-            const t = m.target as Element;
-            console.info(
-              '[live-debug] REMOVED',
-              n.tagName + '.' + n.className,
-              'from',
-              t.tagName + '.' + t.className
-            );
-          }
-        });
-      }
-    });
-    mo.observe(document.documentElement, { childList: true, subtree: true });
-    const probe = (label: string) => () => {
-      const vid = videoRef.current;
-      const fp = document.querySelector('.floating-player') as HTMLElement | null;
-      console.info(
-        '[live-debug] ' + label,
-        JSON.stringify({
-          videoRefConnected: vid ? vid.isConnected : null,
-          sameDocument: vid ? vid.ownerDocument === document : null,
-          inIframe: window.top !== window,
-          fpCount: document.querySelectorAll('.floating-player').length,
-          videoCount: document.querySelectorAll('video').length,
-          paused: vid ? vid.paused : null,
-          muted: vid ? vid.muted : null,
-          readyState: vid ? vid.readyState : null,
-          currentTime: vid ? vid.currentTime : null,
-          opacity: fp ? getComputedStyle(fp).opacity : null,
-          rect: fp ? fp.getBoundingClientRect().toJSON() : null,
-          rootChildren: document.getElementById('root')?.children.length ?? null,
-        })
-      );
-    };
-    const t1 = setTimeout(probe('+1.5s'), 1500);
-    const t2 = setTimeout(probe('+5s'), 5000);
-    return () => {
-      clearTimeout(t1);
-      clearTimeout(t2);
-      mo.disconnect();
-    };
-  }, [state]);
 
   // Load shaka lazily the first time the player mounts. Keeps the main
   // bundle small (shaka is ~800 KB raw) and makes it optional — a user
@@ -173,19 +116,14 @@ export function FloatingPlayer({ state, onClose }: Props) {
             streaming: { bufferingGoal: 30, rebufferingGoal: 2 },
           });
           playerRef.current = player; // instance, not namespace
-          console.info('[live-debug] shaka load start');
           await player.load(state.url);
-          console.info('[live-debug] shaka load done, cancelled =', cancelled);
           if (!cancelled) {
             // shaka's load() never starts playback by itself (the native
             // path below calls play() explicitly). Autoplay can still be
             // refused by the browser; the controls stay available then.
             try {
-              console.info('[live-debug] play() call');
               await video.play();
-              console.info('[live-debug] play() resolved');
             } catch (e) {
-              console.info('[live-debug] play() rejected', (e as any)?.name);
               // Safari (and Chrome when the click is too old) refuse
               // unmuted autoplay once async work has passed since the
               // click. Muted autoplay is always allowed: start muted and
@@ -231,11 +169,9 @@ export function FloatingPlayer({ state, onClose }: Props) {
       }
     };
 
-    console.info('[live-debug] init() start, shakaReady =', shakaReady);
     init();
 
     return () => {
-      console.info('[live-debug] init cleanup (effect re-ran or unmounted)');
       cancelled = true;
       destroyPlayer();
       if (video.src) {
@@ -254,8 +190,6 @@ export function FloatingPlayer({ state, onClose }: Props) {
           animate={{ opacity: 1, y: 0 }}
           exit={reduced ? undefined : { opacity: 0, y: 100 }}
           transition={{ type: 'spring', stiffness: 320, damping: 30 }}
-          onAnimationStart={() => console.info('[live-debug] enter animation start')}
-          onAnimationComplete={() => console.info('[live-debug] animation complete')}
           drag={!minimized}
           dragMomentum={false}
           dragElastic={0.05}

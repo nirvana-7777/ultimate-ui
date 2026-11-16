@@ -26,6 +26,15 @@ export default defineConfig(({ command }) => ({
     cssCodeSplit: false,
     rollupOptions: {
       output: {
+        // The Flask template loads the entry as index.js?v=<hash>. A lazy chunk
+        // that imports ./index.js (no query) would make the browser evaluate
+        // the entry a SECOND time (different URL = different module), which
+        // mounts a second app into #root and wipes the first one. Keep the
+        // shared CommonJS helpers out of the entry so lazy chunks (shaka)
+        // never import it.
+        manualChunks(id) {
+          if (id.includes('commonjsHelpers') || id.includes('\0vite/')) return 'shared';
+        },
         entryFileNames: 'assets/index.js',
         chunkFileNames: 'assets/[name]-[hash].js',
         assetFileNames: (info) =>

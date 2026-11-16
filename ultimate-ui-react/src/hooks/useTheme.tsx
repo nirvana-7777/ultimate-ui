@@ -1,5 +1,4 @@
 import { createContext, useContext, useEffect, useState, ReactNode, useCallback } from 'react';
-import { useLifecycleLog } from '@/lib/liveDebug';
 import { applyTheme, loadTheme, watchSystemTheme, Theme } from '@/lib/theme';
 
 interface ThemeContextValue {
@@ -15,7 +14,6 @@ const ThemeContext = createContext<ThemeContextValue>({
 });
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  useLifecycleLog('ThemeProvider');
   const [theme, setThemeState] = useState<Theme>(loadTheme);
 
   useEffect(() => {

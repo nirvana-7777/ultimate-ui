@@ -19,7 +19,6 @@ export function usePlayback(service: EPGService) {
         showToast(service.describeLiveError(error), 'warning');
         return;
       }
-      console.info('[live-debug] setPlayer (channel)', url);
       setPlayer({ url, title: channel.display_name, subtitle: 'Live Stream' });
     },
     [service, showToast]
@@ -27,7 +26,6 @@ export function usePlayback(service: EPGService) {
 
   const playProgram = useCallback(
     async (channel: Channel, program: Program) => {
-      console.info('[live-debug] playProgram click', program.title);
       // Live programs play the channel's live stream; the manifest is preferred
       // over any static URL because it points at the native (MPD) stream.
       let url: string | null | undefined = program.is_live
@@ -39,7 +37,6 @@ export function usePlayback(service: EPGService) {
         showToast(service.describeLiveError(error), 'warning');
         return;
       }
-      console.info('[live-debug] setPlayer (program)', url);
       setPlayer({ url, title: program.title, subtitle: program.subtitle });
     },
     [service, showToast]
