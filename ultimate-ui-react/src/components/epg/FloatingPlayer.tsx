@@ -38,6 +38,8 @@ interface Props {
  *   - If shaka fails to load the stream, we fall back to video.src —
  *     native <video> still plays HLS in Safari and plain files elsewhere.
  */
+import { useLifecycleLog } from '@/lib/liveDebug';
+
 export function FloatingPlayer({ state, onClose }: Props) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const shakaRef = useRef<any>(null); // shaka namespace
@@ -47,6 +49,7 @@ export function FloatingPlayer({ state, onClose }: Props) {
   const [shakaReady, setShakaReady] = useState(false);
   const reduced = useReducedMotion();
 
+  useLifecycleLog('FloatingPlayer');
   // TEMP DEBUG ([live-debug]): trace what happens on "Live ansehen".
   useEffect(() => {
     console.info('[live-debug] FloatingPlayer state ->', state ? state.url : null);

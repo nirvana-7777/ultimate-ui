@@ -9,6 +9,7 @@ import { ChannelColumn } from '@/components/epg/ChannelColumn';
 import { TimelineColumn } from '@/components/epg/TimelineColumn';
 import { FloatingPlayer } from '@/components/epg/FloatingPlayer';
 import { getConfig } from '@/lib/api';
+import { useLifecycleLog } from '@/lib/liveDebug';
 import { localDateKey } from '@/lib/time';
 import type { Channel } from '@/lib/types';
 
@@ -18,6 +19,7 @@ import type { Channel } from '@/lib/types';
  * a drill-down (one column at a time, `data-stage` drives the CSS).
  */
 export function EPGPage() {
+  useLifecycleLog('EPGPage');
   const cfg = getConfig();
   const service = useMemo(
     () =>
