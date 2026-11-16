@@ -51,20 +51,54 @@ export function FloatingPlayer({ state, onClose }: Props) {
   useEffect(() => {
     console.info('[live-debug] FloatingPlayer state ->', state ? state.url : null);
     if (!state) return;
-    const t = setTimeout(() => {
+    // Report if the player DOM is removed from the document by anything.
+    const mo = new MutationObserver((muts) => {
+      for (const m of muts) {
+        m.removedNodes.forEach((n) => {
+          if (
+            n instanceof Element &&
+            (n.matches('.floating-player, video') || n.querySelector('.floating-player, video'))
+          ) {
+            const t = m.target as Element;
+            console.info(
+              '[live-debug] REMOVED',
+              n.tagName + '.' + n.className,
+              'from',
+              t.tagName + '.' + t.className
+            );
+          }
+        });
+      }
+    });
+    mo.observe(document.documentElement, { childList: true, subtree: true });
+    const probe = (label: string) => () => {
+      const vid = videoRef.current;
       const fp = document.querySelector('.floating-player') as HTMLElement | null;
-      const v = document.getElementById('floating-video') as HTMLVideoElement | null;
-      console.info('[live-debug] +1.5s', {
-        exists: !!fp,
-        opacity: fp ? getComputedStyle(fp).opacity : null,
-        transform: fp ? getComputedStyle(fp).transform : null,
-        rect: fp ? JSON.stringify(fp.getBoundingClientRect()) : null,
-        paused: v ? v.paused : null,
-        readyState: v ? v.readyState : null,
-        muted: v ? v.muted : null,
-      });
-    }, 1500);
-    return () => clearTimeout(t);
+      console.info(
+        '[live-debug] ' + label,
+        JSON.stringify({
+          videoRefConnected: vid ? vid.isConnected : null,
+          sameDocument: vid ? vid.ownerDocument === document : null,
+          inIframe: window.top !== window,
+          fpCount: document.querySelectorAll('.floating-player').length,
+          videoCount: document.querySelectorAll('video').length,
+          paused: vid ? vid.paused : null,
+          muted: vid ? vid.muted : null,
+          readyState: vid ? vid.readyState : null,
+          currentTime: vid ? vid.currentTime : null,
+          opacity: fp ? getComputedStyle(fp).opacity : null,
+          rect: fp ? fp.getBoundingClientRect().toJSON() : null,
+          rootChildren: document.getElementById('root')?.children.length ?? null,
+        })
+      );
+    };
+    const t1 = setTimeout(probe('+1.5s'), 1500);
+    const t2 = setTimeout(probe('+5s'), 5000);
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+      mo.disconnect();
+    };
   }, [state]);
 
   // Load shaka lazily the first time the player mounts. Keeps the main
