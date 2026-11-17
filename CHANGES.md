@@ -1,3 +1,25 @@
+# 2.3.3 - Play / Download buttons, DRM playback
+
+## Changed
+- Buttons in the programme detail: **Play** (live and catchup) and **Download** (catchup). Both use the
+  look of the former "Live ansehen" button; Download has the catchup (violet) colour. The channel-list
+  play button's tooltip is "Play" as well.
+
+## Added
+- **DRM playback.** The manifest response of DRM-protected streams carries `X-Kodi-Drm-Configs`
+  (base64 JSON, Kodi style: `server_url`, `req_headers`, `req_data`). The UI decodes it
+  (`src/lib/drm.ts`) and hands Shaka the license server plus the license request headers (e.g. `CID`;
+  `User-Agent` cannot be set by a browser and is skipped). Unencrypted streams have no header and
+  play as before. Only `req_data = {CHA-RAW}` (raw challenge) is supported; anything else is logged.
+- Manifest cache entries now expire after 5 minutes (the license token in the header is time limited).
+- A DRM failure is shown in the player ("Lizenz/Widevine nicht verfuegbar") instead of failing silently.
+
+## Backend requirement
+- A browser can only read a cross-origin response header that is listed in
+  `Access-Control-Expose-Headers`. The Ultimate Backend currently exposes only
+  `Content-Length, Content-Range`; add `X-Kodi-Drm-Configs, X-Kodi-Stream-Format` there, otherwise
+  encrypted streams cannot get their license config (the player then says so).
+
 # 2.3.0 - tabs navigation, 3-column EPG, container fix
 
 ## Fixed

@@ -155,17 +155,17 @@ function ProgramDetail({
         <div className="tl-actions">
           {live && (
             <button className="btn-play" onClick={() => onPlay(channel, program)}>
-              ▶ Live ansehen
+              ▶ Play
             </button>
           )}
           {catchupEligible && publicUrlConfigured && (
-            <button className="btn-catchup" onClick={() => onCatchup(channel, program)}>
-              ⏪ Catchup abspielen
+            <button className="btn-play" onClick={() => onCatchup(channel, program)}>
+              ▶ Play
             </button>
           )}
           {catchupEligible && (
-            <button className="btn-catchup-download" onClick={() => onDownload(channel, program)}>
-              ⬇ Herunterladen
+            <button className="btn-play btn-download" onClick={() => onDownload(channel, program)}>
+              ⬇ Download
             </button>
           )}
         </div>

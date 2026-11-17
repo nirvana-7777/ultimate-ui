@@ -109,6 +109,9 @@
 }
 .btn-play:hover { background: var(--accent-hover); transform: translateY(-1px); }
 .btn-play:active { transform: translateY(0) scale(0.97); }
+/* Same look as Play, different colour (catchup/violet hue). */
+.btn-play.btn-download { background: var(--catchup-color); }
+.btn-play.btn-download:hover { background: var(--catchup-color); filter: brightness(1.1); }
 
 /* Container queries for adaptive cards */
 

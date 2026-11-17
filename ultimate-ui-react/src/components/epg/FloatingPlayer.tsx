@@ -1,10 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'motion/react';
+import type { DrmInfo } from '@/lib/drm';
 
 export interface PlayerState {
   url: string;
   title: string;
   subtitle?: string;
+  /** Set for DRM-protected streams; absent for unencrypted ones. */
+  drm?: DrmInfo | null;
 }
 
 interface Props {
@@ -45,6 +48,7 @@ export function FloatingPlayer({ state, onClose }: Props) {
   const destroyPromiseRef = useRef<Promise<void> | null>(null);
   const [minimized, setMinimized] = useState(false);
   const [shakaReady, setShakaReady] = useState(false);
+  const [drmError, setDrmError] = useState<string | null>(null);
   const reduced = useReducedMotion();
 
   // Load shaka lazily the first time the player mounts. Keeps the main
@@ -78,6 +82,7 @@ export function FloatingPlayer({ state, onClose }: Props) {
     if (!state || !videoRef.current || !shakaReady) return;
     const video = videoRef.current;
     const shaka = shakaRef.current; // namespace
+    setDrmError(null);
     let cancelled = false;
 
     // Tear down the current instance. unload()/destroy() reject
@@ -115,6 +120,19 @@ export function FloatingPlayer({ state, onClose }: Props) {
           player.configure({
             streaming: { bufferingGoal: 30, rebufferingGoal: 2 },
           });
+          if (state.drm) {
+            const { servers, headers } = state.drm;
+            player.configure({ drm: { servers } });
+            // License requests need the headers from X-Kodi-Drm-Configs
+            // (e.g. CID). The request is raw-challenge POST = Shaka default.
+            player.getNetworkingEngine().registerRequestFilter(
+              (type: number, request: any) => {
+                if (type !== shaka.net.NetworkingEngine.RequestType.LICENSE) return;
+                const ks = Object.keys(servers).find((k) => servers[k] === request.uris[0]);
+                Object.assign(request.headers, ks ? headers[ks] : {});
+              }
+            );
+          }
           playerRef.current = player; // instance, not namespace
           await player.load(state.url);
           if (!cancelled) {
@@ -150,6 +168,17 @@ export function FloatingPlayer({ state, onClose }: Props) {
           }
         } catch (e) {
           console.error('Shaka load error', e);
+          // Category 6 = DRM. Falling back to <video src> cannot help there.
+          if ((e as any)?.category === 6) {
+            if (!cancelled) {
+              setDrmError(
+                state.drm
+                  ? `DRM-Fehler (${(e as any).code}): Lizenz/Widevine nicht verfügbar`
+                  : 'Stream ist verschlüsselt, aber der Backend-Header X-Kodi-Drm-Configs ist im Browser nicht lesbar (Access-Control-Expose-Headers prüfen)'
+              );
+            }
+            return;
+          }
           if (!cancelled) {
             // Shaka could not load it (unsupported browser, bad manifest):
             // fall back to native <video> — Safari still plays HLS.
@@ -226,6 +255,11 @@ export function FloatingPlayer({ state, onClose }: Props) {
               <div className="player-info-title">{state.title}</div>
               {state.subtitle && (
                 <div className="player-info-subtitle">{state.subtitle}</div>
+              )}
+              {drmError && (
+                <div className="player-info-subtitle" role="alert">
+                  {drmError}
+                </div>
               )}
             </div>
           </div>

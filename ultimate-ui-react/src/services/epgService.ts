@@ -11,6 +11,7 @@ import {
 } from '@/lib/time';
 import { programKey } from '@/lib/programKey';
 import { normalizeCatchup } from '@/lib/catchup';
+import { DRM_HEADER, parseDrmHeader, type DrmInfo } from '@/lib/drm';
 
 export interface EPGServiceConfig {
   timezone: string;
@@ -25,6 +26,8 @@ export const EPG_SERVICE_DEFAULTS: EPGServiceConfig = {
   catchupMaxHours: 168,
   ultimateBackendPublicUrl: '',
 };
+
+const MANIFEST_TTL_MS = 5 * 60 * 1000;
 
 export class EPGService {
   cache = new ProgramCache();
@@ -286,8 +289,12 @@ export class EPGService {
     if (!base) return { manifest: null, error: 'no-backend-url' };
     if (!channel?.provider) return { manifest: null, error: 'no-provider' };
 
+    // License tokens inside the DRM header expire, so the cached manifest
+    // is only trusted for a few minutes.
     const cached = this.cache.getManifest(channel.provider, channel.id);
-    if (cached) return { manifest: cached };
+    if (cached && Date.now() - (cached.__fetched_at || 0) < MANIFEST_TTL_MS) {
+      return { manifest: cached };
+    }
 
     const url = `${base.replace(/\/+$/, '')}/api/providers/${encodeURIComponent(
       channel.provider
@@ -299,6 +306,10 @@ export class EPGService {
         return { manifest: null, error: `http-${resp.status}` };
       }
       const manifest = await resp.json();
+      // DRM-protected streams carry their license config in a response
+      // header; unencrypted ones do not. Keep the raw value with the manifest.
+      manifest.__drm_header = resp.headers.get(DRM_HEADER);
+      manifest.__fetched_at = Date.now();
       this.cache.setManifest(channel.provider, channel.id, manifest);
       return { manifest };
     } catch (e) {
@@ -328,6 +339,15 @@ export class EPGService {
       manifest?.ts_stream_url ||
       null;
     return { url, error: url ? undefined : error || 'no-stream' };
+  }
+
+  /**
+   * DRM config for a channel's stream, or null when it is unencrypted.
+   * Throws (German message) if the header exists but cannot be used.
+   */
+  async getDrmInfo(channel: Channel): Promise<DrmInfo | null> {
+    const { manifest } = await this.loadManifest(channel);
+    return parseDrmHeader(manifest?.__drm_header);
   }
 
   /** Short German explanation for a resolveLiveStreamUrl() error code. */

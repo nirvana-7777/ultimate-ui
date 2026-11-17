@@ -185,8 +185,8 @@ const ChannelRow = memo(function ChannelRow({
         <button
           className="epg-live-btn"
           onClick={() => onPlayLive(channel)}
-          title="Live ansehen"
-          aria-label={`${channel.display_name} live ansehen`}
+          title="Play"
+          aria-label={`${channel.display_name} abspielen`}
         >
           ▶
         </button>

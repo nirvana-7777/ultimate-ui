@@ -12,6 +12,19 @@ export function usePlayback(service: EPGService) {
 
   const closePlayer = useCallback(() => setPlayer(null), []);
 
+  /** DRM config of the channel's stream (null = unencrypted). A broken header is toasted, never silent. */
+  const loadDrm = useCallback(
+    async (channel: Channel) => {
+      try {
+        return { drm: await service.getDrmInfo(channel), ok: true };
+      } catch (e) {
+        showToast((e as Error).message, 'error');
+        return { drm: null, ok: false };
+      }
+    },
+    [service, showToast]
+  );
+
   const playChannel = useCallback(
     async (channel: Channel) => {
       const { url, error } = await service.resolveLiveStreamUrl(channel);
@@ -19,9 +32,11 @@ export function usePlayback(service: EPGService) {
         showToast(service.describeLiveError(error), 'warning');
         return;
       }
-      setPlayer({ url, title: channel.display_name, subtitle: 'Live Stream' });
+      const { drm, ok } = await loadDrm(channel);
+      if (!ok) return;
+      setPlayer({ url, title: channel.display_name, subtitle: 'Live Stream', drm });
     },
-    [service, showToast]
+    [service, showToast, loadDrm]
   );
 
   const playProgram = useCallback(
@@ -37,9 +52,11 @@ export function usePlayback(service: EPGService) {
         showToast(service.describeLiveError(error), 'warning');
         return;
       }
-      setPlayer({ url, title: program.title, subtitle: program.subtitle });
+      const { drm, ok } = await loadDrm(channel);
+      if (!ok) return;
+      setPlayer({ url, title: program.title, subtitle: program.subtitle, drm });
     },
-    [service, showToast]
+    [service, showToast, loadDrm]
   );
 
   const playCatchup = useCallback(
@@ -72,10 +89,13 @@ export function usePlayback(service: EPGService) {
           showToast(describeCatchupError(errText), 'warning');
           return;
         }
+        const { drm, ok } = await loadDrm(channel);
+        if (!ok) return;
         setPlayer({
           url,
           title: program.title,
           subtitle: `Catchup · ${program.start_time_local}`,
+          drm,
         });
       } catch {
         showToast(
@@ -86,7 +106,7 @@ export function usePlayback(service: EPGService) {
         clearTimeout(timer);
       }
     },
-    [service, showToast]
+    [service, showToast, loadDrm]
   );
 
   const download = useCallback(

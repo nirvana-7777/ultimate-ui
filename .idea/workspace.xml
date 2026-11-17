@@ -4,10 +4,7 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="26a67a20-b618-41a8-9b0d-40ca26281999" name="Changes" comment="autoplay">
-      <change beforePath="$PROJECT_DIR$/ultimate-ui-react/src/lib/liveDebug.ts" beforeDir="false" afterPath="$PROJECT_DIR$/ultimate-ui-react/src/lib/liveDebug.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ultimate-ui-react/src/main.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/ultimate-ui-react/src/main.tsx" afterDir="false" />
-    </list>
+    <list default="true" id="26a67a20-b618-41a8-9b0d-40ca26281999" name="Changes" comment="autoplay" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -80,22 +77,6 @@
       <workItem from="1768399893477" duration="2236000" />
       <workItem from="1768403116851" duration="13560000" />
       <workItem from="1768480467536" duration="685000" />
-    </task>
-    <task id="LOCAL-00134" summary="Stricter Linting">
-      <option name="closed" value="true" />
-      <created>1768465688281</created>
-      <option name="number" value="00134" />
-      <option name="presentableId" value="LOCAL-00134" />
-      <option name="project" value="LOCAL" />
-      <updated>1768465688281</updated>
-    </task>
-    <task id="LOCAL-00135" summary="Stricter Linting">
-      <option name="closed" value="true" />
-      <created>1768466023676</created>
-      <option name="number" value="00135" />
-      <option name="presentableId" value="LOCAL-00135" />
-      <option name="project" value="LOCAL" />
-      <updated>1768466023676</updated>
     </task>
     <task id="LOCAL-00136" summary="Stricter Linting">
       <option name="closed" value="true" />
@@ -473,7 +454,23 @@
       <option name="project" value="LOCAL" />
       <updated>1794866714854</updated>
     </task>
-    <option name="localTasksCounter" value="183" />
+    <task id="LOCAL-00183" summary="autoplay">
+      <option name="closed" value="true" />
+      <created>1794867155941</created>
+      <option name="number" value="00183" />
+      <option name="presentableId" value="LOCAL-00183" />
+      <option name="project" value="LOCAL" />
+      <updated>1794867155941</updated>
+    </task>
+    <task id="LOCAL-00184" summary="autoplay">
+      <option name="closed" value="true" />
+      <created>1794867679380</created>
+      <option name="number" value="00184" />
+      <option name="presentableId" value="LOCAL-00184" />
+      <option name="project" value="LOCAL" />
+      <updated>1794867679380</updated>
+    </task>
+    <option name="localTasksCounter" value="185" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
