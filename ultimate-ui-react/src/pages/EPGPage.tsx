@@ -24,14 +24,16 @@ export function EPGPage() {
       new EPGService({
         timezone: cfg.ui.timezone,
         catchupMaxHours: cfg.catchup.max_hours,
-        // Live playback falls back to the backend URL when no separate public
-        // URL is set (catchup replay still requires public_url, see below).
+        // Playback (live and catchup) falls back to the backend URL when no
+        // separate public URL is set.
         ultimateBackendPublicUrl: cfg.ultimate_backend.public_url || cfg.ultimate_backend.url,
       }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     []
   );
-  const publicUrlConfigured = !!cfg.ultimate_backend.public_url;
+  // Same fallback as above: catchup Play is offered whenever the browser has a
+  // backend URL to try (public_url, else the normal url).
+  const publicUrlConfigured = !!(cfg.ultimate_backend.public_url || cfg.ultimate_backend.url);
 
   const { provider, channel: channelParam, selectProvider, selectChannel } = useEpgSelection();
   const providers = useProviders(service);

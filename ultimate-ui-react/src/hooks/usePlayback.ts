@@ -12,14 +12,18 @@ export function usePlayback(service: EPGService) {
 
   const closePlayer = useCallback(() => setPlayer(null), []);
 
-  /** DRM config of the channel's stream (null = unencrypted). A broken header is toasted, never silent. */
+  /**
+   * DRM config of the channel's stream (null = unencrypted). A broken header
+   * is toasted but never blocks playback: clear streams must keep working,
+   * and an encrypted one then fails visibly in the player.
+   */
   const loadDrm = useCallback(
     async (channel: Channel) => {
       try {
         return { drm: await service.getDrmInfo(channel), ok: true };
       } catch (e) {
-        showToast((e as Error).message, 'error');
-        return { drm: null, ok: false };
+        showToast(`${(e as Error).message} - Wiedergabe ohne DRM`, 'warning');
+        return { drm: null, ok: true };
       }
     },
     [service, showToast]

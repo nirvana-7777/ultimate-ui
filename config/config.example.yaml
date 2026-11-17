@@ -6,8 +6,9 @@ ui:
   theme: light
   timezone: Europe/Berlin
 ultimate_backend:
-  # OPTIONAL: browser-reachable origin (with CORS for this UI), only for in-browser
-  # Replay. Catchup DOWNLOAD works without it (Flask talks to `url` server-side).
+  # OPTIONAL: browser-reachable origin (with CORS for this UI) for in-browser
+  # playback. Empty = `url` is used. Set it only if `url` is an internal name the
+  # browser cannot reach. Catchup DOWNLOAD never needs it (Flask uses `url`).
   public_url: ""
   timeout: 20
   url: http://json-ultimate:3000

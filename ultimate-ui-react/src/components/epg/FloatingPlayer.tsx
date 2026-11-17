@@ -173,8 +173,8 @@ export function FloatingPlayer({ state, onClose }: Props) {
             if (!cancelled) {
               setDrmError(
                 state.drm
-                  ? `DRM-Fehler (${(e as any).code}): Lizenz/Widevine nicht verfügbar`
-                  : 'Stream ist verschlüsselt, aber der Backend-Header X-Kodi-Drm-Configs ist im Browser nicht lesbar (Access-Control-Expose-Headers prüfen)'
+                  ? `DRM-Fehler ${(e as any).code}: Widevine-Lizenz konnte nicht geholt werden`
+                  : `Shaka-Fehler ${(e as any).code}: Manifest meldet Verschlüsselung, das Backend lieferte aber keine DRM-Config`
               );
             }
             return;

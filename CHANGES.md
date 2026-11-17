@@ -1,3 +1,12 @@
+# 2.3.4 - DRM robustness, catchup Play gate
+
+## Changed
+- Catchup **Play** is shown whenever the browser has a backend URL: `public_url`, else `url`
+  (same fallback live playback already used). Before, it was hidden unless `public_url` was set.
+- A DRM header that is empty (`{}`), undecodable or without a usable license server no longer blocks
+  playback: a warning is shown and the stream is played without DRM.
+- Player error for category-6 (DRM) errors shows the Shaka error code and no longer guesses the cause.
+
 # 2.3.3 - Play / Download buttons, DRM playback
 
 ## Changed

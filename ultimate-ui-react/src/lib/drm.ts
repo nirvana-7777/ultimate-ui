@@ -38,6 +38,8 @@ export function parseDrmHeader(value: string | null | undefined): DrmInfo | null
   } catch (e) {
     throw new Error(`${DRM_HEADER} ist nicht dekodierbar`);
   }
+  // An empty config ({}) means "no DRM", same as no header at all.
+  if (!cfg || typeof cfg !== 'object' || Object.keys(cfg).length === 0) return null;
   const servers: DrmInfo['servers'] = {};
   const headers: DrmInfo['headers'] = {};
 

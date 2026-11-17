@@ -47,7 +47,7 @@ over `/app` – that hides the built SPA.
 | `ULTIMATE_UI_CONFIG` | path of the YAML file (default `config/config.yaml`) |
 | `WEBEPG_URL`, `WEBEPG_TIMEOUT` | WebEPG base URL (no `/api/v1`), timeout in s |
 | `ULTIMATE_BACKEND_URL`, `ULTIMATE_BACKEND_TIMEOUT` | internal Ultimate Backend URL (used by Flask) |
-| `ULTIMATE_BACKEND_PUBLIC_URL` | optional browser-reachable origin (needs CORS) for in-browser catchup replay; empty = replay hidden, **downloads still work** |
+| `ULTIMATE_BACKEND_PUBLIC_URL` | optional browser-reachable origin (needs CORS) used for in-browser playback; empty = `ULTIMATE_BACKEND_URL` is used (set this only if that URL is not reachable from the browser) |
 | `CATCHUP_MAX_HOURS`, `UI_THEME`, `UI_REFRESH_INTERVAL`, `UI_TIMEZONE` | see Config page |
 | `LOG_LEVEL` | `INFO` (default) |
 
