@@ -39,7 +39,7 @@ jobs:
       # delimiter and pasted it into a shell script and a JSON string; a commit subject
       # containing quotes, $(...) or EOF could break out of both.
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           name: Ultimate UI ${{ steps.get_version.outputs.VERSION }}
           body: |
