@@ -103,7 +103,7 @@ jobs:
             htmlcov/
 
       - name: Upload coverage reports
-        uses: codecov/codecov-action@v5   # v3 runs on a runner GitHub no longer supports
+        uses: codecov/codecov-action@v7   # v3 runs on a runner GitHub no longer supports
         if: matrix.python-version == '3.11'
         with:
           files: ./coverage.xml
