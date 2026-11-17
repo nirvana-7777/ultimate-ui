@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'motion/react';
 import type { DrmInfo } from '@/lib/drm';
+import { useToast } from '@/lib/toast';
 
 export interface PlayerState {
   url: string;
@@ -49,6 +50,9 @@ export function FloatingPlayer({ state, onClose }: Props) {
   const [minimized, setMinimized] = useState(false);
   const [shakaReady, setShakaReady] = useState(false);
   const [drmError, setDrmError] = useState<string | null>(null);
+  const { showToast } = useToast();
+  const toastRef = useRef(showToast);
+  toastRef.current = showToast;
   const reduced = useReducedMotion();
 
   // Load shaka lazily the first time the player mounts. Keeps the main
@@ -108,6 +112,13 @@ export function FloatingPlayer({ state, onClose }: Props) {
       }
     };
 
+    // Shown in the player AND as a toast: the player box alone is easy to miss.
+    const reportDrmError = (msg: string) => {
+      if (cancelled) return;
+      setDrmError(msg);
+      toastRef.current(msg, 'error');
+    };
+
     const init = async () => {
       // Wait out any in-flight destroy from the previous play so the
       // video element is fully released before a new Player attaches.
@@ -116,11 +127,23 @@ export function FloatingPlayer({ state, onClose }: Props) {
 
       if (shaka?.Player && isAdaptiveUrl(state.url)) {
         try {
+          // Browsers expose EME (Widevine) only on HTTPS or localhost.
+          if (state.drm && !window.isSecureContext) {
+            reportDrmError(
+              'DRM-Streams brauchen HTTPS oder localhost - diese Seite wird über unsicheres HTTP geladen'
+            );
+            return;
+          }
           const player = new shaka.Player(video);
           player.configure({
             streaming: { bufferingGoal: 30, rebufferingGoal: 2 },
           });
-          if (state.drm) {
+          if (!state.drm) {
+            // The backend says this stream is unencrypted (no DRM header):
+            // treat it as clear even if the MPD carries ContentProtection
+            // tags, so Shaka never needs EME for it.
+            player.configure({ manifest: { dash: { ignoreDrmInfo: true } } });
+          } else {
             const { servers, headers } = state.drm;
             player.configure({ drm: { servers } });
             // License requests need the headers from X-Kodi-Drm-Configs
@@ -170,13 +193,16 @@ export function FloatingPlayer({ state, onClose }: Props) {
           console.error('Shaka load error', e);
           // Category 6 = DRM. Falling back to <video src> cannot help there.
           if ((e as any)?.category === 6) {
-            if (!cancelled) {
-              setDrmError(
-                state.drm
-                  ? `DRM-Fehler ${(e as any).code}: Widevine-Lizenz konnte nicht geholt werden`
-                  : `Shaka-Fehler ${(e as any).code}: Manifest meldet Verschlüsselung, das Backend lieferte aber keine DRM-Config`
-              );
-            }
+            const code = (e as any).code;
+            reportDrmError(
+              code === 6020
+                ? window.isSecureContext
+                  ? 'Dieser Browser bietet keine DRM-Unterstützung (EME/Widevine nicht verfügbar, Fehler 6020)'
+                  : 'DRM-Streams brauchen HTTPS oder localhost - diese Seite wird über unsicheres HTTP geladen (Fehler 6020)'
+                : state.drm
+                  ? `DRM-Fehler ${code}: Widevine-Lizenz konnte nicht geholt werden`
+                  : `DRM-Fehler ${code}`
+            );
             return;
           }
           if (!cancelled) {
