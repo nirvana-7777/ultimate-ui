@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<suppressions xmlns="https://jeremylong.github.io/DependencyCheck/dependency-suppression.1.3.xsd">
+  <!--
+    picomatch ReDoS on single-branch repeated extglobs (e.g. "+(*)").
+    Affects every released version (<= 4.0.7, which is the newest on npm), so no
+    upgrade can clear it. picomatch is a dev-only transitive dependency of the
+    frontend build (vite -> tinyglobby/fdir); it is not part of the shipped bundle
+    and only matches this repo's own glob patterns, never user input.
+    Expires on purpose: re-check for a fixed release then.
+  -->
+  <suppress until="2026-12-15Z">
+    <notes><![CDATA[picomatch <= 4.0.7: no patched release, dev-only build tooling.]]></notes>
+    <packageUrl regex="true">^pkg:npm/picomatch@4\.0\.7$</packageUrl>
+    <vulnerabilityName>GHSA-fc5q-39xc-vjpf</vulnerabilityName>
+    <cve>CVE-2026-112366</cve>
+  </suppress>
+</suppressions>
