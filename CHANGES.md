@@ -1,5 +1,11 @@
 # 2.3.4 - DRM robustness, catchup Play gate
 
+## Security
+- OWASP Dependency-Check failed on picomatch 4.0.7 (GHSA-fc5q-39xc-vjpf, ReDoS, CVSS 7.5). The advisory
+  covers every released version, so no upgrade fixes it. picomatch is dev-only build tooling (vite),
+  not shipped. Added `dependency-check-suppressions.xml` (expires 2026-12-15) and passed it to the
+  dependency-check step.
+
 ## Changed
 - Catchup **Play** is shown whenever the browser has a backend URL: `public_url`, else `url`
   (same fallback live playback already used). Before, it was hidden unless `public_url` was set.

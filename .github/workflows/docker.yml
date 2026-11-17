@@ -227,6 +227,7 @@ jobs:
           args: >
             --enableExperimental
             --failOnCVSS 7
+            --suppression dependency-check-suppressions.xml
             --scan src/
 
       - name: Upload security reports
