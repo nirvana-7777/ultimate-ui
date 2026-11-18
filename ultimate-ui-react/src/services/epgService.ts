@@ -11,6 +11,7 @@ import {
 } from '@/lib/time';
 import { programKey } from '@/lib/programKey';
 import { normalizeCatchup } from '@/lib/catchup';
+import { formatEpisode, normalizeProgramFields } from '@/lib/programMeta';
 import { DRM_HEADER, parseDrmHeader, type DrmInfo } from '@/lib/drm';
 
 export interface EPGServiceConfig {
@@ -122,7 +123,7 @@ export class EPGService {
 
   enrichProgram(program: Program, channelId: string | number): void {
     program.channel_id = channelId;
-    program.image_url = program.icon_url;
+    normalizeProgramFields(program);
     program.stream_url = program.stream;
     const start = parseProgramTime(program.start_time);
     const end = parseProgramTime(program.end_time);
@@ -135,7 +136,10 @@ export class EPGService {
     program.end_time_local = formatDateTime(program.end_time, 'time', this.config.timezone);
     program.date_local = formatDateTime(program.start_time, 'date', this.config.timezone);
 
-    program.episode_formatted = this.parseXmltvNsEpisode((program as any).episode_num);
+    program.episode_formatted = formatEpisode(
+      program.season_num ?? program.season_number,
+      program.episode_num ?? program.episode_number
+    );
     this.updateLiveState(program);
   }
 
@@ -382,19 +386,5 @@ export class EPGService {
     return template
       .replace('{start_time}', String(Math.floor(start.getTime() / 1000)))
       .replace('{end_time}', String(Math.floor(end.getTime() / 1000)));
-  }
-
-  private parseXmltvNsEpisode(episodeNum: any): string | null {
-    if (!episodeNum || typeof episodeNum !== 'string') return null;
-    const s = episodeNum.trim().replace(/\.$/, '');
-    const parts = s.split('.');
-    if (parts.length < 2 || parts[0] === '' || parts[1] === '') return null;
-    const season = parseInt(parts[0], 10);
-    const episode = parseInt(parts[1], 10);
-    if (isNaN(season) || isNaN(episode) || season < 0 || episode < 0) return null;
-    const displaySeason = season + 1;
-    const displayEpisode = episode + 1;
-    if (season === 0) return `S01E${String(displayEpisode).padStart(2, '0')}`;
-    return `S${String(displaySeason).padStart(2, '0')}E${String(displayEpisode).padStart(2, '0')}`;
   }
 }

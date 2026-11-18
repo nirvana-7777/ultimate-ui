@@ -82,7 +82,8 @@
   color: var(--text-secondary);
 }
 
-.program-category, .program-duration, .program-episode, .program-directors, .program-actors {
+.program-category, .program-genre, .program-year, .program-country,
+.program-duration, .program-episode, .program-directors, .program-actors {
   background-color: var(--bg-tertiary);
   padding: 4px 10px;
   border-radius: 12px;

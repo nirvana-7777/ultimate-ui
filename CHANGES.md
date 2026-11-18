@@ -1,3 +1,29 @@
+# 2.3.7 - Show all EPG attributes
+
+## Changed
+- Program details show every attribute the EPG server returns: subtitle / `episode_name`, description / `plot`,
+  category, DVB genre (`genre` / `genre_dvb`, as German label), year, country, duration, season + episode
+  (`season_num` / `episode_num` as plain numbers or XMLTV-NS, `season_number` / `episode_number`), rating (FSK),
+  Regie, Besetzung, image (`icon_url` / `icon` / `thumbnail_url`) and `ultimate_epg_id`.
+- Empty values (`""`, `0`, `null`, empty lists) are not rendered at all; the "Keine Beschreibung verfügbar."
+  placeholder is gone.
+- Directors/actors may arrive as a string or a list.
+
+# 2.3.6 - DRM config parsing
+
+## Fixed
+- A `X-Kodi-Drm-Configs` header without any license server (placeholder config on unencrypted
+  streams) is treated as "no DRM" instead of showing "keinen nutzbaren Lizenzserver".
+
+# 2.3.5 - DRM error handling
+
+## Changed
+- DRM errors are shown in the player and as a toast. Shaka 6020 (MISSING_EME_SUPPORT) is explained:
+  Widevine/EME needs HTTPS or localhost; DRM streams on an insecure page stop with a clear message.
+- Streams without a DRM header are played as clear streams (`manifest.dash.ignoreDrmInfo`), even if the
+  MPD carries ContentProtection tags.
+- Dependency-Check suppression is passed with an absolute path (`/github/workspace/...`).
+
 # 2.3.4 - DRM robustness, catchup Play gate
 
 ## Security

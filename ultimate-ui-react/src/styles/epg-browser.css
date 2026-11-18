@@ -380,7 +380,7 @@
   font-size: var(--text-xs);
 }
 .tl-credits dt { color: var(--text-muted); }
-.tl-credits dd { color: var(--text-secondary); }
+.tl-credits dd { color: var(--text-secondary); overflow-wrap: anywhere; }
 
 .tl-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
 .tl-actions .btn-play,

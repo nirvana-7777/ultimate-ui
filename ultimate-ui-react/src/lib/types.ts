@@ -33,10 +33,26 @@ export interface Program {
   category?: string;
   rating?: string;
   episode_formatted?: string | null;
-  directors?: string;
-  actors?: string;
+  directors?: string | string[];
+  actors?: string | string[];
   image_url?: string;
   icon_url?: string;
+  thumbnail_url?: string;
+  /** Raw DVB content code (0x10 ... 0xE0), 0/undefined = unknown. */
+  genre?: number | string;
+  genre_dvb?: number | string;
+  /** Plain 1-based numbers, or an XMLTV-NS string ("0.4.") in episode_num. */
+  season_num?: number | string | null;
+  episode_num?: number | string | null;
+  year?: number | string;
+  country?: string;
+  ultimate_epg_id?: string | number;
+  /** Aliases used by /api/v1/providers/<p>/channels/<c>/epg. */
+  plot?: string;
+  episode_name?: string;
+  episode_number?: number | string;
+  season_number?: number | string;
+  icon?: string;
   stream_url?: string;
   stream?: string;
   is_live?: boolean;

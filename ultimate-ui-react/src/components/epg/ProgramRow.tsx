@@ -1,6 +1,7 @@
-import { memo, useState } from 'react';
+import { Fragment, memo, useState } from 'react';
 import type { Channel, Program } from '@/lib/types';
 import { FskBadge } from '@/components/ui/FskBadge';
+import { genreLabel } from '@/lib/programMeta';
 import { ProgressBar } from './ProgressBar';
 
 export interface ProgramActions {
@@ -105,6 +106,21 @@ function ProgramDetail({
   const [imgFailed, setImgFailed] = useState(false);
   const image = program.image_url || program.icon_url;
 
+  // Only fields the server actually filled are rendered.
+  const genre = genreLabel(program.genre_dvb) || genreLabel(program.genre);
+  const meta: { cls: string; text: string }[] = [];
+  if (program.category) meta.push({ cls: 'program-category', text: program.category });
+  if (genre && genre !== program.category) meta.push({ cls: 'program-genre', text: genre });
+  if (program.year) meta.push({ cls: 'program-year', text: String(program.year) });
+  if (program.country) meta.push({ cls: 'program-country', text: program.country });
+  if (program.duration) meta.push({ cls: 'program-duration', text: `${program.duration} min` });
+  if (program.episode_formatted)
+    meta.push({ cls: 'program-episode', text: program.episode_formatted });
+  const credits: [string, string][] = [];
+  if (program.directors) credits.push(['Regie', String(program.directors)]);
+  if (program.actors) credits.push(['Besetzung', String(program.actors)]);
+  if (program.ultimate_epg_id) credits.push(['EPG-ID', String(program.ultimate_epg_id)]);
+
   return (
     <div className="tl-detail">
       <div className="tl-detail-body">
@@ -119,33 +135,25 @@ function ProgramDetail({
         )}
         <div className="tl-detail-text">
           {program.subtitle && <div className="tl-detail-subtitle">{program.subtitle}</div>}
-          <div className="tl-meta">
-            {program.category && <span className="program-category">{program.category}</span>}
-            {!!program.duration && <span className="program-duration">{program.duration} min</span>}
-            {program.episode_formatted && (
-              <span className="program-episode">{program.episode_formatted}</span>
-            )}
-            {program.rating && <FskBadge rating={program.rating} />}
-          </div>
-          {program.description ? (
-            <p className="tl-description">{program.description}</p>
-          ) : (
-            <p className="tl-description muted">Keine Beschreibung verfügbar.</p>
+          {meta.length > 0 && (
+            <div className="tl-meta">
+              {meta.map((m) => (
+                <span key={m.cls} className={m.cls}>
+                  {m.text}
+                </span>
+              ))}
+              {program.rating && <FskBadge rating={program.rating} />}
+            </div>
           )}
-          {(program.directors || program.actors) && (
+          {program.description && <p className="tl-description">{program.description}</p>}
+          {credits.length > 0 && (
             <dl className="tl-credits">
-              {program.directors && (
-                <>
-                  <dt>Regie</dt>
-                  <dd>{program.directors}</dd>
-                </>
-              )}
-              {program.actors && (
-                <>
-                  <dt>Besetzung</dt>
-                  <dd>{program.actors}</dd>
-                </>
-              )}
+              {credits.map(([label, value]) => (
+                <Fragment key={label}>
+                  <dt>{label}</dt>
+                  <dd>{value}</dd>
+                </Fragment>
+              ))}
             </dl>
           )}
         </div>

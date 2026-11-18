@@ -4,7 +4,15 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="26a67a20-b618-41a8-9b0d-40ca26281999" name="Changes" comment="play drm streams" />
+    <list default="true" id="26a67a20-b618-41a8-9b0d-40ca26281999" name="Changes" comment="play drm streams">
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/CHANGES.md" beforeDir="false" afterPath="$PROJECT_DIR$/CHANGES.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/ultimate-ui-react/src/components/epg/ProgramRow.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/ultimate-ui-react/src/components/epg/ProgramRow.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/ultimate-ui-react/src/lib/types.ts" beforeDir="false" afterPath="$PROJECT_DIR$/ultimate-ui-react/src/lib/types.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/ultimate-ui-react/src/services/epgService.ts" beforeDir="false" afterPath="$PROJECT_DIR$/ultimate-ui-react/src/services/epgService.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/ultimate-ui-react/src/styles/epg-browser.css" beforeDir="false" afterPath="$PROJECT_DIR$/ultimate-ui-react/src/styles/epg-browser.css" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/ultimate-ui-react/src/styles/epg-specific.css" beforeDir="false" afterPath="$PROJECT_DIR$/ultimate-ui-react/src/styles/epg-specific.css" afterDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -77,14 +85,6 @@
       <workItem from="1768399893477" duration="2236000" />
       <workItem from="1768403116851" duration="13560000" />
       <workItem from="1768480467536" duration="685000" />
-    </task>
-    <task id="LOCAL-00142" summary="Add download">
-      <option name="closed" value="true" />
-      <created>1794473233369</created>
-      <option name="number" value="00142" />
-      <option name="presentableId" value="LOCAL-00142" />
-      <option name="project" value="LOCAL" />
-      <updated>1794473233369</updated>
     </task>
     <task id="LOCAL-00143" summary="Add download">
       <option name="closed" value="true" />
@@ -470,7 +470,15 @@
       <option name="project" value="LOCAL" />
       <updated>1794950116642</updated>
     </task>
-    <option name="localTasksCounter" value="191" />
+    <task id="LOCAL-00191" summary="play drm streams">
+      <option name="closed" value="true" />
+      <created>1794989337114</created>
+      <option name="number" value="00191" />
+      <option name="presentableId" value="LOCAL-00191" />
+      <option name="project" value="LOCAL" />
+      <updated>1794989337114</updated>
+    </task>
+    <option name="localTasksCounter" value="192" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
