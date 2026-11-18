@@ -42,10 +42,12 @@ export function parseDrmHeader(value: string | null | undefined): DrmInfo | null
   if (!cfg || typeof cfg !== 'object' || Object.keys(cfg).length === 0) return null;
   const servers: DrmInfo['servers'] = {};
   const headers: DrmInfo['headers'] = {};
+  let sawLicenseServer = false;
 
   for (const [keySystem, entry] of Object.entries<any>(cfg || {})) {
     const lic = entry?.license;
     if (!lic?.server_url) continue;
+    sawLicenseServer = true;
     if (lic.req_data) {
       let reqData = '';
       try {
@@ -69,6 +71,13 @@ export function parseDrmHeader(value: string | null | undefined): DrmInfo | null
   }
 
   if (Object.keys(servers).length === 0) {
+    // No entry names a license server at all -> nothing to license, i.e. a
+    // clear stream (the backend may send a placeholder config for those).
+    if (!sawLicenseServer) {
+      console.debug('[drm] config without license server, treating as unencrypted', cfg);
+      return null;
+    }
+    // A license server exists but its request format is unsupported: real problem.
     throw new Error(`${DRM_HEADER} enthält keinen nutzbaren Lizenzserver`);
   }
   return { servers, headers };
