@@ -45,6 +45,11 @@ export interface Program {
   season_num?: number | string | null;
   episode_num?: number | string | null;
   year?: number | string;
+  production_year?: number | string;
+  language?: string;
+  presenters?: string | string[];
+  producers?: string | string[];
+  writers?: string | string[];
   country?: string;
   ultimate_epg_id?: string | number;
   /** Aliases used by /api/v1/providers/<p>/channels/<c>/epg. */

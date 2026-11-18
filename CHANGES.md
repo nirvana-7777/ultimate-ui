@@ -4,7 +4,8 @@
 - Program details show every attribute the EPG server returns: subtitle / `episode_name`, description / `plot`,
   category, DVB genre (`genre` / `genre_dvb`, as German label), year, country, duration, season + episode
   (`season_num` / `episode_num` as plain numbers or XMLTV-NS, `season_number` / `episode_number`), rating (FSK),
-  Regie, Besetzung, image (`icon_url` / `icon` / `thumbnail_url`) and `ultimate_epg_id`.
+  Regie, Moderation (`presenters`), Besetzung, Drehbuch (`writers`), Produktion (`producers`), Sprache (`language`),
+  image (`icon_url` / `icon` / `thumbnail_url`) and `ultimate_epg_id`. The year is `year`, else `production_year`.
 - Empty values (`""`, `0`, `null`, empty lists) are not rendered at all; the "Keine Beschreibung verfügbar."
   placeholder is gone.
 - Directors/actors may arrive as a string or a list.

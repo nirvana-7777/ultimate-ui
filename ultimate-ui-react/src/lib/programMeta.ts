@@ -90,6 +90,10 @@ export function normalizeProgramFields(p: Program): void {
   p.directors = listText(p.directors) || undefined;
   p.actors = listText(p.actors) || undefined;
   // year 0 means "unknown" on the server side
-  p.year = positiveInt(p.year) ?? undefined;
+  p.year = positiveInt(p.year) ?? positiveInt(p.production_year) ?? undefined;
+  p.language = cleanText(p.language) || undefined;
+  p.presenters = listText(p.presenters) || undefined;
+  p.producers = listText(p.producers) || undefined;
+  p.writers = listText(p.writers) || undefined;
   p.ultimate_epg_id = cleanText(p.ultimate_epg_id) || undefined;
 }

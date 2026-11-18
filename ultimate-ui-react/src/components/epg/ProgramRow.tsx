@@ -118,7 +118,11 @@ function ProgramDetail({
     meta.push({ cls: 'program-episode', text: program.episode_formatted });
   const credits: [string, string][] = [];
   if (program.directors) credits.push(['Regie', String(program.directors)]);
+  if (program.presenters) credits.push(['Moderation', String(program.presenters)]);
   if (program.actors) credits.push(['Besetzung', String(program.actors)]);
+  if (program.writers) credits.push(['Drehbuch', String(program.writers)]);
+  if (program.producers) credits.push(['Produktion', String(program.producers)]);
+  if (program.language) credits.push(['Sprache', program.language.toUpperCase()]);
   if (program.ultimate_epg_id) credits.push(['EPG-ID', String(program.ultimate_epg_id)]);
 
   return (
