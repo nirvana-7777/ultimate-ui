@@ -14,6 +14,9 @@
 - Flask proxy `/api/vod/{status,movies,shows,shows/<id>/episodes,sync}` and `/api/test/vod-crawler`. Parameters
   are validated; upstream errors never leak hostnames.
 
+## Fixed
+- VOD page: two effects returned a value instead of nothing, which crashed the app with "i is not a function" when leaving the tab.
+
 ## Crawler side (optional)
 - `GET /api/library/movies` gets a `q` parameter (title search). Without it the search box only filters what is
   already loaded; the UI works either way.

@@ -74,8 +74,13 @@ export function VodPage() {
     return needle ? shows.items.filter((s) => s.title.toLowerCase().includes(needle)) : shows.items;
   }, [shows.items, q]);
 
-  useEffect(() => setShown(SHOW_CHUNK), [provider, q, tab]);
-  useEffect(() => scrollRef.current?.scrollTo({ top: 0 }), [provider, q, tab, includePriced]);
+  // Block bodies on purpose: an effect must return nothing or a cleanup function.
+  useEffect(() => {
+    setShown(SHOW_CHUNK);
+  }, [provider, q, tab]);
+  useEffect(() => {
+    scrollRef.current?.scrollTo({ top: 0 });
+  }, [provider, q, tab, includePriced]);
 
   const providerOptions = useMemo(() => {
     const set = new Set<string>(status?.providers ?? []);
