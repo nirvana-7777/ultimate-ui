@@ -16,6 +16,7 @@ SPA_ROUTES = ["/", "/config", "/providers", "/monitoring", "/mapping"]
 ALLOWED_CONFIG_SECTIONS = {
     "webepg",
     "ultimate_backend",
+    "vod_crawler",
     "ui",
     "player",
     "database",
