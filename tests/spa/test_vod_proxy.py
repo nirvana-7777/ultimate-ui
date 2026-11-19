@@ -62,7 +62,11 @@ def test_episodes_encode_show_id(client, requests_mock):
     )
     r = client.get("/api/vod/shows/a%3Fb/episodes?limit=1000")
     assert r.status_code == 200
-    assert m.last_request.qs == {"include_priced": ["false"], "limit": ["1000"], "offset": ["0"]}
+    assert m.last_request.qs == {
+        "include_priced": ["false"],
+        "limit": ["1000"],
+        "offset": ["0"],
+    }
 
 
 def test_sync_requires_csrf_header(client):
