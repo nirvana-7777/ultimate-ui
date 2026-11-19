@@ -73,6 +73,7 @@ export const api = {
 export interface BackendConfig {
   webepg: { url: string; timeout: number };
   ultimate_backend: { url: string; public_url: string; timeout: number };
+  vod_crawler: { url: string; timeout: number };
   ui: { theme: string; refresh_interval: number; timezone: string };
   player: {
     default_size: string;
@@ -90,6 +91,7 @@ export function getConfig(): BackendConfig {
     (window as any).__ULTIMATE_CONFIG__ ?? {
       webepg: { url: '', timeout: 10 },
       ultimate_backend: { url: '', public_url: '', timeout: 10 },
+      vod_crawler: { url: '', timeout: 20 },
       ui: { theme: 'dark', refresh_interval: 300, timezone: 'Europe/Berlin' },
       player: { default_size: 'medium', default_bitrate: 'auto' },
       database: { retention_days: 7 },

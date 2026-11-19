@@ -38,6 +38,8 @@ ENV_VARS: List[Tuple[str, str, Callable[[str, str], Any]]] = [
     ("ULTIMATE_BACKEND_URL", "ultimate_backend.url", lambda n, v: v),
     ("ULTIMATE_BACKEND_PUBLIC_URL", "ultimate_backend.public_url", lambda n, v: v),
     ("ULTIMATE_BACKEND_TIMEOUT", "ultimate_backend.timeout", _int_env),
+    ("VOD_CRAWLER_URL", "vod_crawler.url", lambda n, v: v),
+    ("VOD_CRAWLER_TIMEOUT", "vod_crawler.timeout", _int_env),
     ("CATCHUP_MAX_HOURS", "catchup.max_hours", _int_env),
     ("UI_THEME", "ui.theme", lambda n, v: v),
     ("UI_REFRESH_INTERVAL", "ui.refresh_interval", _int_env),
@@ -57,6 +59,9 @@ class Config:
             "public_url": "",
             "timeout": 10,
         },
+        # VOD crawler service (FastAPI, default port 7888). Only Flask talks to it;
+        # the browser goes through /api/vod/*.
+        "vod_crawler": {"url": "http://localhost:7888", "timeout": 20},
         "ui": {"theme": "dark", "refresh_interval": 300, "timezone": "Europe/Berlin"},
         "player": {
             "default_size": "medium",

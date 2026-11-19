@@ -42,7 +42,12 @@ from flask import (
 from werkzeug.exceptions import HTTPException
 
 from . import __version__
-from .api_client import UltimateBackendClient, UpstreamError, WebEPGClient
+from .api_client import (
+    UltimateBackendClient,
+    UpstreamError,
+    VodCrawlerClient,
+    WebEPGClient,
+)
 from .config import Config, ConfigError
 
 logging.basicConfig(
@@ -60,6 +65,7 @@ config = Config(config_path)
 _clients_lock = threading.Lock()
 _webepg_client: Optional[WebEPGClient] = None
 _ultimate_backend_client: Optional[UltimateBackendClient] = None
+_vod_crawler_client: Optional[VodCrawlerClient] = None
 
 
 def _get_config_value(key, default):
@@ -94,12 +100,25 @@ def get_ultimate_backend_client() -> UltimateBackendClient:
         return _ultimate_backend_client
 
 
+def get_vod_crawler_client() -> VodCrawlerClient:
+    """Get or create VOD crawler client with lazy initialization."""
+    global _vod_crawler_client
+    with _clients_lock:
+        if _vod_crawler_client is None:
+            _vod_crawler_client = VodCrawlerClient(
+                base_url=_get_config_value("vod_crawler.url", "http://localhost:7888"),
+                timeout=_get_config_value("vod_crawler.timeout", 20),
+            )
+        return _vod_crawler_client
+
+
 def update_clients():
     """Drop cached clients so the next request uses the new configuration."""
-    global _webepg_client, _ultimate_backend_client
+    global _webepg_client, _ultimate_backend_client, _vod_crawler_client
     with _clients_lock:
         _webepg_client = None
         _ultimate_backend_client = None
+        _vod_crawler_client = None
 
 
 app = Flask(__name__, template_folder="templates", static_folder="static")
@@ -134,6 +153,7 @@ def _err(message: str, http_status: int, **extra: Any):
 SPA_CONFIG_KEYS = {
     "webepg": ["url", "timeout"],
     "ultimate_backend": ["url", "public_url", "timeout"],
+    "vod_crawler": ["url", "timeout"],
     "ui": ["theme", "refresh_interval", "timezone"],
     "player": [
         "default_size",
@@ -464,6 +484,8 @@ _CONFIG_FIELDS = {
         lambda v, f: _check_http_url(v, f, allow_empty=True),
     ),
     "ultimate_backend_timeout": ("ultimate_backend.timeout", _int_in(1, 120)),
+    "vod_crawler_url": ("vod_crawler.url", lambda v, f: _check_http_url(v, f)),
+    "vod_crawler_timeout": ("vod_crawler.timeout", _int_in(1, 120)),
     "ui_theme": ("ui.theme", _choice("dark", "light", "auto")),
     "refresh_interval": ("ui.refresh_interval", _int_in(30, 86400)),
     "timezone": ("ui.timezone", _timezone),
@@ -517,6 +539,7 @@ def _env_override_warnings(submitted: Dict[str, Any]) -> list:
 @app.route("/providers", methods=["GET"])
 @app.route("/monitoring", methods=["GET"])
 @app.route("/mapping", methods=["GET"])
+@app.route("/vod", methods=["GET"])
 def spa_index():
     return render_template("spa.html")
 
@@ -811,6 +834,85 @@ def api_create_alias():
 
 
 # ---------------------------------------------------------------------------
+# VOD crawler proxy
+# ---------------------------------------------------------------------------
+# Read-only library browsing plus "start a sync". The browser never talks to the
+# crawler directly; query parameters are validated here and forwarded as a fixed
+# set, so nothing from the request can rewrite the upstream URL.
+_VOD_PAGE_MAX = 200
+_VOD_SEARCH_MAX = 100
+
+
+def _vod_provider_arg() -> Optional[str]:
+    provider = request.args.get("provider") or None
+    if provider is not None and not _IDENT_RE.match(provider):
+        raise ClientError("invalid provider identifier")
+    return provider
+
+
+def _vod_include_priced_arg() -> str:
+    raw = (request.args.get("include_priced") or "false").lower()
+    if raw not in ("true", "false"):
+        raise ClientError("include_priced must be true or false")
+    return raw
+
+
+@app.route("/api/vod/status")
+def api_vod_status():
+    return jsonify(get_vod_crawler_client().get_status())
+
+
+@app.route("/api/vod/movies")
+def api_vod_movies():
+    params: Dict[str, Any] = {
+        "include_priced": _vod_include_priced_arg(),
+        "limit": _int_arg("limit", 60, 1, _VOD_PAGE_MAX),
+        "offset": _int_arg("offset", 0, 0, 10_000_000),
+    }
+    provider = _vod_provider_arg()
+    if provider:
+        params["provider"] = provider
+    q = (request.args.get("q") or "").strip()
+    if len(q) > _VOD_SEARCH_MAX:
+        raise ClientError(f"q must be at most {_VOD_SEARCH_MAX} characters")
+    if q:
+        params["q"] = q
+    return jsonify(get_vod_crawler_client().get_movies(params))
+
+
+@app.route("/api/vod/shows")
+def api_vod_shows():
+    return jsonify(get_vod_crawler_client().get_shows(_vod_provider_arg()))
+
+
+@app.route("/api/vod/shows/<show_id>/episodes")
+def api_vod_show_episodes(show_id):
+    if not show_id.strip() or len(show_id) > 255:
+        raise ClientError("invalid show identifier")
+    params: Dict[str, Any] = {
+        "include_priced": _vod_include_priced_arg(),
+        "limit": _int_arg("limit", 100, 1, 1000),
+        "offset": _int_arg("offset", 0, 0, 10_000_000),
+    }
+    provider = _vod_provider_arg()
+    if provider:
+        params["provider"] = provider
+    return jsonify(get_vod_crawler_client().get_show_episodes(show_id, params))
+
+
+@app.route("/api/vod/sync", methods=["POST"])
+def api_vod_sync():
+    """Start a background sync (409 from the crawler = one is already running)."""
+    data = request.get_json(silent=True)
+    provider = None
+    if isinstance(data, dict) and data.get("provider"):
+        provider = data["provider"]
+        if not isinstance(provider, str) or not _IDENT_RE.match(provider):
+            raise ClientError("invalid provider identifier")
+    return jsonify(get_vod_crawler_client().trigger_sync(provider))
+
+
+# ---------------------------------------------------------------------------
 # Catchup download proxy
 # ---------------------------------------------------------------------------
 # The browser fetches catchup manifests directly from the Ultimate Backend
@@ -975,6 +1077,25 @@ def api_test_ultimate_backend():
         providers = providers.get("providers", [])
     count = len(providers) if isinstance(providers, list) else 0
     return jsonify({"success": True, "status": "online", "providers_count": count})
+
+
+@app.route("/api/test/vod-crawler")
+def api_test_vod_crawler():
+    """Test VOD crawler connection (used by the Config page)."""
+    try:
+        health = get_vod_crawler_client().get_health()
+    except UpstreamError as e:
+        logger.warning(f"VOD Crawler test: {e.detail}")
+        return _err(e.message, 503, status="offline")
+    return jsonify(
+        {
+            "success": True,
+            "status": "online",
+            # "degraded" = reachable, DB fine, but no recent successful crawl.
+            "health": health.get("status"),
+            "last_crawl": health.get("last_crawl"),
+        }
+    )
 
 
 if __name__ == "__main__":

@@ -48,12 +48,19 @@ export function ConfigPage() {
     text: 'Nicht getestet',
   });
 
+  const [vodStatus, setVodStatus] = useState<ConnStatus>({
+    state: 'idle',
+    text: 'Nicht getestet',
+  });
+
   const backendForm = useForm({
     defaultValues: {
       webepg_url: config.webepg.url,
       webepg_timeout: config.webepg.timeout,
       ultimate_backend_url: config.ultimate_backend.url,
       ultimate_backend_timeout: config.ultimate_backend.timeout,
+      vod_crawler_url: config.vod_crawler?.url ?? '',
+      vod_crawler_timeout: config.vod_crawler?.timeout ?? 20,
     },
   });
 
@@ -98,6 +105,8 @@ export function ConfigPage() {
         webepg_timeout: Number(b.webepg_timeout),
         ultimate_backend_url: b.ultimate_backend_url,
         ultimate_backend_timeout: Number(b.ultimate_backend_timeout),
+        vod_crawler_url: b.vod_crawler_url,
+        vod_crawler_timeout: Number(b.vod_crawler_timeout),
         ui_theme: u.ui_theme,
         timezone: u.timezone,
         refresh_interval: Number(u.refresh_interval),
@@ -175,6 +184,22 @@ export function ConfigPage() {
     } catch (e: any) {
       setUltimateStatus({ state: 'error', text: `Fehler: ${e.message}` });
       showToast(`Ultimate Fehler: ${e.message}`, 'error');
+    }
+  };
+
+  const testVod = async () => {
+    setVodStatus({ state: 'testing', text: 'Teste Verbindung...' });
+    try {
+      const data = await api.get<any>('/api/test/vod-crawler');
+      const text =
+        data.health === 'degraded'
+          ? 'Verbunden (noch kein aktueller Crawl)'
+          : 'Verbindung erfolgreich';
+      setVodStatus({ state: 'connected', text });
+      showToast(`VOD Crawler: ${text}`, data.health === 'degraded' ? 'warning' : 'success');
+    } catch (e: any) {
+      setVodStatus({ state: 'error', text: `Fehler: ${e.message}` });
+      showToast(`VOD Crawler Fehler: ${e.message}`, 'error');
     }
   };
 
@@ -261,6 +286,36 @@ export function ConfigPage() {
                 <div className={`connection-status ${connClass(ultimateStatus.state)}`}>
                   <span className="status-dot" />
                   <span className="status-text">{ultimateStatus.text}</span>
+                </div>
+              </div>
+            </div>
+            <div className="form-group">
+              <h4>VOD Crawler</h4>
+              <div className="form-row">
+                <div className="form-col">
+                  <label>URL</label>
+                  <input
+                    className="form-input"
+                    type="url"
+                    {...backendForm.register('vod_crawler_url')}
+                  />
+                </div>
+                <div className="form-col">
+                  <label>Timeout (Sekunden)</label>
+                  <input
+                    className="form-input"
+                    type="number"
+                    {...backendForm.register('vod_crawler_timeout')}
+                  />
+                </div>
+              </div>
+              <div className="form-actions">
+                <button type="button" className="btn-test" onClick={testVod}>
+                  Verbindung testen
+                </button>
+                <div className={`connection-status ${connClass(vodStatus.state)}`}>
+                  <span className="status-dot" />
+                  <span className="status-text">{vodStatus.text}</span>
                 </div>
               </div>
             </div>

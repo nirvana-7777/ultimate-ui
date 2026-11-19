@@ -5,6 +5,7 @@ import { ConfigPage } from './pages/ConfigPage';
 import { ProvidersPage } from './pages/ProvidersPage';
 import { MonitoringPage } from './pages/MonitoringPage';
 import { MappingPage } from './pages/MappingPage';
+import { VodPage } from './pages/VodPage';
 import { ThemeProvider } from './hooks/useTheme';
 import { ToastProvider } from './lib/toast';
 
@@ -15,6 +16,7 @@ export default function App() {
         <Layout>
           <Routes>
             <Route path="/" element={<EPGPage />} />
+            <Route path="/vod" element={<VodPage />} />
             <Route path="/config" element={<ConfigPage />} />
             <Route path="/providers" element={<ProvidersPage />} />
             <Route path="/monitoring" element={<MonitoringPage />} />

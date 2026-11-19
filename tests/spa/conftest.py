@@ -19,6 +19,9 @@ ultimate_backend:
   url: http://backend.internal:7777
   public_url: ""
   timeout: 5
+vod_crawler:
+  url: http://vod.internal:7888
+  timeout: 5
 ui:
   theme: light
   refresh_interval: 600

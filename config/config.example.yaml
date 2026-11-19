@@ -12,6 +12,10 @@ ultimate_backend:
   public_url: ""
   timeout: 20
   url: http://json-ultimate:3000
+vod_crawler:
+  # VOD crawler service (FastAPI). Only the Flask side talks to it.
+  timeout: 20
+  url: http://vod-crawler:7888
 webepg:
   timeout: 20
   url: http://json-webepg:8080

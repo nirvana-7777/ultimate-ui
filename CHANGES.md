@@ -1,3 +1,23 @@
+# 2.4.0 - VOD tab
+
+## Added
+- New **VOD** tab (`/vod`) for the library of the VOD crawler service: movie / series switch, provider filter,
+  title search, "Kostenpflichtige" toggle (rent/buy/subscription content is hidden by default, like in the
+  crawler), poster grid with infinite scroll, detail dialog (plot, genre, cast, director, price/access badge,
+  trailer) and, for series, seasons with episode list.
+- Play in the floating player for items with a clear, static `manifest_url`. DRM-protected items and dynamic
+  (session/script) manifests are marked and not played in the browser.
+- Sync status of the crawler plus a "Sync" button (all providers, or only the selected one); lists reload when a
+  running sync finishes.
+- Config page: VOD Crawler URL / timeout with connection test. Environment: `VOD_CRAWLER_URL`,
+  `VOD_CRAWLER_TIMEOUT` (default `http://localhost:7888`).
+- Flask proxy `/api/vod/{status,movies,shows,shows/<id>/episodes,sync}` and `/api/test/vod-crawler`. Parameters
+  are validated; upstream errors never leak hostnames.
+
+## Crawler side (optional)
+- `GET /api/library/movies` gets a `q` parameter (title search). Without it the search box only filters what is
+  already loaded; the UI works either way.
+
 # 2.3.7 - Show all EPG attributes
 
 ## Changed

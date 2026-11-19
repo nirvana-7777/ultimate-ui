@@ -20,6 +20,7 @@ services:
       # - WEBEPG_URL=http://ultimate-epg:8080
       # - ULTIMATE_BACKEND_URL=http://ultimate:7777
       # - ULTIMATE_BACKEND_PUBLIC_URL=
+      # - VOD_CRAWLER_URL=http://vod-crawler:7888
       # - UI_THEME=dark
       # - UI_REFRESH_INTERVAL=300
       # - LOG_LEVEL=INFO

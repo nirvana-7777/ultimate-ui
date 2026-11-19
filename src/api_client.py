@@ -386,3 +386,49 @@ class UltimateBackendClient(_BaseClient):
             }
 
         return all_channels
+
+
+class VodCrawlerClient(_BaseClient):
+    """Client for the VOD crawler service (FastAPI, /api/*).
+
+    Like the other data clients it raises :class:`UpstreamError` on every
+    failure, so "crawler down" is never mistaken for "library is empty".
+    """
+
+    service_name = "VOD Crawler"
+
+    def get_health(self) -> Dict[str, Any]:
+        """Crawler /health body. Raises UpstreamError when unreachable/unhealthy.
+
+        The crawler answers 200 with ``status: degraded`` when its database is
+        fine but no crawl finished recently, and 503 when the database is down.
+        """
+        data = self._request("GET", "/health", timeout=min(self.timeout, 5))
+        return data if isinstance(data, dict) else {}
+
+    def get_status(self) -> Dict[str, Any]:
+        data = self._request("GET", "/api/status")
+        if not isinstance(data, dict):
+            raise UpstreamError(
+                self.service_name,
+                "VOD Crawler returned an unexpected status format",
+                502,
+            )
+        return data
+
+    def get_movies(self, params: Dict[str, Any]) -> Any:
+        return self._request("GET", "/api/library/movies", params=params)
+
+    def get_shows(self, provider: Optional[str] = None) -> Any:
+        params = {"provider": provider} if provider else None
+        return self._request("GET", "/api/library/shows", params=params)
+
+    def get_show_episodes(self, show_id: str, params: Dict[str, Any]) -> Any:
+        return self._request(
+            "GET", f"/api/library/shows/{_seg(show_id)}/episodes", params=params
+        )
+
+    def trigger_sync(self, provider: Optional[str] = None) -> Any:
+        body: Dict[str, Any] = {"provider": provider} if provider else {}
+        data = self._request("POST", "/api/sync", json=body, timeout=30)
+        return data if data is not None else {}
