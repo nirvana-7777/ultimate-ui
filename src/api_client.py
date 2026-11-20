@@ -403,9 +403,7 @@ class UltimateBackendClient(_BaseClient):
 
     def list_recordings(self, provider_id: str) -> Any:
         """Recordings of one provider (JSON as the backend sends it)."""
-        return self._request(
-            "GET", f"/api/providers/{_seg(provider_id)}/recordings"
-        )
+        return self._request("GET", f"/api/providers/{_seg(provider_id)}/recordings")
 
     def delete_recording(self, provider_id: str, recording_id: str) -> None:
         """Permanently delete one recording at the provider."""
@@ -416,9 +414,7 @@ class UltimateBackendClient(_BaseClient):
         )
 
     def get_timer_types(self, provider_id: str) -> Any:
-        return self._request(
-            "GET", f"/api/providers/{_seg(provider_id)}/timer-types"
-        )
+        return self._request("GET", f"/api/providers/{_seg(provider_id)}/timer-types")
 
     def list_timers(self, provider_id: str, include_inactive: bool = False) -> Any:
         params = {"include_inactive": "true"} if include_inactive else None

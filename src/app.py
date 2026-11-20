@@ -921,13 +921,34 @@ def api_vod_sync():
 # from the browser, exactly like live and catchup streams.
 _TIMER_FIELDS = frozenset(
     {
-        "title", "timer_type_id", "state", "parent_client_index",
-        "client_channel_uid", "channel_name", "start_time", "end_time",
-        "first_day", "start_any_time", "end_any_time", "margin_start",
-        "margin_end", "epg_search_string", "full_text_epg_search", "epg_uid",
-        "epg_event_id", "weekdays", "prevent_duplicate_episodes",
-        "series_link", "directory", "priority", "lifetime", "max_recordings",
-        "recording_group", "genre_type", "genre_sub_type", "description",
+        "title",
+        "timer_type_id",
+        "state",
+        "parent_client_index",
+        "client_channel_uid",
+        "channel_name",
+        "start_time",
+        "end_time",
+        "first_day",
+        "start_any_time",
+        "end_any_time",
+        "margin_start",
+        "margin_end",
+        "epg_search_string",
+        "full_text_epg_search",
+        "epg_uid",
+        "epg_event_id",
+        "weekdays",
+        "prevent_duplicate_episodes",
+        "series_link",
+        "directory",
+        "priority",
+        "lifetime",
+        "max_recordings",
+        "recording_group",
+        "genre_type",
+        "genre_sub_type",
+        "description",
     }
 )
 
@@ -958,7 +979,9 @@ def _timer_body() -> Dict[str, Any]:
 
 @app.route("/api/recordings/<provider>", methods=["GET"])
 def api_list_recordings(provider):
-    return jsonify(get_ultimate_backend_client().list_recordings(_rec_provider(provider)))
+    return jsonify(
+        get_ultimate_backend_client().list_recordings(_rec_provider(provider))
+    )
 
 
 @app.route("/api/recordings/<provider>/<recording_id>", methods=["DELETE"])
@@ -971,7 +994,9 @@ def api_delete_recording(provider, recording_id):
 
 @app.route("/api/timers/<provider>/types", methods=["GET"])
 def api_timer_types(provider):
-    return jsonify(get_ultimate_backend_client().get_timer_types(_rec_provider(provider)))
+    return jsonify(
+        get_ultimate_backend_client().get_timer_types(_rec_provider(provider))
+    )
 
 
 @app.route("/api/timers/<provider>", methods=["GET"])
