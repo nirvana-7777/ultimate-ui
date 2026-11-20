@@ -47,6 +47,7 @@ export function TimelineColumn({
   onPlay,
   onCatchup,
   onDownload,
+  onRecord,
 }: Props) {
   const tl = useChannelTimeline(service, channel, anchor);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -223,6 +224,7 @@ export function TimelineColumn({
                             onPlay={onPlay}
                             onCatchup={onCatchup}
                             onDownload={onDownload}
+                            onRecord={onRecord}
                           />
                         );
                       })}

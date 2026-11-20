@@ -8,9 +8,10 @@ import { ProviderColumn } from '@/components/epg/ProviderColumn';
 import { ChannelColumn } from '@/components/epg/ChannelColumn';
 import { TimelineColumn } from '@/components/epg/TimelineColumn';
 import { FloatingPlayer } from '@/components/epg/FloatingPlayer';
+import { TimerDialog } from '@/components/recordings/TimerDialog';
 import { getConfig } from '@/lib/api';
 import { localDateKey } from '@/lib/time';
-import type { Channel } from '@/lib/types';
+import type { Channel, Program } from '@/lib/types';
 
 /**
  * EPG browser: Provider → Channels → Programme.
@@ -40,6 +41,7 @@ export function EPGPage() {
   const channels = useProviderChannels(service, provider);
   const playback = usePlayback(service);
 
+  const [recordTarget, setRecordTarget] = useState<{ channel: Channel; program: Program } | null>(null);
   const [anchor, setAnchor] = useState(() => new Date());
   const [refreshNonce, setRefreshNonce] = useState(0);
 
@@ -114,8 +116,15 @@ export function EPGPage() {
         onPlay={playback.playProgram}
         onCatchup={playback.playCatchup}
         onDownload={playback.download}
+        onRecord={(c, p) => setRecordTarget({ channel: c, program: p })}
       />
       <FloatingPlayer state={playback.player} onClose={playback.closePlayer} />
+      <TimerDialog
+        channel={recordTarget?.channel ?? null}
+        program={recordTarget?.program ?? null}
+        timezone={cfg.ui.timezone}
+        onClose={() => setRecordTarget(null)}
+      />
     </div>
   );
 }

@@ -67,6 +67,17 @@ def _upstream_message(resp: requests.Response) -> str:
     except ValueError:
         return ""
     if isinstance(body, dict):
+        # The Ultimate Backend answers {"error": <short>, "message": <reason>}
+        # (e.g. "Timer rejected by provider" + why): show both.
+        err, reason = body.get("error"), body.get("message")
+        if (
+            isinstance(err, str)
+            and isinstance(reason, str)
+            and err.strip()
+            and reason.strip()
+            and err.strip() != reason.strip()
+        ):
+            return f"{err.strip()}: {reason.strip()}"[:200]
         for key in ("error", "message", "detail"):
             value = body.get(key)
             if isinstance(value, str) and value.strip():
@@ -386,6 +397,62 @@ class UltimateBackendClient(_BaseClient):
             }
 
         return all_channels
+
+    # -- Recordings and timers (cloud recordings, one provider at a time) ----
+    # The backend routes live in routes/recordings.py and routes/timers.py.
+
+    def list_recordings(self, provider_id: str) -> Any:
+        """Recordings of one provider (JSON as the backend sends it)."""
+        return self._request(
+            "GET", f"/api/providers/{_seg(provider_id)}/recordings"
+        )
+
+    def delete_recording(self, provider_id: str, recording_id: str) -> None:
+        """Permanently delete one recording at the provider."""
+        self._request(
+            "DELETE",
+            f"/api/providers/{_seg(provider_id)}/recordings/{_seg(recording_id)}",
+            timeout=max(self.timeout, 30),
+        )
+
+    def get_timer_types(self, provider_id: str) -> Any:
+        return self._request(
+            "GET", f"/api/providers/{_seg(provider_id)}/timer-types"
+        )
+
+    def list_timers(self, provider_id: str, include_inactive: bool = False) -> Any:
+        params = {"include_inactive": "true"} if include_inactive else None
+        return self._request(
+            "GET", f"/api/providers/{_seg(provider_id)}/timers", params=params
+        )
+
+    def create_timer(self, provider_id: str, body: Dict[str, Any]) -> Any:
+        return self._request(
+            "POST",
+            f"/api/providers/{_seg(provider_id)}/timers",
+            json=body,
+            timeout=max(self.timeout, 30),
+        )
+
+    def update_timer(
+        self, provider_id: str, client_index: int, body: Dict[str, Any]
+    ) -> Any:
+        return self._request(
+            "PUT",
+            f"/api/providers/{_seg(provider_id)}/timers/{int(client_index)}",
+            json=body,
+            timeout=max(self.timeout, 30),
+        )
+
+    def delete_timer(
+        self, provider_id: str, client_index: int, force: bool = False
+    ) -> None:
+        self._request(
+            "DELETE",
+            f"/api/providers/{_seg(provider_id)}/timers/{int(client_index)}",
+            params={"force": "true"} if force else None,
+            timeout=max(self.timeout, 30),
+        )
 
 
 class VodCrawlerClient(_BaseClient):

@@ -8,6 +8,8 @@ export interface ProgramActions {
   onPlay: (channel: Channel, program: Program) => void;
   onCatchup: (channel: Channel, program: Program) => void;
   onDownload: (channel: Channel, program: Program) => void;
+  /** Opens the "record" dialog; the button is hidden when not provided. */
+  onRecord?: (channel: Channel, program: Program) => void;
 }
 
 interface Props extends ProgramActions {
@@ -40,6 +42,7 @@ export const ProgramRow = memo(function ProgramRow({
   onPlay,
   onCatchup,
   onDownload,
+  onRecord,
 }: Props) {
   const sub = [program.subtitle, program.category].filter(Boolean).join(' · ');
   const cls = ['tl-row', live && 'live', past && 'past', selected && 'selected']
@@ -81,6 +84,8 @@ export const ProgramRow = memo(function ProgramRow({
           onPlay={onPlay}
           onCatchup={onCatchup}
           onDownload={onDownload}
+          onRecord={onRecord}
+          past={past}
         />
       )}
     </li>
@@ -96,9 +101,12 @@ function ProgramDetail({
   onPlay,
   onCatchup,
   onDownload,
+  onRecord,
+  past,
 }: ProgramActions & {
   channel: Channel;
   program: Program;
+  past: boolean;
   live: boolean;
   catchupEligible: boolean;
   publicUrlConfigured: boolean;
@@ -163,7 +171,7 @@ function ProgramDetail({
         </div>
       </div>
 
-      {(live || catchupEligible) && (
+      {(live || catchupEligible || (!!onRecord && !past)) && (
         <div className="tl-actions">
           {live && (
             <button className="btn-play" onClick={() => onPlay(channel, program)}>
@@ -178,6 +186,11 @@ function ProgramDetail({
           {catchupEligible && (
             <button className="btn-play btn-download" onClick={() => onDownload(channel, program)}>
               ⬇ Download
+            </button>
+          )}
+          {onRecord && !past && (
+            <button className="btn-play btn-record" onClick={() => onRecord(channel, program)}>
+              ⏺ Aufnehmen
             </button>
           )}
         </div>

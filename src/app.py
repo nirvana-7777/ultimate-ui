@@ -540,6 +540,7 @@ def _env_override_warnings(submitted: Dict[str, Any]) -> list:
 @app.route("/monitoring", methods=["GET"])
 @app.route("/mapping", methods=["GET"])
 @app.route("/vod", methods=["GET"])
+@app.route("/recordings", methods=["GET"])
 def spa_index():
     return render_template("spa.html")
 
@@ -910,6 +911,121 @@ def api_vod_sync():
         if not isinstance(provider, str) or not _IDENT_RE.match(provider):
             raise ClientError("invalid provider identifier")
     return jsonify(get_vod_crawler_client().trigger_sync(provider))
+
+
+# ---------------------------------------------------------------------------
+# Recordings + timers proxy (Ultimate Backend, one provider at a time)
+# ---------------------------------------------------------------------------
+# Browsing, deleting and timer management go through Flask (internal backend
+# URL, validated parameters). Only *playback* talks to the backend directly
+# from the browser, exactly like live and catchup streams.
+_TIMER_FIELDS = frozenset(
+    {
+        "title", "timer_type_id", "state", "parent_client_index",
+        "client_channel_uid", "channel_name", "start_time", "end_time",
+        "first_day", "start_any_time", "end_any_time", "margin_start",
+        "margin_end", "epg_search_string", "full_text_epg_search", "epg_uid",
+        "epg_event_id", "weekdays", "prevent_duplicate_episodes",
+        "series_link", "directory", "priority", "lifetime", "max_recordings",
+        "recording_group", "genre_type", "genre_sub_type", "description",
+    }
+)
+
+
+def _rec_provider(provider: str) -> str:
+    if not _IDENT_RE.match(provider):
+        raise ClientError("invalid provider identifier")
+    return provider
+
+
+def _rec_id(recording_id: str) -> str:
+    if not recording_id.strip() or len(recording_id) > 255:
+        raise ClientError("invalid recording identifier")
+    return recording_id
+
+
+def _timer_body() -> Dict[str, Any]:
+    """Request body reduced to the fields the backend knows."""
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict) or not data:
+        raise ClientError("request body must be a JSON object")
+    body = {k: v for k, v in data.items() if k in _TIMER_FIELDS}
+    title = body.get("title")
+    if title is not None and (not isinstance(title, str) or len(title) > 255):
+        raise ClientError("title must be a string of at most 255 characters")
+    return body
+
+
+@app.route("/api/recordings/<provider>", methods=["GET"])
+def api_list_recordings(provider):
+    return jsonify(get_ultimate_backend_client().list_recordings(_rec_provider(provider)))
+
+
+@app.route("/api/recordings/<provider>/<recording_id>", methods=["DELETE"])
+def api_delete_recording(provider, recording_id):
+    get_ultimate_backend_client().delete_recording(
+        _rec_provider(provider), _rec_id(recording_id)
+    )
+    return "", 204
+
+
+@app.route("/api/timers/<provider>/types", methods=["GET"])
+def api_timer_types(provider):
+    return jsonify(get_ultimate_backend_client().get_timer_types(_rec_provider(provider)))
+
+
+@app.route("/api/timers/<provider>", methods=["GET"])
+def api_list_timers(provider):
+    raw = (request.args.get("include_inactive") or "false").lower()
+    if raw not in ("true", "false"):
+        raise ClientError("include_inactive must be true or false")
+    return jsonify(
+        get_ultimate_backend_client().list_timers(
+            _rec_provider(provider), raw == "true"
+        )
+    )
+
+
+@app.route("/api/timers/<provider>", methods=["POST"])
+def api_create_timer(provider):
+    saved = get_ultimate_backend_client().create_timer(
+        _rec_provider(provider), _timer_body()
+    )
+    return jsonify(saved if saved is not None else {}), 201
+
+
+@app.route("/api/timers/<provider>/<int:client_index>", methods=["PUT"])
+def api_update_timer(provider, client_index):
+    saved = get_ultimate_backend_client().update_timer(
+        _rec_provider(provider), client_index, _timer_body()
+    )
+    return jsonify(saved if saved is not None else {})
+
+
+@app.route("/api/timers/<provider>/<int:client_index>", methods=["DELETE"])
+def api_delete_timer(provider, client_index):
+    raw = (request.args.get("force") or "false").lower()
+    if raw not in ("true", "false"):
+        raise ClientError("force must be true or false")
+    get_ultimate_backend_client().delete_timer(
+        _rec_provider(provider), client_index, raw == "true"
+    )
+    return "", 204
+
+
+# Local recordings (separate service, not built yet): the UI already talks to
+# this prefix, so wiring the service in later only changes this function.
+@app.route(
+    "/api/local-recordings",
+    defaults={"subpath": ""},
+    methods=["GET", "POST", "PUT", "DELETE"],
+)
+@app.route(
+    "/api/local-recordings/<path:subpath>",
+    methods=["GET", "POST", "PUT", "DELETE"],
+)
+def api_local_recordings_stub(subpath):
+    return _err("Lokale Recordings sind noch nicht verfügbar", 501)
 
 
 # ---------------------------------------------------------------------------

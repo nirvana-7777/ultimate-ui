@@ -1,3 +1,20 @@
+# 2.5.0 - Recordings tab
+
+## Added
+- New **Recordings** tab (`/recordings`): cloud recordings of the providers (list per provider or all
+  providers, search, status, resume bar), play in the floating player (DRM header like live streams) and
+  delete at the provider. Second view **Timer**: list (optionally including finished ones) and delete.
+- **Aufnehmen** button on upcoming/live programmes in the EPG opens a dialog: timer type of the provider,
+  margins, priority and lifetime according to the type's attributes. The EPG id is sent as `epg_event_id`
+  (and `epg_uid` when numeric).
+- Flask proxy `/api/recordings/<provider>[/<id>]` and `/api/timers/<provider>[/types|/<index>]` to the
+  Ultimate Backend; timer bodies are reduced to the known fields.
+- Local recordings are prepared, not implemented: `RecordingBackend` interface with a `localRecordings` stub
+  (`LOCAL_RECORDINGS_ENABLED` in `recordingsService.ts`) and `/api/local-recordings` answering 501.
+
+## Changed
+- Upstream errors of the Ultimate Backend show `error: message` when both are present.
+
 # 2.4.0 - VOD tab
 
 ## Added

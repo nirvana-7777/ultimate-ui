@@ -1,0 +1,69 @@
+/* ---------- Recordings tab (reuses the VOD toolbar/segment/search classes) ---------- */
+.rec-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.rec-skeleton { height: 92px; border-radius: var(--radius-sm); }
+.rec-failed { color: var(--warning-color); cursor: help; }
+
+.rec-row {
+  display: grid;
+  grid-template-columns: 120px minmax(0, 1fr) auto;
+  gap: 14px;
+  align-items: center;
+  padding: 10px;
+  border: 1px solid var(--surface-1-border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-1);
+}
+.rec-row.watched .rec-title { opacity: 0.75; }
+
+.rec-thumb {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  border-radius: 6px;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  background: var(--accent-tint);
+  font-weight: 600;
+}
+.rec-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.rec-thumb-timer { font-size: 1.6rem; }
+.rec-resume { position: absolute; left: 0; bottom: 0; height: 3px; background: var(--accent-color); }
+
+.rec-body { min-width: 0; }
+.rec-title-line { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.rec-title { font-weight: 600; overflow-wrap: anywhere; }
+.rec-sub { margin-top: 2px; font-size: 0.9rem; opacity: 0.85; }
+.rec-meta { display: flex; flex-wrap: wrap; gap: 4px 12px; margin-top: 4px; font-size: 0.85rem; opacity: 0.8; }
+.rec-plot {
+  margin: 6px 0 0;
+  font-size: 0.88rem;
+  opacity: 0.8;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.rec-state { font-size: 0.75rem; padding: 1px 8px; border-radius: 999px; border: 1px solid currentColor; }
+.rec-state-completed, .rec-timer-ok { color: var(--success-color); }
+.rec-state-recording, .rec-state-pending, .rec-timer-run { color: var(--warning-color); }
+.rec-state-failed, .rec-timer-bad { color: var(--error-color); }
+.rec-state-deleted, .rec-timer-idle { color: inherit; opacity: 0.6; }
+
+.rec-actions { display: flex; gap: 8px; align-items: center; }
+.rec-actions .btn-play, .rec-actions .btn-reminder { margin: 0; }
+
+/* "Aufnehmen" button in the EPG programme detail */
+.tl-actions .btn-record { background: var(--error-color); border-color: var(--error-color); color: #fff; }
+
+/* Timer dialog */
+.timer-dialog { display: flex; flex-direction: column; gap: 14px; }
+.timer-summary { display: flex; flex-direction: column; gap: 2px; }
+.timer-fields { display: flex; flex-direction: column; gap: 12px; }
+.timer-fields label { display: flex; flex-direction: column; gap: 4px; font-size: 0.9rem; }
+.timer-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+@media (max-width: 640px) {
+  .rec-row { grid-template-columns: 84px minmax(0, 1fr); }
+  .rec-actions { grid-column: 1 / -1; justify-content: flex-end; }
+}
