@@ -52,6 +52,8 @@ export interface Program {
   writers?: string | string[];
   country?: string;
   ultimate_epg_id?: string | number;
+  /** Provider's own event id (e.g. "pro7_sd_0334511e"). The one timers need (create/update/delete). */
+  epg_event_id?: string;
   /** Aliases used by /api/v1/providers/<p>/channels/<c>/epg. */
   plot?: string;
   episode_name?: string;

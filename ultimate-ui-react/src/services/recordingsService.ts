@@ -39,6 +39,7 @@ export interface RecordingBackend {
   timerTypes(provider: string, opts?: Opts): Promise<TimerTypeInfo[]>;
   timers(provider: string, includeInactive: boolean, opts?: Opts): Promise<TimerItem[]>;
   createTimer(provider: string, draft: TimerDraft): Promise<void>;
+  updateTimer(timer: TimerItem, draft: TimerDraft): Promise<void>;
   deleteTimer(timer: TimerItem, force?: boolean): Promise<void>;
 }
 
@@ -102,10 +103,18 @@ export const cloudRecordings: RecordingBackend = {
     await api.post(`/api/timers/${seg(provider)}`, buildTimerBody(draft));
   },
 
+  /** PUT keeps the timer's clientIndex; the body carries the (possibly new) epg_event_id. */
+  async updateTimer(timer, draft) {
+    await api.put(`/api/timers/${seg(timer.provider)}/${timer.clientIndex}`, buildTimerBody(draft));
+  },
+
   async deleteTimer(timer, force) {
-    await api.delete(
-      `/api/timers/${seg(timer.provider)}/${timer.clientIndex}${force ? '?force=true' : ''}`
-    );
+    // DELETE has no body: the provider event id travels as query parameter.
+    const qs = new URLSearchParams();
+    if (force) qs.set('force', 'true');
+    if (timer.epgEventId) qs.set('epg_event_id', timer.epgEventId);
+    const q = qs.toString();
+    await api.delete(`/api/timers/${seg(timer.provider)}/${timer.clientIndex}${q ? `?${q}` : ''}`);
   },
 };
 
@@ -129,6 +138,9 @@ export const localRecordings: RecordingBackend = {
     throw new NotAvailableError();
   },
   createTimer: async () => {
+    throw new NotAvailableError();
+  },
+  updateTimer: async () => {
     throw new NotAvailableError();
   },
   deleteTimer: async () => {

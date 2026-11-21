@@ -441,12 +441,21 @@ class UltimateBackendClient(_BaseClient):
         )
 
     def delete_timer(
-        self, provider_id: str, client_index: int, force: bool = False
+        self,
+        provider_id: str,
+        client_index: int,
+        force: bool = False,
+        epg_event_id: Optional[str] = None,
     ) -> None:
+        params: Dict[str, Any] = {}
+        if force:
+            params["force"] = "true"
+        if epg_event_id:
+            params["epg_event_id"] = epg_event_id
         self._request(
             "DELETE",
             f"/api/providers/{_seg(provider_id)}/timers/{int(client_index)}",
-            params={"force": "true"} if force else None,
+            params=params or None,
             timeout=max(self.timeout, 30),
         )
 

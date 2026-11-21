@@ -132,6 +132,7 @@ function ProgramDetail({
   if (program.producers) credits.push(['Produktion', String(program.producers)]);
   if (program.language) credits.push(['Sprache', program.language.toUpperCase()]);
   if (program.ultimate_epg_id) credits.push(['EPG-ID', String(program.ultimate_epg_id)]);
+  if (program.epg_event_id) credits.push(['Event-ID', program.epg_event_id]);
 
   return (
     <div className="tl-detail">

@@ -91,7 +91,34 @@ def test_delete_timer_force(client, requests_mock):
     assert m.last_request.qs == {"force": ["true"]}
 
 
+def test_delete_timer_forwards_epg_event_id(client, requests_mock):
+    m = requests_mock.delete(f"{BE}/api/providers/magenta2/timers/3", status_code=204)
+    r = client.delete(
+        "/api/timers/magenta2/3?epg_event_id=pro7_sd_0334511e", headers=CSRF
+    )
+    assert r.status_code == 204
+    assert m.last_request.qs == {"epg_event_id": ["pro7_sd_0334511e"]}
+    r = client.delete("/api/timers/magenta2/3?epg_event_id=" + "x" * 256, headers=CSRF)
+    assert r.status_code == 400
+
+
 def test_local_recordings_are_a_stub(client):
     assert client.get("/api/local-recordings").status_code == 501
     r = client.delete("/api/local-recordings/timers/1", headers=CSRF)
     assert r.status_code == 501
+
+
+def test_update_timer_forwards_epg_event_id(client, requests_mock):
+    m = requests_mock.put(
+        f"{BE}/api/providers/magenta2/timers/5", json={"ClientIndex": 5}
+    )
+    r = client.put(
+        "/api/timers/magenta2/5",
+        json={"epg_event_id": "pro7_sd_0334511e", "epg_uid": 3371781444, "evil": 1},
+        headers=CSRF,
+    )
+    assert r.status_code == 200
+    assert m.last_request.json() == {
+        "epg_event_id": "pro7_sd_0334511e",
+        "epg_uid": 3371781444,
+    }

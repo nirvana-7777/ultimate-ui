@@ -10,7 +10,7 @@ from .api_client import (
 )
 from .config import Config, ConfigError
 
-__version__ = "2.5.0"
+__version__ = "2.5.1"
 
 __all__ = [
     "Config",

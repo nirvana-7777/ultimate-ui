@@ -12,6 +12,7 @@ import {
 import { programKey } from '@/lib/programKey';
 import { normalizeCatchup } from '@/lib/catchup';
 import { formatEpisode, normalizeProgramFields } from '@/lib/programMeta';
+import { mergeDuplicateSlots } from '@/lib/programMerge';
 import { DRM_HEADER, parseDrmHeader, type DrmInfo } from '@/lib/drm';
 
 export interface EPGServiceConfig {
@@ -116,6 +117,9 @@ export class EPGService {
     if (data?.success && Array.isArray(data.programs)) programs = data.programs;
     else if (Array.isArray(data)) programs = data;
 
+    // The EPG server can return the detailed row and the provider-event row of one
+    // slot separately; only the latter carries epg_event_id. Fold them into one.
+    programs = mergeDuplicateSlots(programs);
     programs.forEach((p) => this.enrichProgram(p, channelId));
     this.cache.setPrograms(channelId, startDate, endDate, provider, programs);
     return programs;

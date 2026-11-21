@@ -4,7 +4,7 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="26a67a20-b618-41a8-9b0d-40ca26281999" name="Changes" comment="add vod">
+    <list default="true" id="26a67a20-b618-41a8-9b0d-40ca26281999" name="Changes" comment="add recordings">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -80,22 +80,6 @@
       <workItem from="1768399893477" duration="2236000" />
       <workItem from="1768403116851" duration="13560000" />
       <workItem from="1768480467536" duration="685000" />
-    </task>
-    <task id="LOCAL-00149" summary="linter">
-      <option name="closed" value="true" />
-      <created>1794481387738</created>
-      <option name="number" value="00149" />
-      <option name="presentableId" value="LOCAL-00149" />
-      <option name="project" value="LOCAL" />
-      <updated>1794481387738</updated>
-    </task>
-    <task id="LOCAL-00150" summary="use ts">
-      <option name="closed" value="true" />
-      <created>1794493358022</created>
-      <option name="number" value="00150" />
-      <option name="presentableId" value="LOCAL-00150" />
-      <option name="project" value="LOCAL" />
-      <updated>1794493358022</updated>
     </task>
     <task id="LOCAL-00151" summary="add provider parameter">
       <option name="closed" value="true" />
@@ -473,7 +457,23 @@
       <option name="project" value="LOCAL" />
       <updated>1795096119077</updated>
     </task>
-    <option name="localTasksCounter" value="198" />
+    <task id="LOCAL-00198" summary="add recordings">
+      <option name="closed" value="true" />
+      <created>1795203842065</created>
+      <option name="number" value="00198" />
+      <option name="presentableId" value="LOCAL-00198" />
+      <option name="project" value="LOCAL" />
+      <updated>1795203842065</updated>
+    </task>
+    <task id="LOCAL-00199" summary="add recordings">
+      <option name="closed" value="true" />
+      <created>1795204013205</created>
+      <option name="number" value="00199" />
+      <option name="presentableId" value="LOCAL-00199" />
+      <option name="project" value="LOCAL" />
+      <updated>1795204013205</updated>
+    </task>
+    <option name="localTasksCounter" value="200" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -497,6 +497,7 @@
     <MESSAGE value="play drm streams" />
     <MESSAGE value="display epg attributes" />
     <MESSAGE value="add vod" />
-    <option name="LAST_COMMIT_MESSAGE" value="add vod" />
+    <MESSAGE value="add recordings" />
+    <option name="LAST_COMMIT_MESSAGE" value="add recordings" />
   </component>
 </project>

@@ -43,6 +43,8 @@ export interface TimerItem {
   end?: Date;
   weekdays: number;
   epgSearch?: string;
+  /** Provider event id the timer was created for (create/update/delete are matched by it). */
+  epgEventId?: string;
   repeating: boolean;
 }
 
@@ -84,6 +86,10 @@ const pick = (o: any, ...keys: string[]) => {
 const num = (v: unknown): number | undefined => {
   const n = Number(v);
   return v === undefined || v === null || v === '' || !Number.isFinite(n) ? undefined : n;
+};
+const str = (v: unknown): string | undefined => {
+  const s = v === undefined || v === null ? '' : String(v).trim();
+  return s || undefined;
 };
 const date = (v: unknown): Date | undefined => {
   if (!v) return undefined;
@@ -131,6 +137,7 @@ export function normalizeTimer(raw: any, provider: string, source: RecordingSour
     end: date(pick(raw, 'EndTime', 'end_time')),
     weekdays,
     epgSearch: pick(raw, 'EpgSearchString', 'epg_search_string') || undefined,
+    epgEventId: str(pick(raw, 'EpgEventId', 'epg_event_id')),
     repeating: weekdays > 0 || (attrs & TA.IS_REPEATING) !== 0,
   };
 }
@@ -155,15 +162,20 @@ export function normalizeTimerType(raw: any): TimerTypeInfo {
   };
 }
 
-/** Types usable for "record this EPG event": one-shot, EPG-linked first, manual as fallback. */
-export function typesForSingleEvent(types: TimerTypeInfo[]): TimerTypeInfo[] {
+/**
+ * Types usable for "record this EPG event": one-shot, EPG-linked first, manual as fallback.
+ * An EPG-based timer is bound to the provider's `epg_event_id`; without one (the EPG row has
+ * no event id) the manual start/end types are tried first and EPG-based ones only as last resort.
+ */
+export function typesForSingleEvent(types: TimerTypeInfo[], hasEventId = true): TimerTypeInfo[] {
   const oneShot = (t: TimerTypeInfo) =>
     !typeHas(t, TA.IS_REPEATING) && !typeHas(t, TA.SUPPORTS_EPG_SEARCH);
   const epg = types.filter((t) => oneShot(t) && typeHas(t, TA.IS_EPG_BASED));
-  if (epg.length) return epg;
-  return types.filter(
+  const manual = types.filter(
     (t) => oneShot(t) && typeHas(t, TA.IS_MANUAL) && typeHas(t, TA.SUPPORTS_START_TIME) && typeHas(t, TA.SUPPORTS_END_TIME)
   );
+  if (hasEventId) return epg.length ? epg : manual;
+  return manual.length ? manual : epg;
 }
 
 /** Python's datetime.fromisoformat (<3.11) cannot read "Z": send an explicit offset. */
@@ -176,7 +188,10 @@ export interface TimerDraft {
   channelName?: string;
   start: Date;
   end: Date;
-  epgId?: string | number;
+  /** Provider event id (Program.epg_event_id) - what timer create/update/delete are keyed on. */
+  epgEventId?: string;
+  /** Numeric EPG uid (Program.ultimate_epg_id), only an extra hint for the backend. */
+  epgUid?: string | number;
   marginStart: number;
   marginEnd: number;
   priority: number;
@@ -196,11 +211,10 @@ export function buildTimerBody(d: TimerDraft): Record<string, unknown> {
   // The backend's channel uid is an integer; provider channel ids are often strings.
   const uid = num(d.channelId);
   if (uid !== undefined && Number.isInteger(uid)) body.client_channel_uid = uid;
-  if (d.epgId !== undefined && d.epgId !== '') {
-    body.epg_event_id = String(d.epgId);
-    const n = num(d.epgId);
-    if (n !== undefined && Number.isInteger(n)) body.epg_uid = n;
-  }
+  const eventId = str(d.epgEventId);
+  if (eventId) body.epg_event_id = eventId;
+  const epgUid = num(d.epgUid);
+  if (epgUid !== undefined && Number.isInteger(epgUid)) body.epg_uid = epgUid;
   if (typeHas(d.type, TA.SUPPORTS_PADDING)) {
     body.margin_start = d.marginStart;
     body.margin_end = d.marginEnd;

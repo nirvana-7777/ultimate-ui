@@ -96,4 +96,5 @@ export function normalizeProgramFields(p: Program): void {
   p.producers = listText(p.producers) || undefined;
   p.writers = listText(p.writers) || undefined;
   p.ultimate_epg_id = cleanText(p.ultimate_epg_id) || undefined;
+  p.epg_event_id = cleanText(p.epg_event_id) || undefined;
 }

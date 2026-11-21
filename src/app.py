@@ -1032,8 +1032,11 @@ def api_delete_timer(provider, client_index):
     raw = (request.args.get("force") or "false").lower()
     if raw not in ("true", "false"):
         raise ClientError("force must be true or false")
+    event_id = (request.args.get("epg_event_id") or "").strip()
+    if len(event_id) > 255:
+        raise ClientError("epg_event_id must be at most 255 characters")
     get_ultimate_backend_client().delete_timer(
-        _rec_provider(provider), client_index, raw == "true"
+        _rec_provider(provider), client_index, raw == "true", event_id or None
     )
     return "", 204
 

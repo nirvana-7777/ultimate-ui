@@ -1,3 +1,22 @@
+# 2.5.1 - Timers use the provider's epg_event_id
+
+## Fixed
+- Creating a timer from the EPG sent `ultimate_epg_id` (or the row id) as `epg_event_id`. It now sends the
+  real `epg_event_id` of the programme; `ultimate_epg_id` goes only to `epg_uid` (when numeric).
+- The EPG server can return two rows for one broadcast: the detailed one (actors, plot, ...) and a thin
+  provider-event row that carries `epg_event_id`. They were shown as duplicates and the id never reached the
+  detailed row. Rows with the same title and a start within 2 minutes are now merged into the richest row
+  and missing fields (above all `epg_event_id`) are filled in. Back-to-back episodes stay separate.
+- `epg_event_id` is read from the EPG response (`Program.epg_event_id`), shown as "Event-ID" in the programme
+  details, and read from timers (`TimerItem.epgEventId`).
+
+## Changed
+- Programmes without an event id get a manual (start/end) timer type first, with a hint in the dialog;
+  EPG-based types are used only if the provider has no manual one.
+- Deleting a timer also sends the timer's `epg_event_id` (DELETE `/api/timers/<provider>/<index>?epg_event_id=...`,
+  forwarded to the backend as query parameter; omitted when the timer has none).
+- `RecordingBackend.updateTimer()` (PUT `/api/timers/<provider>/<index>`) added; it sends the same body as create.
+
 # 2.5.0 - Recordings tab
 
 ## Added

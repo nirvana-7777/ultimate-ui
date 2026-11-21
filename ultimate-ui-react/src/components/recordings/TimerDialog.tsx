@@ -47,7 +47,7 @@ export function TimerDialog({ channel, program, timezone, onClose }: Props) {
     const c = new AbortController();
     cloudRecordings
       .timerTypes(provider, { signal: c.signal })
-      .then((all) => setTypes(typesForSingleEvent(all)))
+      .then((all) => setTypes(typesForSingleEvent(all, !!program?.epg_event_id)))
       .catch((e) => {
         if ((e as any)?.name !== 'AbortError') setLoadError((e as Error).message);
       });
@@ -90,7 +90,8 @@ export function TimerDialog({ channel, program, timezone, onClose }: Props) {
         channelName: channel.display_name,
         start: new Date(program.start_time),
         end: new Date(program.end_time),
-        epgId: program.ultimate_epg_id ?? program.program_id ?? program.id,
+        epgEventId: program.epg_event_id,
+        epgUid: program.ultimate_epg_id,
         marginStart,
         marginEnd,
         priority,
@@ -128,6 +129,11 @@ export function TimerDialog({ channel, program, timezone, onClose }: Props) {
                 <span className="muted">Provider: {provider || '—'}</span>
               </div>
 
+              {!program.epg_event_id && (
+                <p className="muted">
+                  Für diese Sendung liefert der EPG keine Event-ID; der Timer wird nach Start- und Endzeit angelegt.
+                </p>
+              )}
               {loading && <p className="muted">Timer-Typen werden geladen…</p>}
               {loadError && (
                 <p className="vod-error">Timer-Typen konnten nicht geladen werden: {loadError}</p>
