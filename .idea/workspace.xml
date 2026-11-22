@@ -4,9 +4,7 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="26a67a20-b618-41a8-9b0d-40ca26281999" name="Changes" comment="add character names">
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-    </list>
+    <list default="true" id="26a67a20-b618-41a8-9b0d-40ca26281999" name="Changes" comment="add flags" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -80,22 +78,6 @@
       <workItem from="1768399893477" duration="2236000" />
       <workItem from="1768403116851" duration="13560000" />
       <workItem from="1768480467536" duration="685000" />
-    </task>
-    <task id="LOCAL-00154" summary="change to react">
-      <option name="closed" value="true" />
-      <created>1794658787771</created>
-      <option name="number" value="00154" />
-      <option name="presentableId" value="LOCAL-00154" />
-      <option name="project" value="LOCAL" />
-      <updated>1794658787771</updated>
-    </task>
-    <task id="LOCAL-00155" summary="change to react">
-      <option name="closed" value="true" />
-      <created>1794658874360</created>
-      <option name="number" value="00155" />
-      <option name="presentableId" value="LOCAL-00155" />
-      <option name="project" value="LOCAL" />
-      <updated>1794658874360</updated>
     </task>
     <task id="LOCAL-00156" summary="change to react">
       <option name="closed" value="true" />
@@ -473,7 +455,23 @@
       <option name="project" value="LOCAL" />
       <updated>1795331745131</updated>
     </task>
-    <option name="localTasksCounter" value="203" />
+    <task id="LOCAL-00203" summary="add character names">
+      <option name="closed" value="true" />
+      <created>1795337653931</created>
+      <option name="number" value="00203" />
+      <option name="presentableId" value="LOCAL-00203" />
+      <option name="project" value="LOCAL" />
+      <updated>1795337653931</updated>
+    </task>
+    <task id="LOCAL-00204" summary="add flags">
+      <option name="closed" value="true" />
+      <created>1795353833392</created>
+      <option name="number" value="00204" />
+      <option name="presentableId" value="LOCAL-00204" />
+      <option name="project" value="LOCAL" />
+      <updated>1795353833392</updated>
+    </task>
+    <option name="localTasksCounter" value="205" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -500,6 +498,7 @@
     <MESSAGE value="add recordings" />
     <MESSAGE value="add epg_event_id" />
     <MESSAGE value="add character names" />
-    <option name="LAST_COMMIT_MESSAGE" value="add character names" />
+    <MESSAGE value="add flags" />
+    <option name="LAST_COMMIT_MESSAGE" value="add flags" />
   </component>
 </project>
