@@ -11,7 +11,10 @@ import { RecordingRow } from '@/components/recordings/RecordingRow';
 import { TimerRow } from '@/components/recordings/TimerRow';
 import { ColumnState } from '@/components/epg/ColumnState';
 import { FloatingPlayer, type PlayerState } from '@/components/epg/FloatingPlayer';
+import { TimerDialog } from '@/components/recordings/TimerDialog';
 import { useToast } from '@/lib/toast';
+import { findTimerForRecording } from '@/lib/recordings';
+import type { Channel, Program } from '@/lib/types';
 import type { RecordingItem, RecordingSource, TimerItem } from '@/lib/recordings';
 
 /** Recordings of the providers (cloud) and their timers; local recordings plug in via the source switch. */
@@ -27,6 +30,7 @@ export function RecordingsPage() {
   const [q, setQ] = useState(params.get('q') ?? '');
   const [player, setPlayer] = useState<PlayerState | null>(null);
   const [busyKey, setBusyKey] = useState<string | null>(null);
+  const [editTarget, setEditTarget] = useState<{ channel: Channel; program: Program; timer: TimerItem } | null>(null);
 
   const setParam = useCallback(
     (key: string, value: string | null) => {
@@ -85,6 +89,42 @@ export function RecordingsPage() {
           drm: target.drm,
           title: item.title,
           subtitle: item.episodeName || item.channelName,
+        });
+      } catch (e) {
+        showToast((e as Error).message, e instanceof NotAvailableError ? 'warning' : 'error');
+      } finally {
+        setBusyKey(null);
+      }
+    },
+    [showToast]
+  );
+
+  /** Update on a not-yet-finished recording: look up its timer and open the timer dialog. */
+  const updateRecording = useCallback(
+    async (item: RecordingItem) => {
+      setBusyKey(item.key);
+      try {
+        const timers = await recordingBackend(item.source).timers(item.provider, false);
+        const timer = findTimerForRecording(timers, item);
+        if (!timer || !timer.start || !timer.end) {
+          showToast(`Kein passender Timer für „${item.title}“ gefunden`, 'warning');
+          return;
+        }
+        setEditTarget({
+          timer,
+          channel: {
+            id: timer.channelUid ?? '',
+            display_name: timer.channelName ?? item.channelName ?? '',
+            name: timer.channelName ?? item.channelName ?? '',
+            provider: item.provider,
+          },
+          program: {
+            channel_id: timer.channelUid ?? '',
+            title: timer.title,
+            start_time: timer.start.toISOString(),
+            end_time: timer.end.toISOString(),
+            epg_event_id: timer.epgEventId,
+          },
         });
       } catch (e) {
         showToast((e as Error).message, e instanceof NotAvailableError ? 'warning' : 'error');
@@ -263,6 +303,7 @@ export function RecordingsPage() {
                       timezone={timezone}
                       busy={busyKey === r.key}
                       onPlay={play}
+                      onUpdate={updateRecording}
                       onDelete={removeRecording}
                     />
                   ))
@@ -282,6 +323,17 @@ export function RecordingsPage() {
       </div>
 
       <FloatingPlayer state={player} onClose={() => setPlayer(null)} />
+      <TimerDialog
+        channel={editTarget?.channel ?? null}
+        program={editTarget?.program ?? null}
+        timer={editTarget?.timer ?? null}
+        timezone={timezone}
+        onClose={() => setEditTarget(null)}
+        onSaved={() => {
+          recordings.reload();
+          timers.reload();
+        }}
+      />
     </div>
   );
 }

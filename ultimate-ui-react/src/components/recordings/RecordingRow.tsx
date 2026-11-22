@@ -8,6 +8,8 @@ interface Props {
   timezone: string;
   busy: boolean;
   onPlay: (item: RecordingItem) => void;
+  /** Edit the timer of a recording that is not finished yet. */
+  onUpdate: (item: RecordingItem) => void;
   onDelete: (item: RecordingItem) => void;
 }
 
@@ -17,6 +19,7 @@ export const RecordingRow = memo(function RecordingRow({
   timezone,
   busy,
   onPlay,
+  onUpdate,
   onDelete,
 }: Props) {
   const [broken, setBroken] = useState(false);
@@ -33,7 +36,9 @@ export const RecordingRow = memo(function RecordingRow({
       ? `S${String(item.season ?? 0).padStart(2, '0')}E${String(item.episode ?? 0).padStart(2, '0')}`
       : undefined;
   const meta = [item.channelName, when, formatDuration(item.durationSeconds), formatSize(item.sizeInBytes)].filter(Boolean);
-  const playable = item.status === 'COMPLETED' || item.status === 'RECORDING';
+  // Not finished yet (scheduled or running): Update + Delete. Finished: Play + Delete.
+  const finished = item.status === 'COMPLETED';
+  const editable = item.status === 'PENDING' || item.status === 'RECORDING';
   const resumePct =
     item.durationSeconds && item.lastPlayedPosition > 0
       ? Math.min(100, Math.round((item.lastPlayedPosition / item.durationSeconds) * 100))
@@ -71,9 +76,16 @@ export const RecordingRow = memo(function RecordingRow({
       </div>
 
       <div className="rec-actions">
-        <button className="btn-play" disabled={!playable || busy} onClick={() => onPlay(item)}>
-          ▶ Play
-        </button>
+        {finished && (
+          <button className="btn-play" disabled={busy} onClick={() => onPlay(item)}>
+            ▶ Play
+          </button>
+        )}
+        {editable && (
+          <button className="btn-play btn-record" disabled={busy} onClick={() => onUpdate(item)}>
+            ✎ Update
+          </button>
+        )}
         <button
           className="btn-reminder"
           disabled={busy}

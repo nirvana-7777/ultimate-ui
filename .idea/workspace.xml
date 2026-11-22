@@ -4,7 +4,7 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="26a67a20-b618-41a8-9b0d-40ca26281999" name="Changes" comment="add epg_event_id">
+    <list default="true" id="26a67a20-b618-41a8-9b0d-40ca26281999" name="Changes" comment="add character names">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -80,22 +80,6 @@
       <workItem from="1768399893477" duration="2236000" />
       <workItem from="1768403116851" duration="13560000" />
       <workItem from="1768480467536" duration="685000" />
-    </task>
-    <task id="LOCAL-00152" summary="add provider parameter">
-      <option name="closed" value="true" />
-      <created>1794592637200</created>
-      <option name="number" value="00152" />
-      <option name="presentableId" value="LOCAL-00152" />
-      <option name="project" value="LOCAL" />
-      <updated>1794592637200</updated>
-    </task>
-    <task id="LOCAL-00153" summary="change to react">
-      <option name="closed" value="true" />
-      <created>1794658632464</created>
-      <option name="number" value="00153" />
-      <option name="presentableId" value="LOCAL-00153" />
-      <option name="project" value="LOCAL" />
-      <updated>1794658632464</updated>
     </task>
     <task id="LOCAL-00154" summary="change to react">
       <option name="closed" value="true" />
@@ -473,7 +457,23 @@
       <option name="project" value="LOCAL" />
       <updated>1795275879221</updated>
     </task>
-    <option name="localTasksCounter" value="201" />
+    <task id="LOCAL-00201" summary="add character names">
+      <option name="closed" value="true" />
+      <created>1795331607894</created>
+      <option name="number" value="00201" />
+      <option name="presentableId" value="LOCAL-00201" />
+      <option name="project" value="LOCAL" />
+      <updated>1795331607894</updated>
+    </task>
+    <task id="LOCAL-00202" summary="add character names">
+      <option name="closed" value="true" />
+      <created>1795331745130</created>
+      <option name="number" value="00202" />
+      <option name="presentableId" value="LOCAL-00202" />
+      <option name="project" value="LOCAL" />
+      <updated>1795331745131</updated>
+    </task>
+    <option name="localTasksCounter" value="203" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -499,6 +499,7 @@
     <MESSAGE value="add vod" />
     <MESSAGE value="add recordings" />
     <MESSAGE value="add epg_event_id" />
-    <option name="LAST_COMMIT_MESSAGE" value="add epg_event_id" />
+    <MESSAGE value="add character names" />
+    <option name="LAST_COMMIT_MESSAGE" value="add character names" />
   </component>
 </project>

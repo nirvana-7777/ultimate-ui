@@ -23,5 +23,11 @@ export function useProviderTimers(provider: string | null) {
     return () => c.abort();
   }, [provider, nonce]);
 
-  return { timers, reload: useCallback(() => setNonce((n) => n + 1), []) };
+  /** Drops a deleted timer right away so the UI does not wait for the next reload. */
+  const remove = useCallback(
+    (key: string) => setTimers((prev) => prev.filter((t) => t.key !== key)),
+    []
+  );
+
+  return { timers, remove, reload: useCallback(() => setNonce((n) => n + 1), []) };
 }

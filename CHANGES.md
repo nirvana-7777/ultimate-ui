@@ -1,3 +1,14 @@
+# 2.5.3 - Recordings buttons by state, instant switch after timer delete
+
+## Changed
+- Recordings tab: a recording that is not finished yet (scheduled or running) shows **Update** and delete
+  instead of Play; a finished one shows **Play** and delete. Failed recordings only offer delete.
+  Update looks up the matching timer of the provider (same title, start closest to the recording time)
+  and opens the timer dialog; if no timer is found a hint is shown.
+- Timers now carry their channel uid (`ClientChannelUid`), used when a timer is updated from the Recordings tab.
+- EPG: after **Delete Timer** the programme switches back to "Aufnehmen" immediately (the timer is removed
+  locally instead of waiting for a reload).
+
 # 2.5.2 - Cast with character names, timer buttons in the EPG
 
 ## Fixed

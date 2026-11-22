@@ -46,7 +46,7 @@ export function EPGPage() {
   const playback = usePlayback(service);
 
   const { showToast } = useToast();
-  const { timers, reload: reloadTimers } = useProviderTimers(provider);
+  const { timers, remove: removeLocalTimer, reload: reloadTimers } = useProviderTimers(provider);
   const [timerBusy, setTimerBusy] = useState(false);
   const [recordTarget, setRecordTarget] = useState<{ channel: Channel; program: Program } | null>(null);
   const editTimer = useMemo(
@@ -67,15 +67,16 @@ export function EPGPage() {
       setTimerBusy(true);
       try {
         await cloudRecordings.deleteTimer(t, t.state === 'RECORDING');
+        // Switch back to "Aufnehmen" immediately; a reload could still list the timer for a moment.
+        removeLocalTimer(t.key);
         showToast(`Timer für „${p.title}“ gelöscht`, 'success');
-        reloadTimers();
       } catch (e) {
         showToast(`Timer konnte nicht gelöscht werden: ${(e as Error).message}`, 'error');
       } finally {
         setTimerBusy(false);
       }
     },
-    [timers, timerBusy, showToast, reloadTimers]
+    [timers, timerBusy, showToast, removeLocalTimer]
   );
   const [anchor, setAnchor] = useState(() => new Date());
   const [refreshNonce, setRefreshNonce] = useState(0);

@@ -43,6 +43,8 @@ export interface TimerItem {
   end?: Date;
   weekdays: number;
   epgSearch?: string;
+  /** Channel uid the timer belongs to (needed to re-send the timer on update). */
+  channelUid?: number;
   /** Provider event id the timer was created for (create/update/delete are matched by it). */
   epgEventId?: string;
   repeating: boolean;
@@ -133,6 +135,7 @@ export function normalizeTimer(raw: any, provider: string, source: RecordingSour
     title: String(pick(raw, 'Title', 'title') ?? '') || 'Ohne Titel',
     state: String(pick(raw, 'State', 'state') ?? 'NEW').toUpperCase(),
     channelName: pick(raw, 'ChannelName', 'channel_name'),
+    channelUid: num(pick(raw, 'ClientChannelUid', 'client_channel_uid', 'ChannelUid', 'channel_uid')),
     start: date(pick(raw, 'StartTime', 'start_time')),
     end: date(pick(raw, 'EndTime', 'end_time')),
     weekdays,
@@ -202,6 +205,25 @@ export function findTimerForProgram(
       Math.abs(t.start.getTime() - start) <= 60_000 &&
       t.title.trim().toLowerCase() === title
   );
+}
+
+/**
+ * Finds the timer behind a not-yet-finished recording (recordings carry no timer id):
+ * same title, start closest to the recording time; a lone title match is accepted
+ * even when the times differ.
+ */
+export function findTimerForRecording(timers: TimerItem[], rec: RecordingItem): TimerItem | undefined {
+  const title = rec.title.trim().toLowerCase();
+  const same = timers.filter((t) => t.title.trim().toLowerCase() === title);
+  if (same.length === 0) return undefined;
+  const at = rec.recordedAt?.getTime();
+  if (at !== undefined && Number.isFinite(at)) {
+    const ranked = [...same]
+      .filter((t) => t.start)
+      .sort((a, b) => Math.abs(a.start!.getTime() - at) - Math.abs(b.start!.getTime() - at));
+    if (ranked.length && Math.abs(ranked[0].start!.getTime() - at) <= 10 * 60_000) return ranked[0];
+  }
+  return same.length === 1 ? same[0] : undefined;
 }
 
 /** Python's datetime.fromisoformat (<3.11) cannot read "Z": send an explicit offset. */
