@@ -7,6 +7,7 @@ import {
   TA,
   typeHas,
   typesForSingleEvent,
+  type TimerItem,
   type TimerTypeInfo,
 } from '@/lib/recordings';
 
@@ -14,8 +15,12 @@ interface Props {
   /** Open when both are set. */
   channel: Channel | null;
   program: Program | null;
+  /** When set, the dialog updates this existing timer instead of creating one. */
+  timer?: TimerItem | null;
   timezone: string;
   onClose: () => void;
+  /** Called after a timer was created or updated. */
+  onSaved?: () => void;
 }
 
 const clamp = (v: string, min: number, max: number) => {
@@ -24,7 +29,7 @@ const clamp = (v: string, min: number, max: number) => {
 };
 
 /** "Record this EPG event": picks the provider's timer type and creates the timer. */
-export function TimerDialog({ channel, program, timezone, onClose }: Props) {
+export function TimerDialog({ channel, program, timer, timezone, onClose, onSaved }: Props) {
   const { showToast } = useToast();
   const open = !!channel && !!program;
   const provider = channel?.provider ?? '';
@@ -83,7 +88,7 @@ export function TimerDialog({ channel, program, timezone, onClose }: Props) {
     setSaving(true);
     setSaveError(null);
     try {
-      await cloudRecordings.createTimer(provider, {
+      const draft = {
         type,
         title: program.title,
         channelId: channel.id,
@@ -96,8 +101,11 @@ export function TimerDialog({ channel, program, timezone, onClose }: Props) {
         marginEnd,
         priority,
         lifetime,
-      });
-      showToast(`Timer für „${program.title}“ angelegt`, 'success');
+      };
+      if (timer) await cloudRecordings.updateTimer(timer, draft);
+      else await cloudRecordings.createTimer(provider, draft);
+      showToast(`Timer für „${program.title}“ ${timer ? 'aktualisiert' : 'angelegt'}`, 'success');
+      onSaved?.();
       onClose();
     } catch (e) {
       setSaveError((e as Error).message);
@@ -114,7 +122,7 @@ export function TimerDialog({ channel, program, timezone, onClose }: Props) {
       {channel && program && (
         <>
           <div className="modal-header">
-            <h3>⏺ Aufnahme planen</h3>
+            <h3>{timer ? '✎ Timer ändern' : '⏺ Aufnahme planen'}</h3>
             <button className="modal-close" onClick={onClose} aria-label="Schließen" disabled={saving}>
               ×
             </button>
@@ -238,7 +246,7 @@ export function TimerDialog({ channel, program, timezone, onClose }: Props) {
 
               <div className="modal-actions">
                 <button className="btn-play" onClick={submit} disabled={!type || saving}>
-                  {saving ? 'Wird angelegt…' : '⏺ Timer anlegen'}
+                  {saving ? 'Wird gespeichert…' : timer ? '✎ Update Timer' : '⏺ Timer anlegen'}
                 </button>
                 <button className="btn-reminder" onClick={onClose} disabled={saving}>
                   Abbrechen

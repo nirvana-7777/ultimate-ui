@@ -178,6 +178,32 @@ export function typesForSingleEvent(types: TimerTypeInfo[], hasEventId = true): 
   return manual.length ? manual : epg;
 }
 
+/**
+ * Finds the timer that belongs to an EPG programme: by provider event id first,
+ * otherwise by title + start time (within a minute). Finished/aborted timers are ignored.
+ */
+export function findTimerForProgram(
+  timers: TimerItem[],
+  program: { epg_event_id?: string; title?: string; start_time?: string }
+): TimerItem | undefined {
+  const active = timers.filter((t) => !['COMPLETED', 'ABORTED', 'CANCELLED', 'DISABLED'].includes(t.state));
+  const eventId = str(program.epg_event_id);
+  if (eventId) {
+    const hit = active.find((t) => t.epgEventId === eventId);
+    if (hit) return hit;
+  }
+  const start = program.start_time ? new Date(program.start_time).getTime() : NaN;
+  const title = String(program.title ?? '').trim().toLowerCase();
+  if (!Number.isFinite(start) || !title) return undefined;
+  return active.find(
+    (t) =>
+      !t.repeating &&
+      !!t.start &&
+      Math.abs(t.start.getTime() - start) <= 60_000 &&
+      t.title.trim().toLowerCase() === title
+  );
+}
+
 /** Python's datetime.fromisoformat (<3.11) cannot read "Z": send an explicit offset. */
 export const toBackendIso = (d: Date) => d.toISOString().replace(/\.\d{3}Z$/, '+00:00');
 

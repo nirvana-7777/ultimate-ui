@@ -8,6 +8,10 @@ import { ProviderColumn } from '@/components/epg/ProviderColumn';
 import { ChannelColumn } from '@/components/epg/ChannelColumn';
 import { TimelineColumn } from '@/components/epg/TimelineColumn';
 import { FloatingPlayer } from '@/components/epg/FloatingPlayer';
+import { useProviderTimers } from '@/hooks/useProviderTimers';
+import { cloudRecordings } from '@/services/recordingsService';
+import { useToast } from '@/lib/toast';
+import { findTimerForProgram } from '@/lib/recordings';
 import { TimerDialog } from '@/components/recordings/TimerDialog';
 import { getConfig } from '@/lib/api';
 import { localDateKey } from '@/lib/time';
@@ -41,7 +45,38 @@ export function EPGPage() {
   const channels = useProviderChannels(service, provider);
   const playback = usePlayback(service);
 
+  const { showToast } = useToast();
+  const { timers, reload: reloadTimers } = useProviderTimers(provider);
+  const [timerBusy, setTimerBusy] = useState(false);
   const [recordTarget, setRecordTarget] = useState<{ channel: Channel; program: Program } | null>(null);
+  const editTimer = useMemo(
+    () => (recordTarget ? findTimerForProgram(timers, recordTarget.program) ?? null : null),
+    [timers, recordTarget]
+  );
+  const hasTimer = useCallback((p: Program) => !!findTimerForProgram(timers, p), [timers]);
+
+  const deleteTimer = useCallback(
+    async (_c: Channel, p: Program) => {
+      const t = findTimerForProgram(timers, p);
+      if (!t || timerBusy) return;
+      const ask =
+        t.state === 'RECORDING'
+          ? `Laufende Aufnahme „${p.title}“ abbrechen und Timer löschen?`
+          : `Timer für „${p.title}“ löschen?`;
+      if (!window.confirm(ask)) return;
+      setTimerBusy(true);
+      try {
+        await cloudRecordings.deleteTimer(t, t.state === 'RECORDING');
+        showToast(`Timer für „${p.title}“ gelöscht`, 'success');
+        reloadTimers();
+      } catch (e) {
+        showToast(`Timer konnte nicht gelöscht werden: ${(e as Error).message}`, 'error');
+      } finally {
+        setTimerBusy(false);
+      }
+    },
+    [timers, timerBusy, showToast, reloadTimers]
+  );
   const [anchor, setAnchor] = useState(() => new Date());
   const [refreshNonce, setRefreshNonce] = useState(0);
 
@@ -117,11 +152,17 @@ export function EPGPage() {
         onCatchup={playback.playCatchup}
         onDownload={playback.download}
         onRecord={(c, p) => setRecordTarget({ channel: c, program: p })}
+        onUpdateTimer={(c, p) => setRecordTarget({ channel: c, program: p })}
+        onDeleteTimer={deleteTimer}
+        hasTimer={hasTimer}
+        timerBusy={timerBusy}
       />
       <FloatingPlayer state={playback.player} onClose={playback.closePlayer} />
       <TimerDialog
         channel={recordTarget?.channel ?? null}
         program={recordTarget?.program ?? null}
+        timer={editTimer}
+        onSaved={reloadTimers}
         timezone={cfg.ui.timezone}
         onClose={() => setRecordTarget(null)}
       />

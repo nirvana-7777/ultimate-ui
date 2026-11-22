@@ -23,12 +23,27 @@ export function cleanText(value: unknown): string {
   return String(value).trim();
 }
 
-/** Strings and string lists both end up as "A, B"; empty entries are dropped. */
-export function listText(value: unknown): string {
-  if (Array.isArray(value)) {
-    return value.map(cleanText).filter(Boolean).join(', ');
+/**
+ * One person entry: a plain string, or an object like
+ * {name: "Kaley Cuoco", character_name: "Penny"} -> "Kaley Cuoco (Penny)".
+ */
+function personText(value: unknown): string {
+  if (value && typeof value === 'object') {
+    const o = value as Record<string, unknown>;
+    const name = cleanText(o.name ?? o.person_name ?? o.actor ?? o.Name);
+    const role = cleanText(o.character_name ?? o.character ?? o.role ?? o.CharacterName);
+    if (name && role && role !== name) return `${name} (${role})`;
+    return name || role;
   }
   return cleanText(value);
+}
+
+/** Strings, string lists and person objects all end up as "A, B"; empty entries are dropped. */
+export function listText(value: unknown): string {
+  if (Array.isArray(value)) {
+    return value.map(personText).filter(Boolean).join(', ');
+  }
+  return personText(value);
 }
 
 function positiveInt(value: unknown): number | null {

@@ -10,6 +10,10 @@ export interface ProgramActions {
   onDownload: (channel: Channel, program: Program) => void;
   /** Opens the "record" dialog; the button is hidden when not provided. */
   onRecord?: (channel: Channel, program: Program) => void;
+  /** Opens the dialog for the programme's existing timer. */
+  onUpdateTimer?: (channel: Channel, program: Program) => void;
+  /** Deletes the programme's existing timer. */
+  onDeleteTimer?: (channel: Channel, program: Program) => void;
 }
 
 interface Props extends ProgramActions {
@@ -21,6 +25,10 @@ interface Props extends ProgramActions {
   catchupEligible: boolean;
   publicUrlConfigured: boolean;
   selected: boolean;
+  /** True when a timer exists for this programme (plain boolean, see `live`). */
+  hasTimer: boolean;
+  /** Timer delete in progress. */
+  timerBusy?: boolean;
   onToggle: (key: string) => void;
   rowKey: string;
 }
@@ -37,12 +45,16 @@ export const ProgramRow = memo(function ProgramRow({
   catchupEligible,
   publicUrlConfigured,
   selected,
+  hasTimer,
+  timerBusy,
   onToggle,
   rowKey,
   onPlay,
   onCatchup,
   onDownload,
   onRecord,
+  onUpdateTimer,
+  onDeleteTimer,
 }: Props) {
   const sub = [program.subtitle, program.category].filter(Boolean).join(' · ');
   const cls = ['tl-row', live && 'live', past && 'past', selected && 'selected']
@@ -65,6 +77,11 @@ export const ProgramRow = memo(function ProgramRow({
           {sub && !selected && <span className="tl-sub">{sub}</span>}
         </span>
         <span className="tl-flags">
+          {hasTimer && (
+            <span className="chip-timer" title="Timer vorhanden">
+              ⏺
+            </span>
+          )}
           {live && <span className="chip-live">LIVE</span>}
           {!live && catchupEligible && (
             <span className="chip-catchup" title="Catchup verfügbar">
@@ -85,6 +102,10 @@ export const ProgramRow = memo(function ProgramRow({
           onCatchup={onCatchup}
           onDownload={onDownload}
           onRecord={onRecord}
+          onUpdateTimer={onUpdateTimer}
+          onDeleteTimer={onDeleteTimer}
+          hasTimer={hasTimer}
+          timerBusy={timerBusy}
           past={past}
         />
       )}
@@ -102,10 +123,16 @@ function ProgramDetail({
   onCatchup,
   onDownload,
   onRecord,
+  onUpdateTimer,
+  onDeleteTimer,
+  hasTimer,
+  timerBusy,
   past,
 }: ProgramActions & {
   channel: Channel;
   program: Program;
+  hasTimer: boolean;
+  timerBusy?: boolean;
   past: boolean;
   live: boolean;
   catchupEligible: boolean;
@@ -172,7 +199,7 @@ function ProgramDetail({
         </div>
       </div>
 
-      {(live || catchupEligible || (!!onRecord && !past)) && (
+      {(live || catchupEligible || (!!onRecord && !past) || hasTimer) && (
         <div className="tl-actions">
           {live && (
             <button className="btn-play" onClick={() => onPlay(channel, program)}>
@@ -189,9 +216,19 @@ function ProgramDetail({
               ⬇ Download
             </button>
           )}
-          {onRecord && !past && (
+          {onRecord && !past && !hasTimer && (
             <button className="btn-play btn-record" onClick={() => onRecord(channel, program)}>
               ⏺ Aufnehmen
+            </button>
+          )}
+          {hasTimer && onUpdateTimer && (
+            <button className="btn-play btn-record" onClick={() => onUpdateTimer(channel, program)} disabled={timerBusy}>
+              ✎ Update Timer
+            </button>
+          )}
+          {hasTimer && onDeleteTimer && (
+            <button className="btn-play btn-timer-delete" onClick={() => onDeleteTimer(channel, program)} disabled={timerBusy}>
+              🗑 Delete Timer
             </button>
           )}
         </div>

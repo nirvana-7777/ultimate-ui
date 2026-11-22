@@ -18,6 +18,9 @@ interface Props extends ProgramActions {
   publicUrlConfigured: boolean;
   onJump: (date: Date) => void;
   onBack: () => void;
+  /** Existing timer for a programme (undefined = none). */
+  hasTimer?: (program: Program) => boolean;
+  timerBusy?: boolean;
 }
 
 interface DayGroup {
@@ -48,6 +51,10 @@ export function TimelineColumn({
   onCatchup,
   onDownload,
   onRecord,
+  onUpdateTimer,
+  onDeleteTimer,
+  hasTimer,
+  timerBusy,
 }: Props) {
   const tl = useChannelTimeline(service, channel, anchor);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -220,11 +227,15 @@ export function TimelineColumn({
                             catchupEligible={isCatchupEligible(p, channel, now)}
                             publicUrlConfigured={publicUrlConfigured}
                             selected={selected === key}
+                            hasTimer={!!hasTimer?.(p)}
+                            timerBusy={timerBusy}
                             onToggle={toggle}
                             onPlay={onPlay}
                             onCatchup={onCatchup}
                             onDownload={onDownload}
                             onRecord={onRecord}
+                            onUpdateTimer={onUpdateTimer}
+                            onDeleteTimer={onDeleteTimer}
                           />
                         );
                       })}

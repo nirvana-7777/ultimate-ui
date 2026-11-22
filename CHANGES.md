@@ -1,3 +1,17 @@
+# 2.5.2 - Cast with character names, timer buttons in the EPG
+
+## Fixed
+- "Besetzung" showed `[object Object]` because the EPG now sends actors as objects
+  (`{name, character_name, id}`). They are shown as `Kaley Cuoco-Sweeting (Penny), Jim Parsons (Sheldon Cooper), ...`;
+  plain string lists still work.
+
+## Changed
+- Programmes that already have a timer no longer offer "Aufnehmen". Their details show **Update Timer** and
+  **Delete Timer** instead (update opens the timer dialog with the programme, delete asks for confirmation).
+  A small ⏺ marks such programmes in the list.
+- The EPG loads the active timers of the selected provider and matches them to programmes by `epg_event_id`
+  (fallback: same title and start within a minute). Finished or aborted timers are ignored.
+
 # 2.5.1 - Timers use the provider's epg_event_id
 
 ## Fixed

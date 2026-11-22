@@ -56,6 +56,10 @@
 /* "Aufnehmen" button in the EPG programme detail */
 .tl-actions .btn-record { background: var(--error-color); border-color: var(--error-color); color: #fff; }
 
+.tl-actions .btn-timer-delete { background: transparent; border-color: var(--error-color); color: var(--error-color); }
+.tl-actions .btn-play:disabled { opacity: 0.6; cursor: default; }
+.chip-timer { color: var(--error-color); font-size: 0.8em; margin-left: 4px; }
+
 /* Timer dialog */
 .timer-dialog { display: flex; flex-direction: column; gap: 14px; }
 .timer-summary { display: flex; flex-direction: column; gap: 2px; }
