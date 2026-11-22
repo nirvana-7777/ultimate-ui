@@ -1,6 +1,7 @@
 import { Fragment, memo, useState } from 'react';
 import type { Channel, Program } from '@/lib/types';
 import { FskBadge } from '@/components/ui/FskBadge';
+import { CountryFlags } from '@/components/ui/CountryFlags';
 import { genreLabel } from '@/lib/programMeta';
 import { ProgressBar } from './ProgressBar';
 
@@ -143,11 +144,12 @@ function ProgramDetail({
 
   // Only fields the server actually filled are rendered.
   const genre = genreLabel(program.genre_dvb) || genreLabel(program.genre);
-  const meta: { cls: string; text: string }[] = [];
+  const meta: { cls: string; text: string; node?: React.ReactNode }[] = [];
   if (program.category) meta.push({ cls: 'program-category', text: program.category });
   if (genre && genre !== program.category) meta.push({ cls: 'program-genre', text: genre });
   if (program.year) meta.push({ cls: 'program-year', text: String(program.year) });
-  if (program.country) meta.push({ cls: 'program-country', text: program.country });
+  if (program.country)
+    meta.push({ cls: 'program-country', text: program.country, node: <CountryFlags value={program.country} /> });
   if (program.duration) meta.push({ cls: 'program-duration', text: `${program.duration} min` });
   if (program.episode_formatted)
     meta.push({ cls: 'program-episode', text: program.episode_formatted });
@@ -178,8 +180,8 @@ function ProgramDetail({
           {meta.length > 0 && (
             <div className="tl-meta">
               {meta.map((m) => (
-                <span key={m.cls} className={m.cls}>
-                  {m.text}
+                <span key={m.cls} className={m.cls} title={m.node ? m.text : undefined}>
+                  {m.node ?? m.text}
                 </span>
               ))}
               {program.rating && <FskBadge rating={program.rating} />}

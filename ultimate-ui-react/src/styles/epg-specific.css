@@ -92,6 +92,9 @@
   border: 1px solid var(--border-color);
 }
 
+.program-country { display: inline-flex; align-items: center; gap: 4px; }
+.country-flag { display: inline-block; width: 16px; height: 12px; vertical-align: middle; border-radius: 1px; }
+
 .btn-play {
   background: var(--accent-color);
   color: white;

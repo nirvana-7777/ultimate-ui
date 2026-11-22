@@ -11,19 +11,22 @@ interface Props {
   provider: string | null;
   includePriced: boolean;
   onClose: () => void;
-  onPlay: (url: string, title: string, subtitle?: string) => void;
+  onPlay: (url: string | undefined, title: string, subtitle?: string, drm?: { provider: string; id: string }) => void;
 }
 
 function PlayButton({
   target,
   onPlay,
   small,
+  canResolveDrm,
 }: {
   target: { manifestUrl?: string; drm: boolean; dynamic: boolean };
   onPlay: () => void;
   small?: boolean;
+  /** Provider and id are known, so a DRM stream can be fetched via /manifest + /manifest/original. */
+  canResolveDrm: boolean;
 }) {
-  if (playableUrl(target)) {
+  if (playableUrl(target) || (target.drm && !target.dynamic && canResolveDrm)) {
     return (
       <button className={`btn-play ${small ? 'vod-btn-small' : ''}`} onClick={onPlay}>
         ▶ Play
@@ -136,7 +139,15 @@ export function VodDetailModal({ item, provider, includePriced, onClose, onPlay 
                     <div className="modal-actions vod-actions">
                       <PlayButton
                         target={item}
-                        onPlay={() => onPlay(item.manifestUrl!, item.title, item.year ? String(item.year) : undefined)}
+                        canResolveDrm={!!item.providers[0] && !!item.id}
+                        onPlay={() =>
+                          onPlay(
+                            item.manifestUrl,
+                            item.title,
+                            item.year ? String(item.year) : undefined,
+                            item.drm ? { provider: item.providers[0], id: item.id } : undefined
+                          )
+                        }
                       />
                       {item.trailerUrl && (
                         <a className="btn-reminder" href={item.trailerUrl} target="_blank" rel="noreferrer noopener">
@@ -187,11 +198,13 @@ export function VodDetailModal({ item, provider, includePriced, onClose, onPlay 
                             <PlayButton
                               small
                               target={e}
+                              canResolveDrm={!!(e.provider || item.providers[0]) && !!e.id}
                               onPlay={() =>
                                 onPlay(
-                                  e.manifestUrl!,
+                                  e.manifestUrl,
                                   `${item.title} · S${String(e.season).padStart(2, '0')}E${String(e.episode).padStart(2, '0')}`,
-                                  e.title
+                                  e.title,
+                                  e.drm ? { provider: (e.provider || item.providers[0])!, id: e.id } : undefined
                                 )
                               }
                             />

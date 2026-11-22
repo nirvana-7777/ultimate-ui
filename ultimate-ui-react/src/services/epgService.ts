@@ -14,6 +14,7 @@ import { normalizeCatchup } from '@/lib/catchup';
 import { formatEpisode, normalizeProgramFields } from '@/lib/programMeta';
 import { mergeDuplicateSlots } from '@/lib/programMerge';
 import { DRM_HEADER, parseDrmHeader, type DrmInfo } from '@/lib/drm';
+import { fetchOriginalStreamUrl, resolveManifest } from '@/services/manifestService';
 
 export interface EPGServiceConfig {
   timezone: string;
@@ -317,6 +318,17 @@ export class EPGService {
       // DRM-protected streams carry their license config in a response
       // header; unencrypted ones do not. Keep the raw value with the manifest.
       manifest.__drm_header = resp.headers.get(DRM_HEADER);
+      // Encrypted stream: ask the same route plus /original for the unproxied
+      // URL (the license info stays the one from this first call).
+      let encrypted = false;
+      try {
+        encrypted = !!parseDrmHeader(manifest.__drm_header);
+      } catch {
+        // unusable header: getDrmInfo() reports it later
+      }
+      if (encrypted) {
+        manifest.__original_url = await fetchOriginalStreamUrl(url, base.replace(/\/+$/, ''));
+      }
       manifest.__fetched_at = Date.now();
       this.cache.setManifest(channel.provider, channel.id, manifest);
       return { manifest };
@@ -341,6 +353,7 @@ export class EPGService {
   ): Promise<{ url: string | null; error?: string }> {
     const { manifest, error } = await this.loadManifest(channel);
     const url =
+      manifest?.__original_url ||
       manifest?.manifest_url ||
       channel?.StreamUrl ||
       channel?.streamUrl ||
@@ -356,6 +369,25 @@ export class EPGService {
   async getDrmInfo(channel: Channel): Promise<DrmInfo | null> {
     const { manifest } = await this.loadManifest(channel);
     return parseDrmHeader(manifest?.__drm_header);
+  }
+
+  /**
+   * Catchup of an encrypted channel: the event's own manifest route gives the
+   * license info, its /original the unproxied stream. null = not possible, the
+   * caller keeps the template URL.
+   */
+  async resolveEventStream(
+    channel: Channel,
+    program: Program
+  ): Promise<{ url: string; drm: DrmInfo } | null> {
+    if (!channel?.provider || !program.epg_event_id) return null;
+    try {
+      const { url, drm, originalMissing } = await resolveManifest('events', channel.provider, program.epg_event_id);
+      return url && drm && !originalMissing ? { url, drm } : null;
+    } catch (e) {
+      console.warn('[drm] event manifest failed, using catchup template URL', e);
+      return null;
+    }
   }
 
   /** Short German explanation for a resolveLiveStreamUrl() error code. */

@@ -95,11 +95,13 @@ export function usePlayback(service: EPGService) {
         }
         const { drm, ok } = await loadDrm(channel);
         if (!ok) return;
+        // Encrypted channel: prefer the event's unproxied stream + its license info.
+        const event = drm ? await service.resolveEventStream(channel, program) : null;
         setPlayer({
-          url,
+          url: event?.url ?? url,
           title: program.title,
           subtitle: `Catchup · ${program.start_time_local}`,
-          drm,
+          drm: event?.drm ?? drm,
         });
       } catch {
         showToast(

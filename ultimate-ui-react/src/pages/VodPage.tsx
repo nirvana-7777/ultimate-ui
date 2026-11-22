@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { useInfiniteScroll } from '@/hooks/useInfiniteScroll';
 import { useVodMovies, useVodShows, useVodStatus } from '@/hooks/useVod';
 import { vodService } from '@/services/vodService';
+import { resolveManifest } from '@/services/manifestService';
 import { VodCard } from '@/components/vod/VodCard';
 import { VodDetailModal } from '@/components/vod/VodDetailModal';
 import { VodStatusBar } from '@/components/vod/VodStatusBar';
@@ -119,9 +120,23 @@ export function VodPage() {
     }
   };
 
-  const play = useCallback((url: string, title: string, subtitle?: string) => {
-    setPlayer({ url, title, subtitle, drm: null });
-  }, []);
+  const play = useCallback(
+    async (url: string | undefined, title: string, subtitle?: string, drm?: { provider: string; id: string }) => {
+      if (!drm) {
+        if (url) setPlayer({ url, title, subtitle, drm: null });
+        return;
+      }
+      // Encrypted: /manifest gives the license info, /manifest/original the unproxied stream.
+      try {
+        const r = await resolveManifest('vod', drm.provider, drm.id);
+        if (!r.url) throw new Error('Kein Stream für diesen Titel verfügbar');
+        setPlayer({ url: r.url, title, subtitle, drm: r.drm });
+      } catch (e) {
+        showToast((e as Error).message, 'error');
+      }
+    },
+    [showToast]
+  );
 
   return (
     <div className="vod-page">

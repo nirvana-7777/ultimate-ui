@@ -1,3 +1,24 @@
+# 2.5.4 - Country flags, unproxied DRM streams
+
+## Changed
+- EPG: the country of a programme is shown as flags (`https://flagcdn.com/16x12/<code>.png`, 2x variant for
+  sharp screens). Comma separated values (`us, de`) show all flags; `uk` is mapped to `gb`. Values that are not
+  a two-letter code, or flags that fail to load, stay as text.
+- DRM streams: when the first manifest call carries `X-Kodi-Drm-Configs`, the UI calls the same route with
+  `/original` appended and gives Shaka that unproxied URL together with the license info of the first call.
+  This applies to
+  - live (`/channels/{id}/manifest/original`),
+  - catchup of encrypted channels (`/events/{epg_event_id}/manifest/original`; falls back to the catchup
+    template URL if the event route fails),
+  - recordings (`/recordings/{id}/manifest/original`),
+  - VOD (`/vod/{id}/manifest/original`): encrypted movies and episodes now get a Play button
+    (provider = first provider of the title / the episode's provider).
+  If `/original` is not available the proxied URL from the first call is used (console warning).
+- New `services/manifestService.ts` holds the shared two-step lookup.
+
+## Note
+- Flags are loaded from flagcdn.com by the browser, so the browser contacts that host.
+
 # 2.5.3 - Recordings buttons by state, instant switch after timer delete
 
 ## Changed

@@ -1,5 +1,6 @@
 import { api, getConfig } from '@/lib/api';
-import { DRM_HEADER, parseDrmHeader, type DrmInfo } from '@/lib/drm';
+import type { DrmInfo } from '@/lib/drm';
+import { resolveManifest } from '@/services/manifestService';
 import {
   buildTimerBody,
   normalizeRecording,
@@ -65,25 +66,12 @@ export const cloudRecordings: RecordingBackend = {
   /**
    * Like live/catchup: the browser asks the Ultimate Backend directly (public URL),
    * because the DRM header and the stream URLs are meant for the player.
+   * DRM recordings play from the unproxied URL (/manifest/original).
    */
   async resolvePlayback(item) {
-    const cfg = getConfig().ultimate_backend;
-    const base = (cfg.public_url || cfg.url || '').replace(/\/+$/, '');
-    if (!base) {
-      throw new Error('Kein Stream: Backend-URL fehlt (ULTIMATE_BACKEND_URL bzw. ULTIMATE_BACKEND_PUBLIC_URL)');
-    }
-    const url = `${base}/api/providers/${seg(item.provider)}/recordings/${seg(item.id)}/manifest`;
-    let resp: Response;
-    try {
-      resp = await fetch(url, { credentials: 'omit' });
-    } catch {
-      throw new Error(`Backend ${base} aus dem Browser nicht erreichbar (Erreichbarkeit/CORS prüfen)`);
-    }
-    if (!resp.ok) throw new Error(`Backend hat die Stream-Anfrage abgelehnt (HTTP ${resp.status})`);
-    const manifest = await resp.json();
-    const stream = manifest?.manifest_url || manifest?.ts_stream_url;
-    if (!stream) throw new Error('Kein Stream für diese Aufnahme verfügbar');
-    return { url: stream, drm: parseDrmHeader(resp.headers.get(DRM_HEADER)) };
+    const { url, drm } = await resolveManifest('recordings', item.provider, item.id);
+    if (!url) throw new Error('Kein Stream für diese Aufnahme verfügbar');
+    return { url, drm };
   },
 
   async timerTypes(provider, opts) {
