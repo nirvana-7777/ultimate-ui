@@ -66,7 +66,7 @@ export const cloudRecordings: RecordingBackend = {
   /**
    * Like live/catchup: the browser asks the Ultimate Backend directly (public URL),
    * because the DRM header and the stream URLs are meant for the player.
-   * DRM recordings play from the unproxied URL (/manifest/original).
+   * DRM recordings play from the unproxied URL (/manifest/url).
    */
   async resolvePlayback(item) {
     const { url, drm } = await resolveManifest('recordings', item.provider, item.id);

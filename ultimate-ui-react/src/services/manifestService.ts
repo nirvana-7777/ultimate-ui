@@ -1,7 +1,7 @@
 import { getConfig } from '@/lib/api';
 import { DRM_HEADER, parseDrmHeader, type DrmInfo } from '@/lib/drm';
 
-/** Backend routes that serve /manifest (and /manifest/original) per item kind. */
+/** Backend routes that serve /manifest (and /manifest/url) per item kind. */
 export type ManifestKind = 'channels' | 'events' | 'vod' | 'recordings';
 
 const seg = encodeURIComponent;
@@ -29,26 +29,27 @@ function absolute(url: string, base: string): string {
 
 /**
  * Unproxied stream URL of an encrypted item: the same manifest route plus
- * "/original". Never throws; null means "not available" and the caller keeps
+ * "/url" (answers {manifest_url, manifest_headers, segment_headers}). Never throws; null means "not available" and the caller keeps
  * the proxied URL from the first call.
  */
-export async function fetchOriginalStreamUrl(endpoint: string, base: string): Promise<string | null> {
+export async function fetchStreamUrl(endpoint: string, base: string): Promise<string | null> {
   try {
-    const resp = await fetch(`${endpoint}/original`, { credentials: 'omit' });
+    const resp = await fetch(`${endpoint}/url`, { credentials: 'omit' });
     if (!resp.ok) {
-      console.warn(`[drm] ${endpoint}/original: HTTP ${resp.status}`);
+      console.warn(`[drm] ${endpoint}/url: HTTP ${resp.status}`);
       return null;
     }
-    const url = streamOf(await resp.json());
-    return url ? absolute(url, base) : null;
+    // {"manifest_url": "...", "manifest_headers": {}, "segment_headers": {}}
+    const url = (await resp.json())?.manifest_url;
+    return url ? absolute(String(url), base) : null;
   } catch (e) {
-    console.warn(`[drm] ${endpoint}/original failed`, e);
+    console.warn(`[drm] ${endpoint}/url failed`, e);
     return null;
   }
 }
 
 export interface ResolvedManifest {
-  /** What the player should load (original URL for DRM streams when available). */
+  /** What the player should load (URL from .../manifest/url for DRM streams when available). */
   url: string | null;
   /** License info from the first call; null = unencrypted. */
   drm: DrmInfo | null;
@@ -59,8 +60,8 @@ export interface ResolvedManifest {
 /**
  * Two-step manifest lookup used for every kind:
  *   1. GET .../manifest           -> stream URL + X-Kodi-Drm-Configs header
- *   2. header present (DRM)       -> GET .../manifest/original for the unproxied URL
- * Shaka gets the original URL together with the license info of step 1.
+ *   2. header present (DRM)       -> GET .../manifest/url for the unproxied URL
+ * Shaka gets that URL together with the license info of step 1.
  * Throws German messages for the first call only.
  */
 export async function resolveManifest(
@@ -85,8 +86,8 @@ export async function resolveManifest(
   let url = streamOf(manifest);
   let originalMissing = false;
   if (drm) {
-    const original = await fetchOriginalStreamUrl(endpoint, base);
-    if (original) url = original;
+    const direct = await fetchStreamUrl(endpoint, base);
+    if (direct) url = direct;
     else originalMissing = true;
   }
   return { url, drm, originalMissing };

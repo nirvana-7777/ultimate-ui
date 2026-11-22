@@ -126,7 +126,7 @@ export function VodPage() {
         if (url) setPlayer({ url, title, subtitle, drm: null });
         return;
       }
-      // Encrypted: /manifest gives the license info, /manifest/original the unproxied stream.
+      // Encrypted: /manifest gives the license info, /manifest/url the unproxied stream.
       try {
         const r = await resolveManifest('vod', drm.provider, drm.id);
         if (!r.url) throw new Error('Kein Stream für diesen Titel verfügbar');

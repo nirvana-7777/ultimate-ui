@@ -1,3 +1,11 @@
+# 2.5.5 - Unproxied DRM stream via /manifest/url
+
+## Fixed
+- 2.5.4 asked `.../manifest/original` for the unproxied stream. The right route is `.../manifest/url`, which
+  answers `{"manifest_url": "...", "manifest_headers": {}, "segment_headers": {}}`. The UI now reads `manifest_url`
+  from it (live, catchup events, recordings, VOD) and hands it to Shaka together with the license info of the
+  first `.../manifest` call. `manifest_headers` / `segment_headers` are not used yet.
+
 # 2.5.4 - Country flags, unproxied DRM streams
 
 ## Changed

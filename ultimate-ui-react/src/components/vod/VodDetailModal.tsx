@@ -23,7 +23,7 @@ function PlayButton({
   target: { manifestUrl?: string; drm: boolean; dynamic: boolean };
   onPlay: () => void;
   small?: boolean;
-  /** Provider and id are known, so a DRM stream can be fetched via /manifest + /manifest/original. */
+  /** Provider and id are known, so a DRM stream can be fetched via /manifest + /manifest/url. */
   canResolveDrm: boolean;
 }) {
   if (playableUrl(target) || (target.drm && !target.dynamic && canResolveDrm)) {
