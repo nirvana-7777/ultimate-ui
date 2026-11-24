@@ -43,7 +43,7 @@ export interface FanOutResult<T> {
  * Per-provider endpoints, fanned out for "all providers". A provider that
  * cannot do recordings must not break the others, so failures are collected.
  */
-function useFanOut<T>(
+export function useFanOut<T>(
   enabled: boolean,
   targets: string[],
   fetchOne: (provider: string, signal: AbortSignal) => Promise<T[]>,

@@ -398,6 +398,32 @@ class UltimateBackendClient(_BaseClient):
 
         return all_channels
 
+    # -- Events (one provider at a time) -------------------------------------
+    # The backend route lives in routes/events.py. Without a time range the
+    # provider returns every known event (live and upcoming).
+
+    def list_events(
+        self,
+        provider_id: str,
+        start_time: Optional[str] = None,
+        end_time: Optional[str] = None,
+    ) -> Any:
+        """Events of one provider (JSON as the backend sends it).
+
+        start_time / end_time are ISO 8601 strings: only events ending after
+        start_time and starting before end_time are returned.
+        """
+        params: Dict[str, Any] = {}
+        if start_time:
+            params["start_time"] = start_time
+        if end_time:
+            params["end_time"] = end_time
+        return self._request(
+            "GET",
+            f"/api/providers/{_seg(provider_id)}/events",
+            params=params or None,
+        )
+
     # -- Recordings and timers (cloud recordings, one provider at a time) ----
     # The backend routes live in routes/recordings.py and routes/timers.py.
 

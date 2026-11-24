@@ -541,6 +541,7 @@ def _env_override_warnings(submitted: Dict[str, Any]) -> list:
 @app.route("/mapping", methods=["GET"])
 @app.route("/vod", methods=["GET"])
 @app.route("/recordings", methods=["GET"])
+@app.route("/events", methods=["GET"])
 def spa_index():
     return render_template("spa.html")
 
@@ -1054,6 +1055,34 @@ def api_delete_timer(provider, client_index):
 )
 def api_local_recordings_stub(subpath):
     return _err("Lokale Recordings sind noch nicht verfügbar", 501)
+
+
+# ---------------------------------------------------------------------------
+# Events proxy (Ultimate Backend, one provider at a time)
+# ---------------------------------------------------------------------------
+# Listing goes through Flask like recordings; playback talks to the backend
+# directly from the browser (.../events/<id>/manifest).
+def _iso_arg(name: str) -> Optional[str]:
+    """Optional ISO 8601 query parameter, validated before it is forwarded."""
+    raw = (request.args.get(name) or "").strip()
+    if not raw:
+        return None
+    if len(raw) > 64:
+        raise ClientError(f"{name} is too long")
+    try:
+        datetime.fromisoformat(raw)
+    except ValueError:
+        raise ClientError(f"{name} must be an ISO 8601 timestamp")
+    return raw
+
+
+@app.route("/api/events/<provider>", methods=["GET"])
+def api_list_events(provider):
+    return jsonify(
+        get_ultimate_backend_client().list_events(
+            _rec_provider(provider), _iso_arg("start_time"), _iso_arg("end_time")
+        )
+    )
 
 
 # ---------------------------------------------------------------------------

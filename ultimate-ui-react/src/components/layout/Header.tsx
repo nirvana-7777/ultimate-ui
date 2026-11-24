@@ -4,6 +4,7 @@ import { motion, useReducedMotion } from 'motion/react';
 
 const TABS = [
   { to: '/', icon: '📋', label: 'EPG' },
+  { to: '/events', icon: '🏟️', label: 'Events' },
   { to: '/vod', icon: '🎬', label: 'VOD' },
   { to: '/recordings', icon: '⏺️', label: 'Recordings' },
   { to: '/mapping', icon: '🔗', label: 'Mapping' },

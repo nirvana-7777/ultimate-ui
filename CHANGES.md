@@ -1,3 +1,25 @@
+# 2.6.0 - Events tab
+
+## Added
+- New tab **Events** right of EPG (`/events`): one-time live/scheduled broadcasts (sports, concerts, ...) of all
+  providers or of one provider (provider select, like Recordings). The backend has one route per provider
+  (`GET /api/providers/<provider>/events`), so "all providers" fans out; a provider that fails is listed in the
+  count line and does not hide the others.
+- Filter Alle / Live / Geplant, free-text search (title, subtitle, channel, competition, discipline, venue).
+  Live events first, then upcoming by start time, finished/cancelled last.
+- Live events have a Play button. Playback uses the same two-step lookup as live, catchup and recordings
+  (`.../events/<id>/manifest`, DRM streams from `.../manifest/url`).
+- Flask proxy `GET /api/events/<provider>` (validated provider, optional ISO 8601 `start_time` / `end_time`
+  forwarded to the backend) and `UltimateBackendClient.list_events()`.
+
+## Notes
+- The status is derived from start/end in the browser: the backend computes LIVE/ENDED when the Event object is
+  built, which can be long before the list is shown. CANCELLED always comes from the backend.
+- `Event.to_dict()` currently emits only the `Content` fields plus StartTime, EndTime, Status and DurationMinutes.
+  Subtitle, OriginalName, Competition, Venue, Gender, Discipline, AgeCategory, MasterEvent and Channel are read by
+  the UI as soon as the backend serialises them (PascalCase or snake_case).
+- `useFanOut` is now exported from `hooks/useRecordings.ts` and shared with `useEvents`.
+
 # 2.5.5 - Unproxied DRM stream via /manifest/url
 
 ## Fixed
