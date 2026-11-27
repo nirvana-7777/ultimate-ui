@@ -428,7 +428,7 @@
 }
 .person-card {
   flex: none;
-  width: 92px;
+  width: 96px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -437,10 +437,10 @@
   scroll-snap-align: start;
 }
 .person-photo {
-  width: 72px;
-  height: 72px;
+  width: 100%;
+  aspect-ratio: 3 / 4;
   margin-bottom: 6px;
-  border-radius: 50%;
+  border-radius: var(--radius-sm);
   overflow: hidden;
   background: var(--bg-tertiary);
   border: 1px solid var(--border-color);
@@ -466,6 +466,5 @@
 .person-character { font-size: var(--text-xs); color: var(--text-secondary); }
 .person-role { font-size: 11px; color: var(--text-muted); }
 @media (max-width: 900px) {
-  .person-card { width: 84px; }
-  .person-photo { width: 64px; height: 64px; }
+  .person-card { width: 88px; }
 }
