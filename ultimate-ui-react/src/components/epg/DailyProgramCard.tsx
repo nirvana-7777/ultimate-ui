@@ -28,8 +28,8 @@ export function DailyProgramCard({
   const now = new Date();
   const start = parseProgramTime(program.start_time);
   const end = parseProgramTime(program.end_time);
-  const isLive = start && end && start <= now && end >= now;
-  const isPast = end && end < now;
+  const isLive = start && end && start <= now && now < end;
+  const isPast = end && end <= now;
   const catchupEligible = isCatchupEligible(program, channel, now);
 
   const cls = [

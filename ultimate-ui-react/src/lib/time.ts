@@ -81,7 +81,7 @@ export function calculateProgress(
   const now = new Date();
   const start = typeof startTime === 'string' ? parseProgramTime(startTime) : startTime;
   const end = typeof endTime === 'string' ? parseProgramTime(endTime) : endTime;
-  if (!start || !end || now < start || now > end) return null;
+  if (!start || !end || now < start || now >= end) return null;
   const total = end.getTime() - start.getTime();
   const elapsed = now.getTime() - start.getTime();
   return {

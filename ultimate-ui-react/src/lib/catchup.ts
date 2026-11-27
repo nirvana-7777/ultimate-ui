@@ -41,7 +41,7 @@ export function isCatchupEligible(
   const start = parseProgramTime(program.start_time);
   const end = parseProgramTime(program.end_time);
   if (!start || !end) return false;
-  if (end >= now) return false;
+  if (end > now) return false;
   const ageHours = (now.getTime() - start.getTime()) / 3600000;
   return ageHours <= (channel.catchup.hours || 0);
 }

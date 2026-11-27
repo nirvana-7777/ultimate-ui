@@ -358,7 +358,7 @@
 .tl-detail-body { display: flex; gap: 16px; align-items: flex-start; }
 .tl-detail-image {
   flex: none;
-  width: 168px;
+  width: 256px;
   aspect-ratio: 16 / 9;
   object-fit: cover;
   border-radius: var(--radius-sm);
@@ -390,7 +390,7 @@
 /* ---------- Narrower screens ---------- */
 @media (max-width: 1200px) {
   .epg-browser { grid-template-columns: minmax(160px, 190px) minmax(230px, 290px) minmax(0, 1fr); }
-  .tl-detail-image { width: 128px; }
+  .tl-detail-image { width: 200px; }
 }
 
 /* Below 900px the three columns become a drill-down: one column at a time. */
@@ -408,7 +408,7 @@
   .tl-row .event-progress { padding-left: calc(14px + 46px + 10px); padding-right: 14px; }
   .tl-detail { padding: 2px 14px 14px; }
   .tl-detail-body { flex-direction: column; }
-  .tl-detail-image { width: 100%; max-width: 360px; }
+  .tl-detail-image { width: 100%; max-width: 420px; }
   .timeline-header .timeline-date { max-width: 130px; }
 }
 
@@ -428,7 +428,7 @@
 }
 .person-card {
   flex: none;
-  width: 96px;
+  width: 88px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -466,5 +466,5 @@
 .person-character { font-size: var(--text-xs); color: var(--text-secondary); }
 .person-role { font-size: 11px; color: var(--text-muted); }
 @media (max-width: 900px) {
-  .person-card { width: 88px; }
+  .person-card { width: 80px; }
 }

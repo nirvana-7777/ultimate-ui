@@ -162,8 +162,10 @@ export class EPGService {
     const wasPast = !!program.is_past;
     const prevBadge = program.time_badge?.type;
 
-    program.is_live = start <= now && end >= now;
-    program.is_past = end < now;
+    // Half-open interval [start, end): at the exact end the next programme is live,
+    // never both (otherwise two Play buttons show for one minute boundary).
+    program.is_live = start <= now && now < end;
+    program.is_past = end <= now;
 
     if (program.is_live) {
       program.progress =
@@ -193,7 +195,7 @@ export class EPGService {
     const isToday = isSameDay(now, start);
     const isTomorrow = isSameDay(new Date(now.getTime() + 86400000), start);
     const isYesterday = isSameDay(new Date(now.getTime() - 86400000), start);
-    const isCurrentlyAiring = start <= now && end >= now;
+    const isCurrentlyAiring = start <= now && now < end;
     const t = (s: string | Date) => formatDateTime(s, 'time', this.config.timezone);
     const sd = (s: string | Date) => formatDateTime(s, 'short-date', this.config.timezone);
 
@@ -411,7 +413,7 @@ export class EPGService {
     const end = parseProgramTime(program.end_time);
     if (!start || !end) return null;
     const now = new Date();
-    if (end >= now) return null;
+    if (end > now) return null;
     const ageHours = (now.getTime() - start.getTime()) / 3600000;
     if (ageHours > (channel.catchup.hours || 0)) return null;
 
