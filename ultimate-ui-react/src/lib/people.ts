@@ -19,6 +19,7 @@ export interface LanePerson {
   character?: string;
   /** What the person did, e.g. "Schauspieler" or "Regie". */
   role: string;
+  /** Portrait URL; empty means the card shows initials instead. */
   image: string;
 }
 
@@ -40,46 +41,75 @@ function peopleOf(program: Program, role: CreditRole): PersonCredit[] {
   return Array.isArray(list) ? list.filter((p) => p && clean(p.name)) : [];
 }
 
-/** People with a portrait: they get a card in the lane. */
+function sameCharacter(character: string, name: string): string | undefined {
+  return character && character !== name ? character : undefined;
+}
+
+/** Name strings only ("Anna (Rolle), Bob") for roles that have no structured credits. */
+function parseNames(value: unknown): { name: string; character?: string }[] {
+  return clean(value)
+    .split(/,\s*/)
+    .map((part) => {
+      const m = part.match(/^(.*?)\s*\(([^)]*)\)$/);
+      return m ? { name: m[1].trim(), character: clean(m[2]) } : { name: part.trim() };
+    })
+    .filter((p) => p.name);
+}
+
+/** True when at least one person has a portrait. */
+function hasPortrait(program: Program): boolean {
+  return ROLES.some(({ key }) => peopleOf(program, key).some((p) => imageUrl(p.image)));
+}
+
+/**
+ * All people of a programme for the lane, in lane order. The lane is used only when at
+ * least one portrait exists; then everybody (every role) is in it, people without a
+ * portrait with initials. Without any portrait the plain text list is used instead.
+ */
 export function lanePeople(program: Program): LanePerson[] {
+  if (!hasPortrait(program)) return [];
   const seen = new Set<string>();
   const out: LanePerson[] = [];
   for (const key of LANE_ORDER) {
     const role = ROLES.find((r) => r.key === key)!;
-    for (const p of peopleOf(program, key)) {
-      const image = imageUrl(p.image);
-      if (!image) continue;
-      const id = clean(p.id) || clean(p.name).toLowerCase();
+    const structured = peopleOf(program, key);
+    const people: { id?: string; name: string; character?: string; image: string }[] =
+      structured.length > 0
+        ? structured.map((p) => ({
+            id: clean(p.id),
+            name: clean(p.name),
+            character: sameCharacter(clean(p.character_name), clean(p.name)),
+            image: imageUrl(p.image),
+          }))
+        : parseNames(program[key] as unknown).map((p) => ({ ...p, image: '' }));
+    for (const p of people) {
+      const id = p.id || p.name.toLowerCase();
       if (seen.has(`${key}:${id}`)) continue;
       seen.add(`${key}:${id}`);
-      const character = clean(p.character_name);
       out.push({
         key: `${key}:${id}`,
-        name: clean(p.name),
-        character: character && character !== clean(p.name) ? character : undefined,
+        name: p.name,
+        character: p.character,
         role: role.personLabel,
-        image,
+        image: p.image,
       });
     }
   }
   return out;
 }
 
-/**
- * Text-only credits ("Regie: A, B"). People shown in the lane are left out so nobody
- * appears twice; roles without structured credits fall back to the plain name strings.
- */
+/** Text credits ("Regie: A, B") - only used when there is no portrait at all. */
 export function textCredits(program: Program): CreditLine[] {
+  if (hasPortrait(program)) return [];
   const lines: CreditLine[] = [];
   for (const { key, label } of ROLES) {
     const structured = peopleOf(program, key);
     let value: string;
     if (structured.length > 0) {
       value = structured
-        .filter((p) => !imageUrl(p.image))
         .map((p) => {
-          const c = clean(p.character_name);
-          return c && c !== clean(p.name) ? `${clean(p.name)} (${c})` : clean(p.name);
+          const c = sameCharacter(clean(p.character_name), clean(p.name));
+          return c ? `${clean(p.name)} (${c})` : clean(p.name);
         })
         .join(', ');
     } else {

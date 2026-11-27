@@ -4,6 +4,7 @@ import { initials } from '@/lib/people';
 
 function PersonCard({ person }: { person: LanePerson }) {
   const [failed, setFailed] = useState(false);
+  const showImage = person.image !== '' && !failed;
   const title = [person.name, person.character && `(${person.character})`, person.role]
     .filter(Boolean)
     .join(' ');
@@ -11,11 +12,7 @@ function PersonCard({ person }: { person: LanePerson }) {
   return (
     <li className="person-card" title={title}>
       <div className="person-photo">
-        {failed ? (
-          <span className="person-initials" aria-hidden="true">
-            {initials(person.name)}
-          </span>
-        ) : (
+        {showImage ? (
           <img
             src={person.image}
             alt=""
@@ -23,6 +20,10 @@ function PersonCard({ person }: { person: LanePerson }) {
             referrerPolicy="no-referrer"
             onError={() => setFailed(true)}
           />
+        ) : (
+          <span className="person-initials" aria-hidden="true">
+            {initials(person.name)}
+          </span>
         )}
       </div>
       <span className="person-name">{person.name}</span>
