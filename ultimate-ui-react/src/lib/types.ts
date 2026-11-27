@@ -17,6 +17,17 @@ export interface Channel {
   StreamUrl?: string;
 }
 
+/** One person as delivered by WebEPG in `credits.<role>[]`. */
+export interface PersonCredit {
+  id?: string;
+  name: string;
+  character_name?: string;
+  image?: string;
+  roles?: string[];
+}
+
+export type CreditRole = 'actors' | 'directors' | 'presenters' | 'writers' | 'producers';
+
 export interface Program {
   id?: number | string;
   program_id?: number | string;
@@ -35,6 +46,8 @@ export interface Program {
   episode_formatted?: string | null;
   directors?: string | string[];
   actors?: string | string[];
+  /** Structured people incl. portrait (WebEPG); keyed by credit role. */
+  credits?: Partial<Record<CreditRole, PersonCredit[]>>;
   image_url?: string;
   icon_url?: string;
   thumbnail_url?: string;

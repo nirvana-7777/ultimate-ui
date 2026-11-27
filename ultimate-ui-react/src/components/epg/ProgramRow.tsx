@@ -3,6 +3,8 @@ import type { Channel, Program } from '@/lib/types';
 import { FskBadge } from '@/components/ui/FskBadge';
 import { CountryFlags } from '@/components/ui/CountryFlags';
 import { genreLabel } from '@/lib/programMeta';
+import { lanePeople, textCredits } from '@/lib/people';
+import { PersonLane } from './PersonLane';
 import { ProgressBar } from './ProgressBar';
 
 export interface ProgramActions {
@@ -153,15 +155,11 @@ function ProgramDetail({
   if (program.duration) meta.push({ cls: 'program-duration', text: `${program.duration} min` });
   if (program.episode_formatted)
     meta.push({ cls: 'program-episode', text: program.episode_formatted });
-  const credits: [string, string][] = [];
-  if (program.directors) credits.push(['Regie', String(program.directors)]);
-  if (program.presenters) credits.push(['Moderation', String(program.presenters)]);
-  if (program.actors) credits.push(['Besetzung', String(program.actors)]);
-  if (program.writers) credits.push(['Drehbuch', String(program.writers)]);
-  if (program.producers) credits.push(['Produktion', String(program.producers)]);
+  // Portraits go to the lane; everyone else stays in the text list.
+  const people = lanePeople(program);
+  const credits: [string, string][] = textCredits(program).map((c) => [c.label, c.value]);
   if (program.language) credits.push(['Sprache', program.language.toUpperCase()]);
-  if (program.ultimate_epg_id) credits.push(['EPG-ID', String(program.ultimate_epg_id)]);
-  if (program.epg_event_id) credits.push(['Event-ID', program.epg_event_id]);
+  // EPG and event IDs are internal (timers use them); they are deliberately not shown.
 
   return (
     <div className="tl-detail">
@@ -200,6 +198,8 @@ function ProgramDetail({
           )}
         </div>
       </div>
+
+      <PersonLane people={people} />
 
       {(live || catchupEligible || (!!onRecord && !past) || hasTimer) && (
         <div className="tl-actions">

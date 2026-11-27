@@ -4,7 +4,7 @@ import type { Program } from './types';
 const SLOT_TOLERANCE_MS = 2 * 60_000;
 
 const FIELDS_FOR_RICHNESS = [
-  'description', 'plot', 'subtitle', 'episode_name', 'actors', 'directors', 'presenters',
+  'description', 'plot', 'subtitle', 'episode_name', 'actors', 'directors', 'presenters', 'credits',
   'producers', 'writers', 'icon_url', 'icon', 'thumbnail_url', 'category', 'rating', 'country',
   'language', 'production_year', 'year', 'episode_num', 'season_num', 'episode_number', 'season_number',
 ] as const;
@@ -13,6 +13,7 @@ const isFilled = (v: unknown): boolean => {
   if (v === null || v === undefined) return false;
   if (Array.isArray(v)) return v.some(isFilled);
   if (typeof v === 'number') return v !== 0;
+  if (typeof v === 'object') return Object.values(v as object).some(isFilled);
   return String(v).trim() !== '';
 };
 
