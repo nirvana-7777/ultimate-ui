@@ -1,9 +1,15 @@
 import { useState } from 'react';
 import type { LanePerson } from '@/lib/people';
 import { initials } from '@/lib/people';
+import { sizedImageUrl } from '@/lib/imageUrl';
+
+/** Portraits are ~88 CSS px wide; 200 px stays sharp on 2x screens. */
+const PORTRAIT_WIDTH = 200;
 
 function PersonCard({ person }: { person: LanePerson }) {
   const [failed, setFailed] = useState(false);
+  const [original, setOriginal] = useState(false);
+  const src = original ? person.image : sizedImageUrl(person.image, PORTRAIT_WIDTH);
   const showImage = person.image !== '' && !failed;
   const title = [person.name, person.character && `(${person.character})`, person.role]
     .filter(Boolean)
@@ -14,11 +20,11 @@ function PersonCard({ person }: { person: LanePerson }) {
       <div className="person-photo">
         {showImage ? (
           <img
-            src={person.image}
+            src={src}
             alt=""
             loading="lazy"
             referrerPolicy="no-referrer"
-            onError={() => setFailed(true)}
+            onError={() => (src !== person.image ? setOriginal(true) : setFailed(true))}
           />
         ) : (
           <span className="person-initials" aria-hidden="true">

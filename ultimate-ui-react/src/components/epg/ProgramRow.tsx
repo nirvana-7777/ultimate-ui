@@ -4,6 +4,7 @@ import { FskBadge } from '@/components/ui/FskBadge';
 import { CountryFlags } from '@/components/ui/CountryFlags';
 import { genreLabel } from '@/lib/programMeta';
 import { lanePeople, textCredits } from '@/lib/people';
+import { sizedImageUrl } from '@/lib/imageUrl';
 import { PersonLane } from './PersonLane';
 import { ProgressBar } from './ProgressBar';
 
@@ -18,6 +19,9 @@ export interface ProgramActions {
   /** Deletes the programme's existing timer. */
   onDeleteTimer?: (channel: Channel, program: Program) => void;
 }
+
+/** Requested hero width in px: banner max 720 CSS px, a bit of headroom for sharp screens. */
+const HERO_WIDTH = 960;
 
 interface Props extends ProgramActions {
   channel: Channel;
@@ -145,6 +149,9 @@ function ProgramDetail({
   const image = program.image_url || program.icon_url;
   // Hero banner only with a usable image; otherwise the card looks exactly as before.
   const showHero = !!image && !imgFailed;
+  // Scaled variant if the URL has resize parameters; falls back to the original on error.
+  const [heroOriginal, setHeroOriginal] = useState(false);
+  const heroSrc = heroOriginal ? image : sizedImageUrl(image, HERO_WIDTH);
 
   // Only fields the server actually filled are rendered.
   const genre = genreLabel(program.genre_dvb) || genreLabel(program.genre);
@@ -170,10 +177,10 @@ function ProgramDetail({
           <div className="tl-hero">
             <img
               className="tl-hero-image"
-              src={image}
+              src={heroSrc}
               alt=""
               loading="lazy"
-              onError={() => setImgFailed(true)}
+              onError={() => (heroSrc !== image ? setHeroOriginal(true) : setImgFailed(true))}
             />
           </div>
         )}
