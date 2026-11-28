@@ -355,14 +355,34 @@
   padding: 2px 20px 16px calc(20px + 52px + 14px);
   animation: slideInUp var(--duration-normal) var(--ease-out);
 }
-.tl-detail-body { display: flex; gap: 16px; align-items: flex-start; }
-.tl-detail-image {
-  flex: none;
-  width: 256px;
+.tl-detail-body { display: flex; flex-direction: column; gap: 8px; }
+
+/* Hero: preview image fades out towards the bottom (mask, so it blends into any row
+   background incl. the live tint); the text block overlaps the faded part. */
+.tl-hero {
+  position: relative;
+  width: 100%;
+  max-width: 720px;
   aspect-ratio: 16 / 9;
-  object-fit: cover;
-  border-radius: var(--radius-sm);
+  max-height: 240px;
+  overflow: hidden;
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
   background: var(--bg-tertiary);
+  -webkit-mask-image: linear-gradient(to bottom, #000 40%, transparent 88%);
+  mask-image: linear-gradient(to bottom, #000 40%, transparent 88%);
+}
+.tl-hero-image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 25%;
+}
+.tl-detail-text.has-hero { position: relative; margin-top: -48px; }
+.tl-detail-text.has-hero .tl-detail-subtitle {
+  font-size: var(--text-base);
+  font-weight: 650;
+  color: var(--text-primary);
 }
 .tl-detail-text { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 8px; }
 .tl-detail-subtitle { font-size: var(--text-sm); color: var(--text-secondary); font-weight: 500; }
@@ -390,7 +410,6 @@
 /* ---------- Narrower screens ---------- */
 @media (max-width: 1200px) {
   .epg-browser { grid-template-columns: minmax(160px, 190px) minmax(230px, 290px) minmax(0, 1fr); }
-  .tl-detail-image { width: 200px; }
 }
 
 /* Below 900px the three columns become a drill-down: one column at a time. */
@@ -407,8 +426,8 @@
   .tl-day-header { padding: 8px 14px; }
   .tl-row .event-progress { padding-left: calc(14px + 46px + 10px); padding-right: 14px; }
   .tl-detail { padding: 2px 14px 14px; }
-  .tl-detail-body { flex-direction: column; }
-  .tl-detail-image { width: 100%; max-width: 420px; }
+  .tl-hero { max-height: 200px; }
+  .tl-detail-text.has-hero { margin-top: -40px; }
   .timeline-header .timeline-date { max-width: 130px; }
 }
 

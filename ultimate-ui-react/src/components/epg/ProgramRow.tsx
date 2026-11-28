@@ -143,6 +143,8 @@ function ProgramDetail({
 }) {
   const [imgFailed, setImgFailed] = useState(false);
   const image = program.image_url || program.icon_url;
+  // Hero banner only with a usable image; otherwise the card looks exactly as before.
+  const showHero = !!image && !imgFailed;
 
   // Only fields the server actually filled are rendered.
   const genre = genreLabel(program.genre_dvb) || genreLabel(program.genre);
@@ -164,16 +166,18 @@ function ProgramDetail({
   return (
     <div className="tl-detail">
       <div className="tl-detail-body">
-        {image && !imgFailed && (
-          <img
-            className="tl-detail-image"
-            src={image}
-            alt=""
-            loading="lazy"
-            onError={() => setImgFailed(true)}
-          />
+        {showHero && (
+          <div className="tl-hero">
+            <img
+              className="tl-hero-image"
+              src={image}
+              alt=""
+              loading="lazy"
+              onError={() => setImgFailed(true)}
+            />
+          </div>
         )}
-        <div className="tl-detail-text">
+        <div className={showHero ? 'tl-detail-text has-hero' : 'tl-detail-text'}>
           {program.subtitle && <div className="tl-detail-subtitle">{program.subtitle}</div>}
           {meta.length > 0 && (
             <div className="tl-meta">

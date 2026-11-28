@@ -79,22 +79,6 @@
       <workItem from="1768403116851" duration="13560000" />
       <workItem from="1768480467536" duration="685000" />
     </task>
-    <task id="LOCAL-00162" summary="change to react">
-      <option name="closed" value="true" />
-      <created>1794660951670</created>
-      <option name="number" value="00162" />
-      <option name="presentableId" value="LOCAL-00162" />
-      <option name="project" value="LOCAL" />
-      <updated>1794660951670</updated>
-    </task>
-    <task id="LOCAL-00163" summary="change to react">
-      <option name="closed" value="true" />
-      <created>1794661017138</created>
-      <option name="number" value="00163" />
-      <option name="presentableId" value="LOCAL-00163" />
-      <option name="project" value="LOCAL" />
-      <updated>1794661017138</updated>
-    </task>
     <task id="LOCAL-00164" summary="change to react">
       <option name="closed" value="true" />
       <created>1794664451265</created>
@@ -471,7 +455,23 @@
       <option name="project" value="LOCAL" />
       <updated>1795777729585</updated>
     </task>
-    <option name="localTasksCounter" value="211" />
+    <task id="LOCAL-00211" summary="add person lane">
+      <option name="closed" value="true" />
+      <created>1795799324291</created>
+      <option name="number" value="00211" />
+      <option name="presentableId" value="LOCAL-00211" />
+      <option name="project" value="LOCAL" />
+      <updated>1795799324291</updated>
+    </task>
+    <task id="LOCAL-00212" summary="add person lane">
+      <option name="closed" value="true" />
+      <created>1795804332679</created>
+      <option name="number" value="00212" />
+      <option name="presentableId" value="LOCAL-00212" />
+      <option name="project" value="LOCAL" />
+      <updated>1795804332679</updated>
+    </task>
+    <option name="localTasksCounter" value="213" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
